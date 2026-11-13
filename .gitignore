@@ -1,3 +1,4 @@
+# Existing upstream rules.
 # Logs
 logs
 *.log
@@ -147,3 +148,20 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# GuideBot local runtime assets.
+__pycache__/
+*.py[cod]
+.conda/
+.venv/
+.env
+.env.*
+*.env
+.vscode/
+*.wav
+*.pcm
+*.gguf
+*.pt
+*.onnx
+artifacts/
+node_modules/
