@@ -1,0 +1,424 @@
+{
+  "source": "recordings/long-reply",
+  "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+  "samples": 727680,
+  "sample_rate": 16000,
+  "chunks": [
+    {
+      "track": "speaker",
+      "elapsed": 40.63370038400001,
+      "sample_offset": 210560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 40.65289280000002,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 41.62663622399998,
+      "sample_offset": 226560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 41.63658656000001,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 42.472600864000015,
+      "sample_offset": 242560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 42.481080640000016,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 43.472669215999986,
+      "sample_offset": 258560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 43.487101087999974,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 44.472639872,
+      "sample_offset": 274560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 44.481106143999966,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 45.47265183999997,
+      "sample_offset": 290560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 45.480984448000015,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 46.472720960000004,
+      "sample_offset": 306560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 46.49099212799996,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 47.47265104000002,
+      "sample_offset": 322560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 47.480762495999954,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 48.472645055999976,
+      "sample_offset": 338560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 48.480608959999984,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 49.47262451199998,
+      "sample_offset": 354560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 49.479794336,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 50.47268809600001,
+      "sample_offset": 370560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 50.48011510400005,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 51.472610335999946,
+      "sample_offset": 386560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 51.48060719999995,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 52.47267782399996,
+      "sample_offset": 402560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 52.48265232,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 53.47770844799999,
+      "sample_offset": 418560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 53.49075843199995,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 54.47267452800003,
+      "sample_offset": 434560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 54.48062006399999,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 55.47267487999994,
+      "sample_offset": 450560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 55.477915775999975,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 56.47298931200004,
+      "sample_offset": 466560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 56.48423897599997,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 57.47260348799995,
+      "sample_offset": 482560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 57.48158995199998,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 58.472635071999946,
+      "sample_offset": 498560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 58.48108579199999,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 59.472668383999974,
+      "sample_offset": 514560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 59.48130681599997,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 60.47271369599997,
+      "sample_offset": 530560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 60.483435712000016,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 61.47269305599997,
+      "sample_offset": 546560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 61.48329683200001,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 62.47263462400002,
+      "sample_offset": 562560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 62.47933043200004,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 63.47256908799994,
+      "sample_offset": 578560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 63.47851619199997,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 64.47266784000004,
+      "sample_offset": 594560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 64.48143977599995,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 65.47257689600002,
+      "sample_offset": 610560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 65.48241091200003,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 66.472660448,
+      "sample_offset": 626560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 66.48245382399995,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 67.47268627199998,
+      "sample_offset": 642560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 67.48075430399996,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 68.47266841599998,
+      "sample_offset": 658560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 68.48085046399996,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 69.47264128,
+      "sample_offset": 674560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 69.48181647999996,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 70.47259244799994,
+      "sample_offset": 690560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 70.47899801600005,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 71.472652224,
+      "sample_offset": 706560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 71.48067596799996,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 72.47267094399996,
+      "sample_offset": 722560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 72.48152188800003,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 73.47260323200004,
+      "sample_offset": 738560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 73.48157046399996,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 74.47262752,
+      "sample_offset": 754560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 74.48281395199996,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 75.47275017600003,
+      "sample_offset": 770560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 75.48013308799995,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 76.47267219199995,
+      "sample_offset": 786560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 76.48047260799996,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 77.47272883199997,
+      "sample_offset": 802560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 77.480982912,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 78.47268214399998,
+      "sample_offset": 818560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 78.49679801600001,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 79.47269967999995,
+      "sample_offset": 834560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 79.490741152,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 80.47271552000001,
+      "sample_offset": 850560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 80.49161267200003,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 81.47268832000003,
+      "sample_offset": 866560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 81.48174649599997,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 82.47268457599995,
+      "sample_offset": 882560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 82.48205401599995,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 83.47270419199998,
+      "sample_offset": 898560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 83.48043676799995,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 84.47269043199998,
+      "sample_offset": 914560,
+      "samples": 16000,
+      "rpc_finished_elapsed": 84.48193577599994,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    },
+    {
+      "track": "speaker",
+      "elapsed": 85.47264598399994,
+      "sample_offset": 930560,
+      "samples": 7680,
+      "rpc_finished_elapsed": 85.47927507200001,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "code": 0
+    }
+  ],
+  "original_session": "realtime-1794530321523229152",
+  "original_speaker_sample_offset": 210560
+}

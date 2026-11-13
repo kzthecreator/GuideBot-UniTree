@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-13",
+  "source_sessions": [
+    "realtime-1794530321523229152",
+    "realtime-1794538701387449792"
+  ],
+  "files": [
+    {
+      "path": "long-reply/events.jsonl",
+      "bytes": 100510,
+      "sha256": "49d02a7437464662a4fcdb34f651b0742cc2fc755b1cc4e10a6929756cf12d8d"
+    },
+    {
+      "path": "long-reply/provenance.json",
+      "bytes": 12000,
+      "sha256": "997b50fd9fc5a7069b0cacdd852fa6185a2c53c4d10a81969bde222d16fafeea"
+    },
+    {
+      "path": "long-reply/reply.wav",
+      "bytes": 1455404,
+      "sha256": "68d6e97ba5b26c5e619794cd37c635d509867b3038817977a5cc26b851f9fac4"
+    },
+    {
+      "path": "long-reply/transcripts.json",
+      "bytes": 843,
+      "sha256": "26350620d20e8a5a39e09d23ee3ee20ef14304c6b9e8714a93e8e18339706b42"
+    },
+    {
+      "path": "live-session/alignment.jsonl",
+      "bytes": 109501,
+      "sha256": "d3546787eb75242ff724b56652dadbb4dfce2baa1f294fe7e7c300e77800b4a3"
+    },
+    {
+      "path": "live-session/audio-index.jsonl",
+      "bytes": 120073,
+      "sha256": "59a57ca3fe4e28377905a0ebf53e02b01c17bcbe692f98b628b89d20c828e19b"
+    },
+    {
+      "path": "live-session/events.jsonl",
+      "bytes": 214609,
+      "sha256": "795332eae093fec0de40e3379e95f37cb44775b7871ee43700b1c1a42b58c235"
+    },
+    {
+      "path": "live-session/microphone-16k.wav",
+      "bytes": 1935404,
+      "sha256": "f1319dfbef082e59b99d0dd4145e62e5aed9a0006117091cf855ec0ea5ccc381"
+    },
+    {
+      "path": "live-session/microphone-aec-16k.wav",
+      "bytes": 1935404,
+      "sha256": "4227c2d2aba627c071aaf8988200b86837095fa69c8a759666744ed0190bf619"
+    },
+    {
+      "path": "live-session/microphone-gated-16k.wav",
+      "bytes": 1935404,
+      "sha256": "aa0824052e8f8e53a6372dda4c0ad46fd873e6e1145f73c220b8280f60690d43"
+    },
+    {
+      "path": "live-session/speaker-16k.wav",
+      "bytes": 1136044,
+      "sha256": "b3f1e53710c851176c4d163af092b00a731283a7d9c44ec6c5e3614689953a32"
+    },
+    {
+      "path": "live-session/transcripts.json",
+      "bytes": 1590,
+      "sha256": "fe2e7f569cbff108f33aa1dd0b26068bb29b81502ed2371b889574c633227dcb"
+    }
+  ]
+}
