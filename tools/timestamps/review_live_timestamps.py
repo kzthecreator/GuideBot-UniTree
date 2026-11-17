@@ -1,4 +1,5 @@
 """Evaluate the first published streaming positions against final repair."""
+import argparse
 import json
 import os
 from pathlib import Path
@@ -12,14 +13,19 @@ OUT=ROOT/'live-replay-validated'
 
 
 def main():
+    global OUT
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, default=OUT)
+    OUT=parser.parse_args().output
     events=[json.loads(line) for line in (OUT/'events.jsonl').read_text().splitlines()]
     updates=[e for e in events if e['kind'] in {'alignment.update','alignment.final'}]
     final=updates[-1]
     reference={r['index']:r for r in final['timestamps']}
     text=''.join(r['text'] for r in final['timestamps'])
-    source=Path(json.loads((ROOT/'provenance.json').read_text())['source'])
+    provenance=json.loads((ROOT/'provenance.json').read_text())
+    source=Path(provenance['source'])
     original=[json.loads(line) for line in (source/'events.jsonl').read_text().splitlines()]
-    original=[e for e in original if e.get('response_id')==ROOT.name]
+    original=[e for e in original if e.get('response_id')==provenance.get('response_id', ROOT.name)]
     origin=next(e['elapsed'] for e in original if e['type']=='response.audio.delta')
     playback=next(e['elapsed'] for e in original if e['type']=='client.playback.started')-origin
     pcm,rate=sf.read(ROOT/'reply.wav',dtype='int16')

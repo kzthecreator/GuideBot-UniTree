@@ -1,15 +1,51 @@
 # GuideBot 维护续接文档
 
-记录日期：2026-11-13，Asia/Shanghai。请先读本文，再运行代码。
+更新日期：2026-11-15，Asia/Shanghai。请先读本节，再按任务查阅后文。
 
-## 先做什么
+## 接手速读：当前项目状态
 
-1. 检查当前机器是否仍有下文的 Conda、SDK、LocalVQE 和 FunASR 模型。
-2. 运行无硬件测试：`python -m unittest discover -s tests -v`。在 GuideBot 环境运行。
-3. 阅读 `docs/experiments/live-session-analysis.md`。当前任务是改善流式字级时间戳的首次发布时延，而非重新研究已跑通的语音链路。
-4. 优先用已保存会话回放，比较更小首批窗口、更新间隔、尾部保留。汇报首次就绪提前量、边界修订和计算耗时，再决定是否接入现场。录音缺失时请用户重新录制，不能编造回放验证结果。
+本轮时间戳优化已收束，用户已取消原来的“接下来继续优化时间戳”要求。当前没有预设的下一项开发任务；接手后根据用户的新需求工作。以下是现状，不是待执行的优化计划。
 
-完成判据：代码测试通过，报告明确区分首次结果与最终修复、音频文件时间与设备发声时间；只有现场验证后才能声称硬件场景通过。
+- 项目目标：流式语音交互，以及“流式文本 → LLM 稀疏动作规划 → 文字锚点对齐 → 动作调度”。语音始终不等待动作；用户允许牺牲开头动作质量。
+- 硬件约束：上肢有肘部，没有手部和头部自由度。动作提供开始时间；持续型动作另有持续时长，位姿型动作不需要。底层按上层指定的到位时刻平滑切换，是接口假设，尚未实测。
+- 当前主机：无机器人、无音频外设的服务器。历史宇树语音链路已有机器人验证，不能将本轮服务器回放表述为现场验证。
+- 已完成：`GuideBot/gesture/` 的 JSON 动作注册、动态 prompt、稀疏 few-shot、DeepSeek 流式规划、开始/到位双文字锚点、对齐与模拟调度，以及可选 `--gestures` 接入。真实 DeepSeek 合成样例 21/21，未示范动作 12/12；执行端仍是模拟接口。
+- 保留方案：FunASR INT8 单线程、同窗口 predictor 复用、完整前缀、step=.5s、tail=.1s、周期重同步关闭、结束全文修复。配置在 `GuideBot/gesture/timing.py`，用于 `--gestures`；单独 `--timestamps` 默认参数未改。完整前缀不代表等待满窗口。
+- 结果：17 组配置、51 次墙钟回放；固定完整音频 FP32 参考下，314/327 字同时满足“一字完整时长容差”和“参考起点前发布”。前两秒后为 295/303；8 处均为定位误差，不是发布迟到。该参考是模型输出，不是人工真值。
+- 独立后台复核：同一 104 字录音两次分别 102/104、104/104 联合通过。第一轮中“中”预测准确但发布迟到85ms，“息”预测偏晚440ms；两次合计四个模拟动作均通过、误差20–60ms。使用缓存人工计划，不是实时 LLM 全链路验证。不能声称稳定全量实时达标。
+- 最新验证：91 项无硬件测试通过。录音试听文件本身正常，用户已确认此前的近乎静音为其播放侧失误。
+
+按需阅读：动作接口与运行方法见 `GuideBot/gesture/README.md`；LLM 规划证据见 `docs/experiments/gesture-integration.md`；最终参数、失败边界与全部优化对照见 `docs/experiments/realtime-optimization.md`。下文保留历史硬件、依赖与实验背景，遇到日期或任务冲突以本节为准。
+
+服务器环境：`/148Dataset/data-fang.kai/miniconda3/envs/GuideBot/bin/python`。密钥由当前用户配置加载，录音在仓库本地 `recordings/`；密钥、录音、模型与运行状态不上传 Git。迁移主机后应核实依赖位置，不能照搬原机器路径。
+
+服务器续接补充：当前 `/148Dataset/data-fang.kai/projects/GuideBot/GuideBot-UniTree` 是无外设服务器，已建立命名 GuideBot 环境、校验 recordings 并完成三组离线回放。环境路径、依赖构建差异、57 项测试与参数比较见 `docs/experiments/server-timestamp-replay.md`。下文 `/home/fk` 与硬件配置仍描述原机器人，不能直接套用到服务器；在线默认参数尚未更改。
+
+服务器第二轮：已接入真实 transcript delta、追加保留前缀及独立 `alignment.starts`，63 项测试通过。三段完整回复已回放，并实跑 Qwen3-ForcedAligner CPU 对照与不完整音频/错误文本探针。结论为稀疏动作尽力同步可行，但句首双锚点与冻结后的时间修订尚无严格保证；不等待语音。量化结果、外部模型位置、ASAPRealizer/Greta 参考及整体调度建议见 `docs/experiments/action-anchor-improvement.md`。LLM 与运动尚未接入；合成 delta 实验不可冒充历史真实增量回放。
+
+## 最后确认：维护后的交接方式
+
+2026-11-15 最新时间戳优化：继续前读 `docs/experiments/realtime-optimization.md`。已按固定 FP32 全音频参考、一字完整时长容差及真实发布期限，完成 17 组配置×3 完整回复=51 次墙钟回放，并复核两次真实后台进程。综合最佳为 INT8 单线程、同窗口 predictor 复用、完整前缀、step=.5/tail=.1、resync=0、final_repair=True，首发联合通过 314/327，仍未严格全量达标。配置在 `GuideBot/gesture/timing.py`，已接到可选 `--gestures`；单独 `--timestamps` 默认仍 6/2/1。`window=120` 表示已有上限内完整前缀，不等 120 秒。FP32 ONNX 14 对输出一致，但墙钟总体未优于保留方案；起点游标、短窗、更多 tail、不减一计数均保留失败数据。91 项测试通过。真实后台复核 102/104 与104/104，两个人工计划各次均 2/2 命令、无压缩/跳过，四次动作误差20–60ms；不是现场或实时 LLM 验证。试听在 `~/.local/state/guidebot/gesture-best-prefix-verify-1/`：`actions-realtime.wav` 低音开始/高音到位，`realtime-markers.wav` 按实际可知时刻提示每个字，均不增加语音时长；参考版单列。不可用第二次全通过抹去第一轮失败。模型、依赖、实验输出在仓库外；无外设、未上传录音或密钥。
+
+完全关闭重同步实验：继续调整该策略或评估试听前读 `docs/experiments/no-resync-replay.md`。离线 `gesture replay --no-resync` 关闭周期/冲突前缀修复和结束全文修复，线上默认未改。22.68s 样本起点 101/104、参考偏差 P95 690ms、最差首次发布落后 2.215s；本轮开启对照为 104/104、387ms、4.815s，两者都 2/2 模拟命令。缺失尾部“找他们”，无重同步不是准确到位保证。首次/末次起点插 150ms 静音的 WAV 位于 `~/.local/state/guidebot/gesture-no-resync/listen/`，新对照位于 `~/.local/state/guidebot/gesture-resync-control-60s/listen/`。86 项测试通过；回放仍为记录全文+缓存人工计划，无外设、无真实 LLM。
+
+服务器第三轮（2026-11-15）：已在 `GuideBot/gesture/` 实现 JSON 动作注册表、动态 Prompt、稀疏 few-shot、DeepSeek SSE 规划、双文字锚点解析及模拟调度，并接入可选 `--gestures` 会话事件。没有真实运动执行器。继续动作规划或运动接入前，阅读 `docs/experiments/gesture-integration.md` 与 `GuideBot/gesture/README.md`。真实 DeepSeek 合成评估 21/21（未示范动作 12/12），首动作中位 0.793s；83 项测试通过。真实 PCM + FunASR + 人工缓存计划回放仅成功 1/2，另一个因前缀重同步长停顿错过期限。保持语音不等待，不能声称稳定实时或硬件到位已验证。服务器 Python 为 `/148Dataset/data-fang.kai/miniconda3/envs/GuideBot/bin/python`；当前用户 Key 配置为 `~/.config/deepseek/env`，需在启动 shell 中 source，勿打印内容。
+
+用户会自行下载并把录音文件夹恢复到同一路径：`~/GuideBot-UniTree/recordings/`，本机绝对路径为 `/home/fk/GuideBot-UniTree/recordings/`。先检查 README.md、manifest.json、long-reply/、live-session/ 是否存在，并校验 manifest 中的文件 SHA256。
+
+用户已经下载录音文件夹，不再修改下载内容。本文件是 GitHub 上的权威续接文档，不依赖 recordings/CONTINUE.md 或 recordings/handoff-reports/。两份实验报告在仓库 docs/experiments/。即使录音文件夹里存在旧文档，也以本文件为准。
+
+已验证业务代码提交为 `9ca92f6`，本次仅在其后更新 GitHub 交接文档。五条录音的本地提交 `06e9b1f` 推送失败，用户明确取消录音上传，改为手动提供 recordings 文件夹。不要假定 GitHub 含录音，也不要重试上传该本地提交。
+
+可直接以如下指令续接：“读取 ~/GuideBot-UniTree/AGENTS.md，并按文档继续。”该入口要求继续读取本文。本文保存了工作所需的状态、限制、操作方式与下一步，不是聊天全文。模型、SDK、密钥、Conda 和未选历史录音仍需检查是否保留，不能把交接文档当成这些资源的备份。
+
+## 接手时的核实
+
+根据用户的新任务核实当前主机、依赖与 Git 状态；涉及代码改动时，在 GuideBot 环境运行相应无硬件测试。历史实验无需自动重跑。报告继续区分首次结果与最终修复、模拟调度与真实硬件执行。
+
+2026-11-17 本机 G1 工作区已接回 GitHub `main` 的 gesture 模块。当前主机有 G1 硬件，但该模块的执行端仍为模拟接口；此前服务器实验、API 测评和模拟回放不能视为本机现场 gesture 验证。动作系统状态与下一步见本节速读、`GuideBot/gesture/README.md` 和 `docs/experiments/gesture-integration.md`。
+
+本机时间戳窗口对照记录于 `docs/experiments/timestamp-window-tuning.md`：3 / 0.75 / 0.35 / 8 秒配置提高首发覆盖率至 187/197，但出现 4 次顺序冲突和 4 次游标丢失，未更改在线默认值。
 
 ## 用户约束与操作约定
 
@@ -100,7 +136,7 @@ python GuideBot/conversation/conversation.py --timestamps
 
 历史离线长音频用户已试听接受；这不代表首次流式结果准确。首次真实会话：3 轮，两完整一打断，无错误；14 次近期窗口计算中位 0.872 秒；长回复最终 104/104，按最终边界计只有 59/104 首次发布早于预计播放，最差落后 2.31 秒，最大单次修订 1.05 秒。完整结果比预计播完提前 3.55 秒，不能推论每个字都提前。详见现场报告。
 
-仅缩小窗口未验证。当前不能保证 t>=0，也不增加播放缓冲；未来严格提前保证需要播放等待/缓冲策略，需与用户讨论延迟取舍。
+窗口参数对照已完成，当前结论及续做建议见 `docs/experiments/timestamp-window-tuning.md`。时间戳不能保证 t>=0，也不增加播放缓冲；严格提前保证需要播放等待/缓冲策略，需另行讨论延迟取舍。
 
 ## 实验资产索引与保存边界
 
@@ -112,7 +148,7 @@ python GuideBot/conversation/conversation.py --timestamps
 
 维护交接时将 VAD、诊断、gate、知识同步、LocalVQE 和时间戳测试一起收录到 tests/，仓库内合计 55 项测试全部通过。LocalVQE NativeTests 会加载本机动态库与模型，但不录放音；恢复环境前缺少模型可能导致该测试失败。更早实验测试仍在状态目录 archive/。pytest 未安装，采用 unittest。
 
-用户随后确认上传五条代表录音与必要日志，现位于 recordings/，详见 recordings/README.md。迁移后可用 long-reply/reply.wav 继续回放；GUIDEBOT_ALIGNMENT_DATA 设为该 long-reply 目录的绝对路径。其 provenance.json 的 source 为当前目录，脚本从仓库根运行时会解析相对路径。
+用户选择五条代表录音与必要日志，最终决定手动搬运 recordings/，详见 recordings/README.md。迁移后可用 long-reply/reply.wav 继续回放；GUIDEBOT_ALIGNMENT_DATA 设为该 long-reply 目录的绝对路径。其 provenance.json 的 source 为 recordings/long-reply，脚本须从仓库根运行才能正确解析相对路径。
 
 其他录音、模型、原生库、Conda、密钥、私有同步状态未上传；硬件维护若会清空磁盘，需要用户另行保存这些资产。根目录 zero_shot_prompt.wav 是用户提供测试音频，保留本机，已忽略；老实验默认路径指向它，缺失时用 --source 指定新音频。
 

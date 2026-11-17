@@ -3,7 +3,9 @@
 import audioop
 import base64
 import json
+from pathlib import Path
 import queue
+import sys
 import threading
 import time
 from urllib.parse import urlencode
@@ -33,7 +35,7 @@ class RealtimeSession:
                  diagnose_audio=DEFAULT_DIAGNOSE_AUDIO, vad_energy=DEFAULT_VAD_ENERGY,
                  aec=DEFAULT_AEC, aec_delay_ms=DEFAULT_AEC_DELAY_MS,
                  mic_gate_dbfs=DEFAULT_MIC_GATE_DBFS, instructions=None, vector_store_id=None,
-                 timestamps=False):
+                 timestamps=False, gestures=False, gesture_registry=None, gesture_targets=None):
         if not 0 <= vad_energy <= 5000:
             raise ValueError("VAD energy threshold must be 0..5000")
         self.secret, self.directory = secret, directory
@@ -74,13 +76,34 @@ class RealtimeSession:
         self.ws = self.thread = None
         self.log = None
         self.timestamp_log = None
-        self.timestamp_stats = {"ready": False, "updates": 0, "finals": 0, "revisions": 0, "errors": []}
+        self.timestamp_stats = {"ready": False, "updates": 0, "finals": 0, "revisions": 0,
+                                "start_updates": 0, "start_revisions": 0, "errors": []}
         self.playback_starts = {}
-        self.timestamps = StreamingTimestamps(directory, self._alignment_event) if timestamps else None
+        options = backend_options = None
+        if gestures:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+            from GuideBot.gesture.timing import ALIGNMENT_OPTIONS, BACKEND_OPTIONS
+            options, backend_options = dict(ALIGNMENT_OPTIONS), dict(BACKEND_OPTIONS)
+        self.timestamps = (StreamingTimestamps(directory, self._alignment_event,
+                                               alignment_options=options, backend_options=backend_options)
+                           if timestamps or gestures else None)
+        self.gestures = None
+        if gestures:
+            from GuideBot.gesture.catalog import Catalog
+            from GuideBot.gesture.service import GestureService, load_targets
+            catalog = Catalog(gesture_registry) if gesture_registry else Catalog()
+            self.gestures = GestureService(directory, self._gesture_event, catalog=catalog,
+                                           targets=load_targets(gesture_targets))
+
+    def _gesture_event(self, kind, **details):
+        message = details.pop('message', '模拟上肢动作：' + kind)
+        self.report(kind, message, **details)
 
     def _alignment_event(self, kind, **details):
+        if kind == 'alignment.starts' and self.gestures is not None:
+            self.gestures.submit('alignment', **details)
         rid = details.get("response_id")
-        rows = details.get("timestamps", [])
+        rows = details.get("timestamps", details.get("anchors", []))
         changes = details.get("changes", [])
         if rid in self.playback_starts:
             playhead = max(0, time.monotonic() - self.playback_starts[rid])
@@ -100,9 +123,16 @@ class RealtimeSession:
                 message += "；窗口合并存在顺序冲突，等待最终修复"
             if details.get("mixed_text"):
                 message += "；含英文或数字，按文字单元实验性对齐"
+        elif kind == "alignment.starts":
+            self.timestamp_stats["start_updates"] += 1
+            self.timestamp_stats["start_revisions"] += len(changes)
+            message = f"暂定动作起点 {len(details.get('anchors', []))}/{details['total_units']}"
         elif kind == "alignment.ready":
             self.timestamp_stats["ready"] = True
-            message = "FunASR 后台对齐就绪：6s 窗口、2s 更新、1s 尾部保留、约10s前缀重同步；增量结果仅供实验"
+            options = self.timestamps.alignment_options if self.timestamps is not None else {}
+            mode = '完整前缀' if options.get('window', 6) >= 120 else f"{options.get('window', 6):g}s 窗口"
+            message = (f"FunASR 后台对齐就绪：{mode}、"
+                       f"{options.get('step', 2):g}s 更新、{options.get('tail', 1):g}s 尾部保留；增量结果仅供实验")
         else:
             message = details.get("message", kind)
             self.timestamp_stats["errors"].append(message)
@@ -147,6 +177,10 @@ class RealtimeSession:
         rid = details.get("response_id")
         if kind == "playback.started":
             self.playback_starts[rid] = time.monotonic()
+            if self.gestures is not None:
+                self.gestures.submit('playback', rid, origin=self.playback_starts[rid])
+        if kind in {'playback.discard_requested', 'playback.stopped', 'playback.drained_estimated'} and self.gestures is not None:
+            self.gestures.submit('cancel', rid, reason=kind)
         if kind == "playback.discard_requested" and self.timestamps is not None:
             self.timestamps.send("cancel", rid)
         if kind == "playback.chunk_submitted":
@@ -186,6 +220,13 @@ class RealtimeSession:
                 self.timestamps.start()
             except Exception as error:
                 self._alignment_event("alignment.error", message=f"Timestamp worker disabled: {error}; audio continues")
+        if self.gestures is not None:
+            try:
+                self.gestures.start()
+            except Exception as error:
+                self._gesture_event('gesture.error', message=f'Gesture startup failed: {error}; audio continues')
+                self.gestures.close()
+                self.gestures = None
         websocket.setdefaulttimeout(5)
         self.ws = websocket.WebSocketApp(
             "wss://api.stepfun.com/v1/realtime?" + urlencode({"model": MODEL}),
@@ -290,6 +331,8 @@ class RealtimeSession:
             # presenting cloud completion as physical playback completion.
             record = {key: event[key] for key in ("response_id", "item_id", "transcript",
                                                  "audio_start_ms", "audio_end_ms") if key in event}
+            if kind == "response.audio_transcript.delta":
+                record["delta"] = event.get("delta", "")
             if "response" in event:
                 record["response_id"] = event["response"].get("id")
                 record["status"] = event["response"].get("status")
@@ -364,6 +407,9 @@ class RealtimeSession:
                 self.report("VAD-interrupt", "云端确认打断，停止旧回复；麦克风继续上传",
                             turn=self.user_turns.get(item_id, self.current_turn))
                 self.discarded.update(self.active)
+                if self.gestures is not None:
+                    for rid in self.active:
+                        self.gestures.submit('cancel', rid, reason='confirmed_interrupt')
                 if self.timestamps is not None:
                     for rid in self.active:
                         self.timestamps.send("cancel", rid)
@@ -386,6 +432,8 @@ class RealtimeSession:
             elif kind == "response.done":
                 response = event["response"]
                 rid, status = response["id"], response.get("status")
+                if self.gestures is not None:
+                    self.gestures.submit('done' if status == 'completed' else 'cancel', rid)
                 self.stats["responses"].append({"id": rid, "status": status})
                 if status in {"completed", "incomplete"}:
                     self.speaker.finish(rid)
@@ -401,7 +449,8 @@ class RealtimeSession:
                 self.active.discard(rid)
                 self.discarded.discard(rid)
                 self.report("cloud-done", f"云端生成结束：{status}；不代表扬声器已播完", response_id=rid)
-            elif kind in {"response.audio.delta", "response.audio.done", "response.audio_transcript.done"}:
+            elif kind in {"response.audio.delta", "response.audio.done", "response.audio_transcript.delta",
+                          "response.audio_transcript.done"}:
                 rid = event.get("response_id")
                 if not rid:
                     raise ValueError("Realtime response event is missing response_id")
@@ -413,7 +462,14 @@ class RealtimeSession:
                         self.timestamps.send("audio", rid, converted)
                 elif kind == "response.audio.done":
                     self.speaker.finish(rid)
+                elif kind == "response.audio_transcript.delta":
+                    if self.gestures is not None:
+                        self.gestures.submit('text_delta', rid, text=event.get('delta', ''))
+                    if self.timestamps is not None:
+                        self.timestamps.send("text_delta", rid, event.get("delta", ""))
                 else:
+                    if self.gestures is not None:
+                        self.gestures.submit('text', rid, text=event.get('transcript', ''))
                     if self.timestamps is not None:
                         self.timestamps.send("text", rid, event.get("transcript", ""))
                     self.report("reply-text", "回复文本已就绪：" + event.get("transcript", ""), response_id=rid)
@@ -439,6 +495,8 @@ class RealtimeSession:
             self.errors.append(str(error))
         if self.timestamps is not None:
             self.timestamps.close()
+        if self.gestures is not None:
+            self.gestures.close()
         if self.timestamp_log is not None:
             self.timestamp_log.close()
         if self.audio_diagnostic is not None:
@@ -459,6 +517,7 @@ class RealtimeSession:
                 "mic_gate_stats": dict(self.gate.stats) if self.gate else None,
                 "diagnose_audio": self.diagnose_audio,
                 "timestamps_enabled": self.timestamps is not None,
+                "gestures_simulated": self.gestures is not None,
                 "timestamp_stats": self.timestamp_stats,
                 "session": self.session, **self.stats,
                 "speaker_submitted_bytes": self.speaker.submitted_bytes, "errors": list(self.errors)}

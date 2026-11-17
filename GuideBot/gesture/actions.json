@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "hardware": "只有上肢肩部和肘部参与动作，没有可控头部、手腕或手指。所有动作由下层封装并平滑切换。",
+  "actions": [
+    {"id": "wave", "name": "挥手", "kind": "motion", "enabled": true,
+     "description": "用前臂摆动向听众问候或告别，不需要手腕摆动。适合大家好、欢迎参观、再见。",
+     "parameters": {"duration_s": {"type": "number", "minimum": 1.0, "maximum": 3.0}}, "required": ["duration_s"]},
+    {"id": "point", "name": "指向", "kind": "pose", "enabled": true,
+     "description": "伸出一侧手臂指向已知场景目标，以整条手臂表达方向，不伸手指。适合请看这里、注意某个场景目标。必须有 targets 中的目标，不能猜坐标。",
+     "parameters": {"target_id": {"type": "target"}}, "required": ["target_id"]},
+    {"id": "hold_object", "name": "托抱物体", "kind": "pose", "enabled": true,
+     "description": "双肘弯曲、前臂在身体前方形成托抱一个物体的姿态，强调正在描述具体物体的结构、材料或特点。是假装承托，不实际抓握，不需要手指或手腕。",
+     "parameters": {}, "required": []},
+    {"id": "present_sweep", "name": "横向介绍扫臂", "kind": "motion", "enabled": true,
+     "description": "一侧手臂平缓横向扫过，以肩肘带动整条手臂，概括介绍一整片展区、整排设施或连续空间。不用于锁定单个目标，不指示精确方向坐标。",
+     "parameters": {"duration_s": {"type": "number", "minimum": 1.0, "maximum": 3.0}}, "required": ["duration_s"]},
+    {"id": "open_arms", "name": "展开双臂", "kind": "pose", "enabled": true,
+     "description": "双臂向身体两侧舒展，表达空间开阔、范围广阔或包容开放的整体概念；与单臂扫过一排目标不同。动作不依赖掌心朝向。",
+     "parameters": {}, "required": []},
+    {"id": "compare_sides", "name": "左右对比", "kind": "motion", "enabled": true,
+     "description": "左右前臂依次抬起，在身体两侧交替呈现两个方案或两类事物的差别。不需要实际场景目标，不表达真实左右方位，不依赖头部或手部运动。",
+     "parameters": {"duration_s": {"type": "number", "minimum": 1.5, "maximum": 4.0}}, "required": ["duration_s"]},
+    {"id": "frame_object", "name": "双臂框示尺寸", "kind": "pose", "enabled": true,
+     "description": "双前臂在身体前方间隔一定距离，示意具体物体的宽度或大小；重点是尺寸而不是承托重量。不依赖手指描边，不将文字尺寸换算成精确关节角度。size 表示相对示意尺度。",
+     "parameters": {"size": {"type": "string", "enum": ["small", "medium", "large"]}}, "required": ["size"]},
+    {"id": "emphasis_beat", "name": "节奏性强调", "kind": "motion", "enabled": true,
+     "description": "前臂在身体前方做小幅上下强调动作，用于最重要的一点、关键结论或明确的重点提醒，不指向具体对象，也不要求每句话都强调。",
+     "parameters": {"duration_s": {"type": "number", "minimum": 0.6, "maximum": 2.0}}, "required": ["duration_s"]}
+  ]
+}

@@ -1,0 +1,5 @@
+[
+  {"text": "大家好，欢迎参观。", "targets": [], "actions": [{"action": "wave", "start_unit": 0, "arrival_unit": 2, "duration_s": 1.5}]},
+  {"text": "请注意这里的沙盘。", "targets": [{"id": "sand_table", "description": "园区沙盘"}], "actions": [{"action": "point", "target_id": "sand_table", "start_unit": 0, "arrival_unit": 3}]},
+  {"text": "刚才有人说不要挥手，我们继续讲解。", "targets": [], "actions": []}
+]
