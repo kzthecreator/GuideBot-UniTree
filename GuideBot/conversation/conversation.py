@@ -1,4 +1,4 @@
-"""Press Enter to start full-duplex StepAudio 3 conversation; Enter again to stop."""
+"""Press Enter to start a realtime conversation; Enter again to stop."""
 
 import argparse
 import json
@@ -11,8 +11,9 @@ import time
 
 from audio import state_directory, wait_for_enter
 from knowledge import AGENT_DIRECTORY, load_knowledge, load_secret, read_soul, sync_knowledge
-from stepfun import (MODEL, RealtimeSession, DEFAULT_DIAGNOSE_AUDIO, DEFAULT_VAD_ENERGY,
-                     DEFAULT_AEC, DEFAULT_AEC_DELAY_MS, DEFAULT_MIC_GATE_DBFS)
+from stepfun import MODEL, RealtimeSession, DEFAULT_DIAGNOSE_AUDIO, DEFAULT_VAD_ENERGY
+
+STANDARD_AEC_MODEL = Path(__file__).resolve().parents[2] / "drivers/localvqe/models/localvqe-v1.2-1.3M-f32.gguf"
 
 
 def main():
@@ -21,34 +22,40 @@ def main():
                         help="Save microphone/reference PCM and timestamps (default: enabled)")
     parser.add_argument("--vad-energy", type=int, default=DEFAULT_VAD_ENERGY, choices=range(0, 5001),
                         metavar="0..5000", help=f"Server VAD energy threshold (default: {DEFAULT_VAD_ENERGY})")
-    parser.add_argument("--aec", action=argparse.BooleanOptionalAction, default=DEFAULT_AEC,
-                        help="LocalVQE echo/noise/reverb enhancement (default: enabled)")
-    parser.add_argument("--aec-delay-ms", type=int, default=DEFAULT_AEC_DELAY_MS, metavar="0..1000",
-                        help="Additional estimated speaker delay for AEC (default: 0 ms)")
-    parser.add_argument("--mic-gate-dbfs", type=float, default=DEFAULT_MIC_GATE_DBFS, metavar="DBFS",
-                        help=f"Playback-only local RMS gate -96..0 dBFS (default: {DEFAULT_MIC_GATE_DBFS:g})")
-    parser.add_argument("--no-mic-gate", dest="mic_gate_dbfs", action="store_const", const=None,
-                        default=argparse.SUPPRESS, help="Disable the local microphone gate")
     parser.add_argument("--sync-knowledge", dest="sync_knowledge_before_start", action="store_true",
-                        help="Synchronize knowledge before starting the realtime session")
+                        help="Synchronize StepFun knowledge before starting")
+    parser.add_argument("--voice", help="StepFun voice (default: STEP_VOICE or service default)")
     parser.add_argument("--timestamps", action=argparse.BooleanOptionalAction, default=False,
                         help="Experimental background FunASR character timestamps; does not delay playback")
     parser.add_argument('--gestures', action='store_true',
-                        help='DeepSeek gesture planning with simulated execution; enables 4/.5/.25 timestamps')
+                        help='Enable gesture planning and the validated timestamp profile (simulated unless backend=unitree)')
     parser.add_argument('--gesture-registry', type=Path, help='Action registry JSON')
     parser.add_argument('--gesture-targets', type=Path, help='Scene target JSON; default no targets')
+    parser.add_argument('--gesture-backend', choices=('simulated', 'unitree'), default='simulated',
+                        help='Motion backend; unitree enables gestures and commands the real robot after Enter')
+    parser.add_argument('--motion-manifest', type=Path, help='Published physical action bindings')
+    parser.add_argument('--motion-socket', default='g1_arm_motion_library', help='Motion server abstract socket name')
+    parser.add_argument('--skip-joint-limits', action='store_true',
+                        help='Explicit experiment option; motion server must also use --skip-joint-limits')
     args = parser.parse_args()
     return start_conversation(**vars(args))
 
 
 def start_conversation(*, sync_knowledge_before_start=False, diagnose_audio=DEFAULT_DIAGNOSE_AUDIO,
-                       vad_energy=DEFAULT_VAD_ENERGY, aec=DEFAULT_AEC,
-                       aec_delay_ms=DEFAULT_AEC_DELAY_MS, mic_gate_dbfs=DEFAULT_MIC_GATE_DBFS,
-                       agent_directory=AGENT_DIRECTORY, timestamps=False,
-                       gestures=False, gesture_registry=None, gesture_targets=None):
-    """Prepare agent content, optionally synchronize, then wait for manual audio start."""
+                       vad_energy=DEFAULT_VAD_ENERGY, agent_directory=AGENT_DIRECTORY,
+                       timestamps=False, gestures=False, gesture_registry=None,
+                       gesture_targets=None, voice=None, gesture_backend="simulated",
+                       motion_manifest=None, motion_socket="g1_arm_motion_library", skip_joint_limits=False):
+    """Use the standard StepFun frontend; audio starts only after Enter."""
+    if skip_joint_limits and gesture_backend != 'unitree':
+        raise ValueError('--skip-joint-limits requires --gesture-backend unitree')
+    gestures = gestures or gesture_backend == 'unitree'
     instructions = read_soul(agent_directory)
     secret = load_secret()
+    if gesture_backend == 'unitree' and not os.environ.get('DEEPSEEK_API_KEY', '').strip():
+        config = os.environ.get('GUIDEBOT_CONFIG_FILE', str(Path(os.environ.get('XDG_CONFIG_HOME', Path.home()/'.config'))/'guidebot/conversation.env'))
+        raise ValueError(f'DEEPSEEK_API_KEY is required for real gestures. Set it in {config}; '
+                         'voice and motion have not started')
     knowledge_directory = Path(agent_directory) / "knowledge"
     if sync_knowledge_before_start:
         print("Synchronizing knowledge before conversation. No audio has started.", flush=True)
@@ -61,27 +68,29 @@ def start_conversation(*, sync_knowledge_before_start=False, diagnose_audio=DEFA
     chunk_ms = int(os.environ.get("G1_PLAY_CHUNK_MS", "1000"))
     gain = float(os.environ.get("G1_SPEAKER_GAIN", "1.5"))
     directory = state_directory() / f"realtime-{time.time_ns()}"
-    session = RealtimeSession(secret, directory, os.environ.get("STEP_VOICE"), chunk_ms, gain,
-                              diagnose_audio=diagnose_audio, vad_energy=vad_energy,
-                              aec=aec, aec_delay_ms=aec_delay_ms,
-                              mic_gate_dbfs=mic_gate_dbfs, instructions=instructions,
-                              vector_store_id=vector_store_id, timestamps=timestamps, gestures=gestures,
-                              gesture_registry=gesture_registry, gesture_targets=gesture_targets)
-    print(f"Model: {MODEL}. Keep the official assistant in the working wake-up state.")
+    session = RealtimeSession(
+        secret, directory, voice or os.environ.get("STEP_VOICE"), chunk_ms, gain,
+        vector_store_id=vector_store_id, diagnose_audio=diagnose_audio,
+        vad_energy=vad_energy, aec=True, aec_delay_ms=0, mic_gate_dbfs=None,
+        aec_model=STANDARD_AEC_MODEL, agc=True, instructions=instructions,
+        timestamps=timestamps, gestures=gestures,
+        gesture_registry=gesture_registry, gesture_targets=gesture_targets,
+        gesture_backend=gesture_backend, motion_manifest=motion_manifest,
+        motion_socket=motion_socket, skip_joint_limits=skip_joint_limits)
+    print(f"Provider: stepfun; model: {MODEL}. Keep the official assistant in the working wake-up state.")
     print("G1 microphone 16 kHz -> cloud 24 kHz; cloud reply 24 kHz -> G1 speaker 16 kHz.")
-    print(f"Knowledge base: {vector_store_id}. Instructions: {Path(agent_directory) / 'soul.md'}")
-    if aec:
-        print(f"LocalVQE enabled (AEC + NS + dereverb): 16 ms hops, reference delay {aec_delay_ms} ms; model output gate disabled.")
-    if mic_gate_dbfs is not None:
-        print(f"Local microphone gate: {mic_gate_dbfs:g} dBFS, 20 ms RMS, "
-              "6 dB hysteresis, 200 ms hold. Active only during estimated speaker playback; "
-              "bypassed while idle. Runs after AEC when enabled.")
-    if diagnose_audio:
-        print(f"Audio diagnostics (microphone, speaker reference, timestamps): {directory}")
+    print(f"Knowledge base: {vector_store_id}.")
+    print(f"Instructions: {Path(agent_directory) / 'soul.md'}")
+    print("Standard frontend: LocalVQE v1.2 (AEC + NS + dereverb), 16 ms hops, reference delay 0 ms.")
+    print("Standalone AGC2: 3 dB/s, saturation margin 24 dB, peak <= -1 dBFS; RMS gate disabled.")
+    print(f"Session event/error logs: {directory}")
+    print("Audio recording: " + ("enabled" if diagnose_audio else "disabled (event/error logs retained)"))
     if timestamps:
-        print(f"Experimental FunASR timestamps: provisional updates + complete-response repair. Log: {directory / 'alignment.jsonl'}")
+        print(f"Experimental FunASR timestamps: {directory / 'alignment.jsonl'}")
     if gestures:
-        print(f"DeepSeek gestures: simulation only; does not delay speech. Log: {directory / 'gesture.jsonl'}")
+        print(f"DeepSeek gestures: backend={gesture_backend}; log: {directory / 'gesture.jsonl'}")
+        if gesture_backend == 'unitree':
+            print(f"Real upper-body execution after Enter; joint limits skipped: {skip_joint_limits}")
     wait_for_enter("Press Enter to start realtime conversation, or Ctrl+C to cancel. ")
     try:
         session.start()
@@ -100,7 +109,7 @@ def start_conversation(*, sync_knowledge_before_start=False, diagnose_audio=DEFA
         if directory.exists():
             (directory / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         print("Realtime conversation stopped.")
-        if aec and result.get("aec_stats"):
+        if result.get("aec_stats"):
             stats = result["aec_stats"]
             print(f"AEC: processed_frames={stats['frames']}, reference_frames={stats['reference_frames']}")
         if result.get("mic_gate_stats"):

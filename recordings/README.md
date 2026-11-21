@@ -1,5 +1,9 @@
 # Selected audio fixtures
 
+维护后让新 agent 先读取本文件夹中的 `CONTINUE.md`，其中包含完整续接信息。
+用户将本文件夹恢复到 `~/GuideBot-UniTree/recordings/`。本文件夹尚未成功推送 GitHub，
+按用户要求手动下载和恢复；不要自行重试推送。handoff-reports/ 保存两份实验报告。
+
 用户于 2026-11-13 选择保存以下五类录音。全部为 16 kHz、单声道、PCM16 WAV。
 本目录是明确选中的例外；其他现场录音继续保存在仓库外，不应自动提交。
 

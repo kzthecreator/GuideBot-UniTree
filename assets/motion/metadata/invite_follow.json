@@ -1,0 +1,100 @@
+{
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "category": "reception",
+  "description": "",
+  "entry_pose": [
+    -0.120118,
+    0.178433,
+    1.059513,
+    0.617044,
+    -0.20638,
+    0.0,
+    0.0,
+    -0.01522,
+    -0.378881,
+    0.163393,
+    -0.188895,
+    -0.033544,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    -0.11971,
+    0.160649,
+    1.076867,
+    0.61231,
+    -0.206404,
+    0.0,
+    0.0,
+    -0.063816,
+    -0.340903,
+    0.674999,
+    -0.208741,
+    -0.033772,
+    0.0,
+    0.0
+  ],
+  "file_format_version": 1,
+  "interruptible": true,
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0,
+    300,
+    600,
+    900
+  ],
+  "label": "invite_follow",
+  "loopable": false,
+  "movement_context": "stationary",
+  "name": "invite_follow",
+  "nominal_duration_ms": 900,
+  "notes": "",
+  "robot_model": "G1-7DOF",
+  "safety": {
+    "joint_limits_profile": "config/arm_joint_limits.json",
+    "max_acceleration_rad_s2": 0.8,
+    "max_velocity_rad_s": 0.4
+  },
+  "scenes": [
+    "reception"
+  ],
+  "schema_version": 3,
+  "sha256": "77153e3954ddafbe4e45f3c8901c6d2cb7790e26968a76bce702719bc68a9a32",
+  "source": "teach_with_name",
+  "status": "approved",
+  "type": "motion",
+  "verified_at": "2026-11-17T17:27:57+08:00",
+  "verified_by": "kwx",
+  "version": 2,
+  "timing_profile": {
+    "phase_weights": {
+      "transition": 1,
+      "core": 3,
+      "hold": 1
+    },
+    "minimum_total_ms": 2000,
+    "frame_weights": [
+      1,
+      1,
+      1
+    ]
+  }
+}

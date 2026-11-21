@@ -59,7 +59,7 @@ def save_wav(destination, pcm, rate=RATE):
 class AudioDiagnostic:
     """Store sample offsets and arrival/RPC times; these are not DAC timestamps."""
 
-    def __init__(self, directory, started_at, processed=False, gated=False):
+    def __init__(self, directory, started_at, processed=False, gated=False, uploaded=False, agc=False):
         self.lock = threading.Lock()
         self.started_at = started_at
         self.closed = False
@@ -68,6 +68,10 @@ class AudioDiagnostic:
             self.offsets["microphone-aec"] = 0
         if gated:
             self.offsets["microphone-gated"] = 0
+        if uploaded:
+            self.offsets["microphone-uploaded"] = 0
+        if agc:
+            self.offsets["microphone-agc"] = 0
         self.tracks = {}
         for name in self.offsets:
             track = wave.open(str(directory / f"{name}-16k.wav"), "wb")
@@ -425,6 +429,11 @@ class StreamingSpeaker:
             return self._submitting or (self._playback_until > 0 and
                                        time.monotonic() < self._playback_until + .2)
 
+    def pending_response_ids(self):
+        """Cloud completion does not mean locally queued audio has drained."""
+        with self.condition:
+            return set(self.responses)
+
     def _emit(self, kind, entry=None, **details):
         if self.on_event is not None:
             if entry is not None:
@@ -519,9 +528,12 @@ class StreamingSpeaker:
             client = AudioClient()
             client.SetTimeout(2)
             client.Init()
+            volume_code = client.SetVolume(100)
+            if volume_code != 0:
+                raise RuntimeError(f'G1 SetVolume(100) failed: {volume_code}')
             volume = client.GetVolume()
             if self.on_event is None:
-                print("G1 speaker volume (read only):", volume, flush=True)
+                print("G1 speaker volume (requested 100%):", volume, flush=True)
             else:
                 self._emit("playback.ready", volume=volume)
             self.ready.set()

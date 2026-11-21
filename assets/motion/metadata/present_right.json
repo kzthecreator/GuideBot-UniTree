@@ -1,0 +1,93 @@
+{
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "category": "presentation",
+  "description": "",
+  "entry_pose": [
+    0.071786,
+    0.24793,
+    0.025227,
+    1.24781,
+    -0.00906,
+    0.0,
+    0.0,
+    -0.299126,
+    -1.57891,
+    -0.661949,
+    1.238618,
+    0.682801,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    0.071786,
+    0.24793,
+    0.025227,
+    1.24781,
+    -0.00906,
+    0.0,
+    0.0,
+    -0.299126,
+    -1.57891,
+    -0.661949,
+    1.238618,
+    0.682801,
+    0.0,
+    0.0
+  ],
+  "file_format_version": 1,
+  "interruptible": true,
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0
+  ],
+  "label": "present_right",
+  "loopable": false,
+  "movement_context": "stationary",
+  "name": "present_right",
+  "nominal_duration_ms": 0,
+  "notes": "",
+  "robot_model": "G1-7DOF",
+  "safety": {
+    "joint_limits_profile": "config/arm_joint_limits.json",
+    "max_acceleration_rad_s2": 0.8,
+    "max_velocity_rad_s": 0.4
+  },
+  "scenes": [
+    "presentation"
+  ],
+  "schema_version": 3,
+  "sha256": "b5e01218b3c31ad1bc1b37af8a8d344005b004789c10b0859294e932e32a5674",
+  "source": "teach_with_name",
+  "status": "approved",
+  "type": "motion",
+  "verified_at": "2026-11-17T17:30:48+08:00",
+  "verified_by": "kwx",
+  "version": 5,
+  "timing_profile": {
+    "phase_weights": {
+      "transition": 1,
+      "core": 0,
+      "hold": 2
+    },
+    "minimum_total_ms": 1500,
+    "frame_weights": []
+  }
+}

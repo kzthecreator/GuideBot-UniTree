@@ -123,6 +123,7 @@ def main():
                  cancelled_response_suppressed=True,worker_stopped=not worker.process.is_alive())
     assert summary['final_units']==summary['total_units']==len(text_units(text['message'].split('：',1)[1]))
     assert summary['updates']>1 and summary['worker_stopped']
+    summary['alignment_options']=options
     (OUT/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
     print(json.dumps(summary,ensure_ascii=False,indent=2))
 

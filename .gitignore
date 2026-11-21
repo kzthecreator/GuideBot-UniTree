@@ -170,3 +170,10 @@ __pycache__/
 *.onnx
 artifacts/
 node_modules/
+
+# Machine-local model installations (drivers entry points)
+/drivers/localvqe/models
+/drivers/timestamps/models
+
+# Archived demo machine-local credentials/configuration.
+/archive/doubao-demo/config.toml

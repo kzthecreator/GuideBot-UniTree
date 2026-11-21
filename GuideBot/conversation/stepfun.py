@@ -14,6 +14,7 @@ import uuid
 import websocket
 
 from audio import AudioDiagnostic, CLOUD_RATE, RATE, LevelGate, StreamingSpeaker, microphone_packets
+from agc import AGC2
 from knowledge import read_soul
 from localvqe import LocalVQEEcho
 from timestamps import StreamingTimestamps
@@ -35,7 +36,9 @@ class RealtimeSession:
                  diagnose_audio=DEFAULT_DIAGNOSE_AUDIO, vad_energy=DEFAULT_VAD_ENERGY,
                  aec=DEFAULT_AEC, aec_delay_ms=DEFAULT_AEC_DELAY_MS,
                  mic_gate_dbfs=DEFAULT_MIC_GATE_DBFS, instructions=None, vector_store_id=None,
-                 timestamps=False, gestures=False, gesture_registry=None, gesture_targets=None):
+                 timestamps=False, gestures=False, gesture_registry=None, gesture_targets=None,
+                 agc=False, aec_model=None, gesture_backend="simulated", motion_manifest=None,
+                 motion_socket="g1_arm_motion_library", skip_joint_limits=False):
         if not 0 <= vad_energy <= 5000:
             raise ValueError("VAD energy threshold must be 0..5000")
         self.secret, self.directory = secret, directory
@@ -45,8 +48,11 @@ class RealtimeSession:
         self.vector_store_id = vector_store_id
         self.vad_energy = vad_energy
         self.gate = LevelGate(mic_gate_dbfs) if mic_gate_dbfs is not None else None
+        self.agc_enabled = agc
+        self.agc = AGC2() if agc else None
         self.echo = None
         self.aec_enabled, self.aec_delay_ms = aec, aec_delay_ms
+        self.aec_model = aec_model
         if not 0 <= aec_delay_ms <= 1000:
             raise ValueError("AEC delay must be 0..1000 ms")
         self.voice = voice
@@ -87,16 +93,39 @@ class RealtimeSession:
         self.timestamps = (StreamingTimestamps(directory, self._alignment_event,
                                                alignment_options=options, backend_options=backend_options)
                            if timestamps or gestures else None)
+        self.gesture_backend = gesture_backend
+        self.skip_joint_limits = skip_joint_limits
+        self.gesture_startup_status = 'pending' if gestures else 'not_requested'
         self.gestures = None
         if gestures:
             from GuideBot.gesture.catalog import Catalog
             from GuideBot.gesture.service import GestureService, load_targets
-            catalog = Catalog(gesture_registry) if gesture_registry else Catalog()
+            executor_factory = None
+            if gesture_backend == 'unitree':
+                from drivers.unitree_motion.assets import conversation_assets, DEFAULT_MANIFEST, ROOT
+                from GuideBot.gesture.execution import UnitreeExecutor
+                document, bindings = conversation_assets(motion_manifest or DEFAULT_MANIFEST)
+                catalog = (Catalog(gesture_registry) if gesture_registry else
+                           Catalog(document=document, examples_path=ROOT/'conversation-few-shots.json'))
+                if set(catalog.actions) - set(bindings):
+                    raise ValueError('Hardware registry includes unbound actions; use physical motion IDs')
+                executor_factory = lambda emit: UnitreeExecutor(
+                    '\0'+motion_socket, bindings, emit, skip_joint_limits=skip_joint_limits)
+            elif gesture_backend == 'simulated':
+                catalog = Catalog(gesture_registry) if gesture_registry else Catalog()
+            else:
+                raise ValueError('Unknown gesture backend')
             self.gestures = GestureService(directory, self._gesture_event, catalog=catalog,
-                                           targets=load_targets(gesture_targets))
+                                           targets=load_targets(gesture_targets), executor_factory=executor_factory)
 
     def _gesture_event(self, kind, **details):
-        message = details.pop('message', '模拟上肢动作：' + kind)
+        label = '真实上肢动作：' if self.gesture_backend == 'unitree' else '模拟上肢动作：'
+        summary = label + kind
+        if details.get('action'):
+            summary += ' action=' + details['action']
+        if details.get('reason'):
+            summary += ' reason=' + str(details['reason'])
+        message = details.pop('message', summary)
         self.report(kind, message, **details)
 
     def _alignment_event(self, kind, **details):
@@ -190,7 +219,7 @@ class RealtimeSession:
         self.stats["playback_events"].append({"elapsed": time.monotonic() - self.started_at,
                                               "type": kind, **details})
         messages = {
-            "playback.ready": f"扬声器就绪，音量只读：{details.get('volume')}",
+            "playback.ready": f"扬声器就绪，已设置音量100%，读回：{details.get('volume')}",
             "playback.started": "开始向扬声器提交回复音频",
             "playback.drained_estimated": f"已提交 {details.get('submitted_ms', 0) / 1000:.2f}s 音频，预计已播完（无设备结束回执）",
             "playback.discard_requested": f"请求丢弃剩余回复，原因：{details.get('reason')}",
@@ -208,11 +237,13 @@ class RealtimeSession:
         self.started_at = time.monotonic()
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         if self.aec_enabled:
-            self.echo = LocalVQEEcho(self.aec_delay_ms)
+            self.echo = (LocalVQEEcho(self.aec_delay_ms, model=self.aec_model)
+                         if self.aec_model is not None else LocalVQEEcho(self.aec_delay_ms))
         if self.diagnose_audio:
             self.audio_diagnostic = AudioDiagnostic(self.directory, self.started_at,
                                                     processed=self.aec_enabled,
-                                                    gated=self.gate is not None)
+                                                    gated=self.gate is not None,
+                                                    agc=self.agc is not None)
         self.log = (self.directory / "events.jsonl").open("w", encoding="utf-8")
         if self.timestamps is not None:
             self.timestamp_log = (self.directory / "alignment.jsonl").open("w", encoding="utf-8")
@@ -223,10 +254,22 @@ class RealtimeSession:
         if self.gestures is not None:
             try:
                 self.gestures.start()
+                self.gesture_startup_status = 'ready'
             except Exception as error:
-                self._gesture_event('gesture.error', message=f'Gesture startup failed: {error}; audio continues')
-                self.gestures.close()
-                self.gestures = None
+                self.gesture_startup_status = 'failed'
+                message = f'Gesture startup failed: {error}'
+                if self.gesture_backend != 'unitree':
+                    message += '; audio continues'
+                self._gesture_event('gesture.error', message=message)
+                try:
+                    self.gestures.close()
+                except Exception as cleanup_error:
+                    self.errors.append('Gesture cleanup: ' + str(cleanup_error))
+                finally:
+                    self.gestures = None
+                if self.gesture_backend == 'unitree':
+                    self.errors.append(message)
+                    raise RuntimeError(message + '; real gesture mode aborted before voice connection') from error
         websocket.setdefaulttimeout(5)
         self.ws = websocket.WebSocketApp(
             "wss://api.stepfun.com/v1/realtime?" + urlencode({"model": MODEL}),
@@ -299,6 +342,10 @@ class RealtimeSession:
                     pcm = self.gate.process(pcm, enabled=self.speaker.is_playing())
                     if self.audio_diagnostic is not None:
                         self.audio_diagnostic.write("microphone-gated", pcm, received_at)
+                if self.agc is not None:
+                    pcm = self.agc.process(pcm)
+                    if self.audio_diagnostic is not None:
+                        self.audio_diagnostic.write("microphone-agc", pcm, received_at)
                 converted, state = audioop.ratecv(pcm, 2, 1, RATE, CLOUD_RATE, state)
                 pending.extend(converted)
                 while len(pending) >= 960 and not self.stopping.is_set():
@@ -496,11 +543,20 @@ class RealtimeSession:
         if self.timestamps is not None:
             self.timestamps.close()
         if self.gestures is not None:
-            self.gestures.close()
+            try:
+                self.gestures.close()
+                if self.gestures.executor and self.gestures.executor.failed:
+                    self.errors.append('Motion execution failed; inspect gesture log and motion server')
+            except Exception as error:
+                self.errors.append('Gesture shutdown: ' + str(error))
         if self.timestamp_log is not None:
             self.timestamp_log.close()
         if self.audio_diagnostic is not None:
             self.audio_diagnostic.close()
+        agc_stats = None
+        if self.agc is not None:
+            self.agc.close()
+            agc_stats = dict(self.agc.stats)
         echo_stats = None
         if self.echo is not None:
             self.echo.close()
@@ -512,12 +568,16 @@ class RealtimeSession:
                 "vector_store_id": self.vector_store_id,
                 "aec": self.aec_enabled, "aec_delay_ms": self.aec_delay_ms,
                 "aec_stats": echo_stats,
+                "agc2_enabled": self.agc_enabled,
+                "agc2_stats": agc_stats,
                 "mic_gate_dbfs": self.gate.threshold_dbfs if self.gate else None,
                 "mic_gate_scope": "playback_only" if self.gate else None,
                 "mic_gate_stats": dict(self.gate.stats) if self.gate else None,
                 "diagnose_audio": self.diagnose_audio,
                 "timestamps_enabled": self.timestamps is not None,
-                "gestures_simulated": self.gestures is not None,
+                "gestures_simulated": self.gestures is not None and self.gesture_backend == "simulated",
+                "gesture_backend": self.gesture_backend, "joint_limits_skipped": self.skip_joint_limits,
+                "gesture_startup_status": self.gesture_startup_status,
                 "timestamp_stats": self.timestamp_stats,
                 "session": self.session, **self.stats,
                 "speaker_submitted_bytes": self.speaker.submitted_bytes, "errors": list(self.errors)}

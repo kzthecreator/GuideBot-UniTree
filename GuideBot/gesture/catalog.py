@@ -5,7 +5,7 @@ import math
 from pathlib import Path
 import re
 
-from GuideBot.conversation.timestamps import text_units
+from drivers.timestamps.runtime import text_units
 
 DIRECTORY = Path(__file__).resolve().parent
 COMMAND_FIELDS = {'action', 'start_unit', 'arrival_unit', 'response_id', 'job_id', 'request_id',
@@ -42,8 +42,9 @@ class Plan:
                     arrival_unit=self.arrival_unit, **self.parameters)
 
 class Catalog:
-    def __init__(self, path=DIRECTORY / 'actions.json'):
-        self.document = strict_json(Path(path).read_text(encoding='utf-8'))
+    def __init__(self, path=DIRECTORY.parents[1] / 'assets/motion/actions.json', *, document=None, examples_path=None):
+        self.document = document if document is not None else strict_json(Path(path).read_text(encoding='utf-8'))
+        self.examples_path = examples_path
         if self.document.get('version') != 1 or not isinstance(self.document.get('actions'), list):
             raise ValueError('Unsupported action registry')
         self.actions = {}
@@ -115,7 +116,8 @@ def make_input(response_id, text, targets=(), existing=(), eligible=None, comple
                 targets=list(targets), existing_actions=list(existing), response_complete=complete)
 
 
-def messages(catalog, payload, examples_path=DIRECTORY / 'few_shots.json'):
+def messages(catalog, payload, examples_path=None):
+    examples_path = examples_path or catalog.examples_path or DIRECTORY / 'few_shots.json'
     system = (DIRECTORY / 'prompt.md').read_text(encoding='utf-8').replace(
         '{{REGISTRY}}', json.dumps(catalog.prompt_document(), ensure_ascii=False))
     result = [dict(role='system', content=system)]

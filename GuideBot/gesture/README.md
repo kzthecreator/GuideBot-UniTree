@@ -1,10 +1,18 @@
+# Gesture 运行状态（2026-11-21 更新）
+
+`--gestures` 保留模拟模式；新增 `--gesture-backend unitree` 接入真实运动服务。
+真实模式使用 `assets/motion/conversation.json` 中的物理轨迹ID，默认模拟目录仍为旧抽象ID。
+用户已允许现场试验跳过限位，通过两端 `--skip-joint-limits` 明确启用，不改写配置。
+当前启动及验证见 [真机联动说明](../../docs/experiments/conversation-unitree-20261121.md)。
+以下为原模拟链路与历史实验说明，不能覆盖上述新入口。
+
 # 上肢动作规划与模拟调度
 
-当前执行器只输出 `gesture.command` 日志，不控制任何机器人、头部或手部。FunASR 沿用 `conversation/timestamps.py`，新动作逻辑均在本目录。语音不会等待 DeepSeek 或时间戳。
+当前执行器只输出 `gesture.command` 日志，不控制任何机器人、头部或手部。FunASR 沿用 `drivers/timestamps/runtime.py`，新动作逻辑均在本目录。语音不会等待 DeepSeek 或时间戳。
 
 ## 修改动作与示例
 
-`actions.json` 是动作定义与参数校验的唯一来源。编辑后在新会话或新 CLI 进程中生效，不在运行中热加载。动作含 `id/name/kind/description/parameters/required/enabled`。`kind=motion` 必须有正数范围的 `duration_s`；它从到位时刻开始计算，不包括切换。`kind=pose` 不带时长，维持到后续动作或回复播放结束。注册的动作只是抽象命令，未来执行端需实现相同 ID，注册本身不会生成轨迹。
+`assets/motion/actions.json` 是动作定义与参数校验的唯一来源。编辑后在新会话或新 CLI 进程中生效，不在运行中热加载。动作含 `id/name/kind/description/parameters/required/enabled`。`kind=motion` 必须有正数范围的 `duration_s`；它从到位时刻开始计算，不包括切换。`kind=pose` 不带时长，维持到后续动作或回复播放结束。注册的动作只是抽象命令，未来执行端需实现相同 ID，注册本身不会生成轨迹。
 
 | ID | 意义 | kind | 特有参数 |
 |---|---|---|---|
@@ -115,3 +123,7 @@ python -m GuideBot.gesture replay --data recordings/live-session \
 本轮完成注册/解析/调度/取消与会话事件接线测试，以及真实 PCM + FunASR + 缓存计划回放。真实模型检测结果与首次动作输出延迟只有 evaluate 实际成功调用 API 后才成立。最新服务器回放观测及 Key 状态见 `docs/experiments/gesture-integration.md`。
 
 DeepSeek JSON 模式一手文档：https://api-docs.deepseek.com/guides/json_mode 。客户端显式设置 `response_format={"type":"json_object"}`，Prompt 包含 JSON 约定，仍在本地验证结构与语义参数。
+
+## 2026-11-21 离线执行实验
+
+可选执行接口已通过C++离线服务验证，正常conversation仍为模拟。用 `python -m tools.motion.offline_gesture_experiment` 复现；实验无需Enter，因为不录放音、不连接机器人。真实音频入口继续要求Enter。关联回执、期限拒绝及取消边界见 [实验报告](../../docs/experiments/offline-gesture-execution-20261121.md)。

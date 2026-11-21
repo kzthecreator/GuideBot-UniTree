@@ -1,0 +1,16 @@
+sequence_name: greet_guest
+steps:
+  - type: pose
+    name: neutral
+    hold_ms: 300
+
+  - type: motion
+    name: greet_open
+    duration_ms: 1200
+    hold_ms: 800
+    transition_ms: 400
+
+  - type: pose
+    name: neutral
+    hold_ms: 300
+    transition_ms: 500

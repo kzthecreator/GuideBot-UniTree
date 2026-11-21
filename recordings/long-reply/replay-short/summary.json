@@ -1,0 +1,117 @@
+{
+  "updates": 30,
+  "final_units": 197,
+  "total_units": 197,
+  "final_ready_seconds": 37.954844831999935,
+  "compute_seconds": [
+    0.3559558079998624,
+    0.3536338879998766,
+    0.48129087999996045,
+    0.5402381439998862,
+    0.4759500160000698,
+    0.8646685440000965,
+    0.453936191999901,
+    0.46666966400016463,
+    1.1478726400000596,
+    0.45934140800000023,
+    0.46183084800009055,
+    0.4648744319999878,
+    0.48564736000002995,
+    0.47388092800019876,
+    0.45875174399998286,
+    1.921952352000062,
+    0.5415344640000512,
+    0.47821366400012266,
+    0.47787676799998735,
+    0.47855040000013105,
+    0.4613611199999923,
+    0.4645648319999509,
+    2.9055401919999895,
+    0.5392954559999907,
+    0.4787026880001122,
+    0.4630864640000709,
+    0.4805868799999189,
+    0.4660222080001404,
+    3.7427880319999076,
+    4.847473728000068
+  ],
+  "max_recent_window": 3.9899999999999984,
+  "prefix_resyncs": 7,
+  "unordered_updates": 0,
+  "warnings": [
+    {
+      "kind": "alignment.warning",
+      "replay_elapsed": 3.461965887999895,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "reason": "order_conflict",
+      "audio_seconds": 3.86,
+      "message": "Conflicting window discarded; scheduling prefix repair"
+    },
+    {
+      "kind": "alignment.warning",
+      "replay_elapsed": 5.097607327999867,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "reason": "order_conflict",
+      "audio_seconds": 6.7613125,
+      "message": "Conflicting window discarded; scheduling prefix repair"
+    },
+    {
+      "kind": "alignment.warning",
+      "replay_elapsed": 7.781439423999927,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "reason": "order_conflict",
+      "audio_seconds": 10.3933125,
+      "message": "Conflicting window discarded; scheduling prefix repair"
+    },
+    {
+      "kind": "alignment.warning",
+      "replay_elapsed": 13.010276704000034,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "reason": "order_conflict",
+      "audio_seconds": 18.2333125,
+      "message": "Conflicting window discarded; scheduling prefix repair"
+    },
+    {
+      "kind": "alignment.warning",
+      "replay_elapsed": 28.63533769599985,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "reason": "cursor_lost",
+      "audio_seconds": 40.9626875,
+      "message": "Text cursor lost; waiting for complete-response repair"
+    },
+    {
+      "kind": "alignment.warning",
+      "replay_elapsed": 28.63617046399986,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "reason": "cursor_lost",
+      "audio_seconds": 42.28,
+      "message": "Text cursor lost; waiting for complete-response repair"
+    },
+    {
+      "kind": "alignment.warning",
+      "replay_elapsed": 28.955629055999907,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "reason": "cursor_lost",
+      "audio_seconds": 43.1333125,
+      "message": "Text cursor lost; waiting for complete-response repair"
+    },
+    {
+      "kind": "alignment.warning",
+      "replay_elapsed": 29.707753823999838,
+      "response_id": "f1b32726-cda0-453a-8c76-ed204c6acb0f",
+      "reason": "cursor_lost",
+      "audio_seconds": 43.8906875,
+      "message": "Text cursor lost; waiting for complete-response repair"
+    }
+  ],
+  "total_revisions": 560,
+  "max_revision_ms": 700.0,
+  "cancelled_response_suppressed": true,
+  "worker_stopped": true,
+  "alignment_options": {
+    "window": 3.0,
+    "step": 0.75,
+    "tail": 0.35,
+    "resync_every": 8.0
+  }
+}

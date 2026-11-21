@@ -50,6 +50,9 @@ class DiagnosticTests(unittest.TestCase):
         class Client:
             def SetTimeout(self, *_): pass
             def Init(self): pass
+            def SetVolume(self, volume):
+                assert volume == 100
+                return 0
             def GetVolume(self): return (0, {'volume': 100})
             def PlayStop(self, *_): pass
             def PlayStream(self, app, stream, chunk):

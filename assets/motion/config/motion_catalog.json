@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "actions": [
+    {"name":"neutral","category":"basic","priority":"P0","type":"pose"},
+    {"name":"greet_open","category":"reception","priority":"P0","type":"motion"},
+    {"name":"greet_wave","category":"reception","priority":"P1","type":"motion"},
+    {"name":"invite_follow","category":"reception","priority":"P0","type":"motion"},
+    {"name":"invite_question","category":"reception","priority":"P1","type":"motion"},
+    {"name":"present_center","category":"presentation","priority":"P0","type":"motion"},
+    {"name":"present_left","category":"presentation","priority":"P1","type":"motion"},
+    {"name":"present_right","category":"presentation","priority":"P1","type":"motion"},
+    {"name":"indicate_forward","category":"presentation","priority":"P0","type":"motion"},
+    {"name":"indicate_left","category":"presentation","priority":"P1","type":"motion"},
+    {"name":"indicate_right","category":"presentation","priority":"P1","type":"motion"},
+    {"name":"acknowledge_question","category":"interaction","priority":"P0","type":"motion"},
+    {"name":"answer_open","category":"interaction","priority":"P0","type":"motion"},
+    {"name":"please_wait","category":"interaction","priority":"P1","type":"motion"},
+    {"name":"request_repeat","category":"interaction","priority":"P1","type":"motion"},
+    {"name":"refer_staff","category":"interaction","priority":"P0","type":"motion"},
+    {"name":"emphasize_once","category":"interaction","priority":"P1","type":"motion"},
+    {"name":"emphasize_twice","category":"interaction","priority":"P1","type":"motion"},
+    {"name":"thanks","category":"interaction","priority":"P1","type":"motion"},
+    {"name":"elevator_indicate_panel","category":"elevator","priority":"P2","type":"motion"},
+    {"name":"elevator_button_prepose","category":"elevator","priority":"P2","type":"motion"},
+    {"name":"elevator_boarding_invite","category":"elevator","priority":"P2","type":"motion"}
+  ]
+}

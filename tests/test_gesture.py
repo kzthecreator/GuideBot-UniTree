@@ -29,7 +29,7 @@ class GestureTests(unittest.TestCase):
         shown = {a['action'] for e in examples for a in e['actions']}
         self.assertEqual(shown, {'wave', 'point'})
         with tempfile.TemporaryDirectory() as tmp:
-            document = json.loads((DIRECTORY/'actions.json').read_text())
+            document = json.loads((DIRECTORY.parents[1]/'assets/motion/actions.json').read_text())
             document['actions'].append(dict(id='custom_pose', name='测试姿态', kind='pose',
                                             description='新增动作', parameters={}, required=[]))
             document['actions'][0]['enabled'] = False
@@ -45,7 +45,7 @@ class GestureTests(unittest.TestCase):
     def test_registry_rejects_duplicate_ids_and_pose_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)/'bad.json'
-            document = json.loads((DIRECTORY/'actions.json').read_text())
+            document = json.loads((DIRECTORY.parents[1]/'assets/motion/actions.json').read_text())
             document['actions'].append(document['actions'][0])
             path.write_text(json.dumps(document))
             with self.assertRaises(ValueError):

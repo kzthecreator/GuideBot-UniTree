@@ -1,0 +1,10 @@
+{
+  "sequence_name": "neutral_greet_present_demo",
+  "steps": [
+    {"type": "pose", "name": "neutral", "total_ms": 1000},
+    {"type": "motion", "name": "greet_open", "total_ms": 3000},
+    {"type": "pose", "name": "neutral", "total_ms": 1000},
+    {"type": "motion", "name": "present_right", "total_ms": 3000},
+    {"type": "pose", "name": "neutral", "total_ms": 1000}
+  ]
+}

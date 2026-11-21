@@ -53,7 +53,7 @@ template: doc
 python /home/fk/GuideBot-UniTree/GuideBot/conversation/conversation.py --timestamps
 ```
 
-保留 LocalVQE AEC、0 毫秒参考延迟、4999 VAD 门槛、播放期间 −35 dBFS 门限及录音诊断默认值。
+该历史时间戳回放轮次固定了当时的 LocalVQE AEC、0 毫秒参考延迟、4999 VAD 门槛、播放期间 −35 dBFS gate 及录音诊断默认值；当前语音前端标准已改为 AGC2，详见 3A 前端报告。
 
 按 Enter 开始，请机器人给出一段较长介绍，先让它完整播放；再发起另一轮并尝试打断，最后按 Enter 结束。
 

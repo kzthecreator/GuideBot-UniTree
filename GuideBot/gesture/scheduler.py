@@ -1,6 +1,7 @@
-"""Resolve mutable text anchors and dispatch immutable simulated commands."""
+"""Resolve text anchors and dispatch immutable commands to an optional executor."""
 from dataclasses import dataclass, field
 import math
+import queue
 import time
 
 from .catalog import units_for
@@ -28,8 +29,12 @@ class Reply:
 
 
 class Scheduler:
-    def __init__(self, catalog, emit, clock=time.monotonic, dispatch_lead=.03):
+    def __init__(self, catalog, emit, clock=time.monotonic, dispatch_lead=.03, executor=None):
         self.catalog, self.emit, self.clock = catalog, emit, clock
+        self.executor = executor
+        self.execution_events = queue.SimpleQueue()
+        if executor is not None:
+            executor.set_listener(lambda kind, **details: self.execution_events.put((kind, details)))
         self.dispatch_lead = dispatch_lead
         self.replies = {}
         self.closed = set()
@@ -111,9 +116,29 @@ class Scheduler:
                     job.status = 'cancelled'
                     self.event('gesture.cancelled', rid, job_id=job.id, reason='planner_failed')
 
+    def _execution_updates(self):
+        terminal = {'execution.rejected': 'rejected', 'execution.driver_rejected': 'rejected',
+                    'execution.cancelled': 'cancelled', 'execution.driver_cancelled': 'cancelled',
+                    'execution.driver_completed': 'completed', 'execution.fault': 'failed'}
+        while True:
+            try:
+                kind, details = self.execution_events.get_nowait()
+            except queue.Empty:
+                return
+            if kind not in terminal:
+                continue
+            reply = self.replies.get(details.get('response_id'))
+            if reply:
+                for job in reply.jobs:
+                    if job.id == details.get('job_id'):
+                        job.status = terminal[kind]
+                        if self.active and self.active['job'] is job:
+                            self.active = None
+
     def tick(self):
+        self._execution_updates()
         now = self.clock()
-        if self.active and self.active['end'] is not None and now >= self.active['end']:
+        if self.executor is None and self.active and self.active['end'] is not None and now >= self.active['end']:
             self.event('gesture.completed', self.active['rid'], job_id=self.active['job'].id)
             self.active['job'].status = 'completed'
             self.active = None
@@ -145,11 +170,14 @@ class Scheduler:
             arrival_wall = reply.playback_origin + arrival
             start_wall = reply.playback_origin + start
             if now >= arrival_wall:
-                job.status = 'skipped'
-                self.event('gesture.skipped', rid, job_id=job.id, reason='arrival_passed',
-                           lateness_s=now-arrival_wall)
-                continue
-            if self.active and now < self.active['busy_until']:
+                if self.executor is None or not self.executor.allow_late:
+                    job.status = 'skipped'
+                    self.event('gesture.skipped', rid, job_id=job.id, reason='arrival_passed',
+                               lateness_s=now-arrival_wall)
+                    continue
+                self.event('gesture.late', rid, job_id=job.id, lateness_s=now-arrival_wall,
+                           policy='preserve_full_duration')
+            if self.active and (self.executor is not None or now < self.active['busy_until']):
                 job.status = 'skipped'
                 self.event('gesture.skipped', rid, job_id=job.id, reason='upper_body_busy')
                 continue
@@ -160,12 +188,18 @@ class Scheduler:
             duration = job.plan.parameters.get('duration_s')
             self.active = dict(rid=rid, job=job, end=arrival_wall+duration if duration is not None else None,
                                busy_until=arrival_wall+(duration or 0))
-            self.event('gesture.command', rid, job_id=job.id, simulated=True,
-                       **job.plan.as_dict(), start_audio_s=start, arrival_audio_s=arrival,
-                       start_monotonic=max(now, start_wall), arrival_monotonic=arrival_wall,
-                       compressed=now > start_wall, alignment_version=reply.version)
+            command = dict(response_id=rid, job_id=job.id, simulated=self.executor is None or self.executor.simulated,
+                           **job.plan.as_dict(), start_audio_s=start, arrival_audio_s=arrival,
+                           start_monotonic=max(now, start_wall), arrival_monotonic=arrival_wall,
+                           compressed=now > start_wall, alignment_version=reply.version)
+            self.event('gesture.command', rid, **{k: v for k, v in command.items() if k != 'response_id'})
+            if self.executor is not None:
+                self.executor.submit(dict(command, start_monotonic=start_wall))
+
 
     def cancel(self, rid, reason='interrupted'):
+        if self.executor is not None:
+            self.executor.cancel(rid, reason)
         self.closed.add(rid)
         reply = self.replies.pop(rid, None)
         if reply:
@@ -175,4 +209,4 @@ class Scheduler:
                     self.event('gesture.cancelled', rid, job_id=job.id, reason=reason)
         if self.active and self.active['rid'] == rid:
             self.active = None
-            self.event('gesture.reset', rid, simulated=True, reason=reason)
+            self.event('gesture.reset', rid, simulated=self.executor is None or self.executor.simulated, reason=reason)

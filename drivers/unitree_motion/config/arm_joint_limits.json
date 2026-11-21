@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "verified": false,
+  "verified_by": "",
+  "verified_at": "",
+  "joint_names": [
+    "left_shoulder_pitch", "left_shoulder_roll", "left_shoulder_yaw",
+    "left_elbow", "left_wrist_roll", "left_wrist_pitch", "left_wrist_yaw",
+    "right_shoulder_pitch", "right_shoulder_roll", "right_shoulder_yaw",
+    "right_elbow", "right_wrist_roll", "right_wrist_pitch", "right_wrist_yaw"
+  ],
+  "min_rad": [null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  "max_rad": [null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+}

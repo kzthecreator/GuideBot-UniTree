@@ -98,6 +98,7 @@ class GateTests(unittest.TestCase):
         release = [threading.Event(), threading.Event()]
         errors, calls = [], []
         client = Mock()
+        client.SetVolume.return_value = 0
         client.GetVolume.return_value = (0, {'volume':100})
         def play(*_):
             index = len(calls)

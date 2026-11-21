@@ -1,21 +1,60 @@
 # GuideBot 维护续接文档
 
-更新日期：2026-11-15，Asia/Shanghai。请先读本节，再按任务查阅后文。
+更新日期：2026-11-21，Asia/Shanghai。请先读本节，再按任务查阅后文。
 
 ## 接手速读：当前项目状态
+
+2026-11-21 再次接管拒绝：step5，ready1、age0.393ms、无退出；leg0.134172超过0.12，arm仅信息、gyro0.034正常。未再改阈值。已用GitHub固定commit原文件核实：接管前500ms静止、ramp原全身静止和owned期间leg>=0.12释放均上游已有。当前仅支持静止站立上肢动作，不支持行走协同；仅抬高ramp阈值会在owned阶段再释放。用户要求逻辑报告，已生成 /home/fk/.answer-me-with-html/pages/guidebot-motion-logic-20261121-140507.html 。建议下一步连续状态采样再统一设计去抖/滞回，尚未实现或自动触发硬件。
+
+2026-11-21 用户提供ACQUIRE-GUARD：step3/200，ready=1、age0.53ms、无退出、leg0.0447、gyro0.0181，仅arm0.1381超过0.12。确认本次中断由接管中的手臂速度检查触发；不能据此认定硬件故障。ramp_up改为stationary_base，接管前500ms standing_still及接管后arm/yaw位置偏差检查保留；诊断中的arm速度改为informational。需重启服务再手动实测，未由agent触发运动。
+
+2026-11-21 后续真实接管失败：服务终端明确为 acquire ramp interrupted（已通过初始稳定检查）。仍不能区分状态过期、退出按键、接管中速度超限；未放宽阈值。在 ramp_up 失败分支增加 [ACQUIRE-GUARD]，输出step、状态年龄、ready、退出信号及腿/臂/陀螺速度。需重启运动服务后用户手动重试，取得该行再定位；未自动触发硬件。
+
+2026-11-21 首次真机联动反馈“未工作，后期才打开运控”：诊断会话 realtime-1795239805407866592 在15.138633s因DEEPSEEK_API_KEY缺失而禁用动作，未创建gesture.jsonl、未进入接管。本机conversation.env只有语音Key、无动作Key；未显示或修改密钥。运控晚开不能解释本次尚未进入的动作执行。已修复真实模式静默降级：Enter前缺Key报错；动作启动/接管失败则终止本次启动，不继续纯语音；result增加gesture_startup_status。2项失败复现已转绿，117项正式回归通过。未启动真实音频/运动。下一步用户自行补DEEPSEEK_API_KEY，再按“G1运控→运动服务RUN→conversation Enter”重启测试；原失败会话不会自动恢复。细节见 docs/experiments/conversation-unitree-20261121.md。
+
+
+2026-11-21 用户要求直接接入conversation真机动作，并明确允许跳过关节限位。现已新增 `--gesture-backend unitree --skip-joint-limits`；默认仍是纯语音，`--gestures`仍模拟。终端一 `python tools/motion/serve.py --skip-joint-limits` 并输入RUN，Ready后终端二启动上述conversation参数、按Enter接管与录放音。退出取消任务、返回接管初始姿态并释放上肢。语音标准前端未变。真实目录为 assets/motion/conversation.json，通过SHA/approved校验，开放8个物理动作ID并配套few-shot；draft/缺失/旧抽象动作不进入真实执行。两端skip选项须一致，限位文件未改写；控制循环新鲜状态/站立/跟踪/手柄退出规则保留。关联回执和按ID取消已扩展至真实控制循环；迟到计划可延迟执行、最短300ms切换，保留完整轨迹，不承诺精确物理到位。115项正式Python、38项运动Python、4项CTest及网页JS通过；8个实际导入资产在离线C++逐一开始/取消通过。证据在 ~/.local/state/guidebot/motion/conversation-unitree-20261121/。本轮未启动真机/音频/云端模型、未提交推送。完整现场步骤及边界见 docs/experiments/conversation-unitree-20261121.md；下文“仅离线”“未接通”结论为历史状态。
+
+
+2026-11-21 已完成用户确认的“边说边动实验一”，仅离线：人工计划经Scheduler→异步OfflineExecutor→C++ offline-server→Player完成、取消、拒绝及断连失败处理。新execution协议与关联回执仅离线启用；硬件服务拒绝，conversation --gestures仍模拟，未进入实验二。新增9项执行测试；正式107项、运动38项、CTest4项及网页JS均通过。最终离线开始偏差约18.077ms、取消到空闲525.845ms；无DAC或关节实际测量。合成资产/限位夹具仅在本次state输出，未改真实限位/资产、未使用preview绕过；正式限位仍未验证。复现 `python -m tools.motion.offline_gesture_experiment`。详细范围、协议限制、证据和真机前置条件见 `docs/experiments/offline-gesture-execution-20261121.md`。
+
+
+2026-11-21 正式语音入口精简与归档：用户确认仅使用 StepFun，conversation.py 移除 provider 与 AEC/AGC/gate/参考延迟实验参数；固定 LocalVQE v1.2 → AGC2、gate 关闭、延迟0ms，显式指定本机 v1.2 权重（LOCALVQE_MODEL 不覆盖正式入口）。保留 --vad-energy、--voice、--sync-knowledge、录音开关及动作/时间戳参数。--no-diagnose-audio 关闭音频轨及索引，但保留 events/result、错误与可选 alignment/gesture 日志。豆包 demo、G1 provider、对应测试及多provider CLI快照已移到 archive；旧 play、拳击、TTS探测、watchdog/systemd 也归档并移除默认CMake目标。teach、teach_with_name、站姿腰部示例仍保留。当前用法以根README为准，归档清单见 archive/README.md。 本轮离线验证：正式Python回归98项（含3项新入口契约测试）、归档豆包6项、运动Python38项、CTest4项、运动网页JS均通过；剩余8个C++目标构建成功。未启动真实音频或动作，未提交或推送。
+
+
+2026-11-21 目录整理：原 `GuideBot/motion/` 已拆为 `drivers/unitree_motion/`、`tools/motion/`、`assets/motion/`。LocalVQE、AGC2、FunASR 底层实现迁到 `drivers/{localvqe,agc2,timestamps}/runtime.py`，旧 conversation 模块仅兼容转发。按用户要求，LocalVQE 和时间戳权重实际迁到 drivers 下的 models 目录并忽略 Git，旧安装路径保留符号链接。AGC2 原生桥接与构建入口也迁入 drivers。离线 gesture 评估/回放迁到 `tools/gesture/`，音频诊断迁到 `tools/audio/`。新运动构建目录为 `~/.local/share/guidebot/deps/motion/build-reorganized`，旧缓存不覆盖。详见 `docs/repository-layout.md`；下文导入时的旧路径为历史记录。语音标准、Enter 启动与模拟 gesture 不变，未自动接通真机，也未完成两套目录的语义绑定。 新目录构建12个C++目标成功，4/4 CTest、原有101项Python回归、38项运动Python测试及运动网页JS通过；工具离线预览与CLI帮助已检查，未自动真机运行。
+
+
+2026-11-21 已按用户要求在本地集成 `424419808-cell/kwx-unitree` 固定提交 `486408e3f7b4842601e63b7d9ca0af40df005623`，位于 `GuideBot/motion/`。对方当前实际为独立C++上肢动作库，无语音代码，因此并存导入而未覆盖现有conversation/gesture；保留原有未提交改动。包含示教、Pose/Motion/Sequence、腰yaw、中断恢复、CLI和时间轴网页。运动程序不随语音启动，`--gestures`仍模拟执行，尚未接自动语音→真机动作映射。共享SDK编译的产物在 `~/.local/share/guidebot/deps/motion/build`，Python工具可用 `GUIDEBOT_MOTION_BUILD_DIR` 覆盖。12个C++目标构建成功，4项C++、38项运动Python、网页JS及原有101项回归全部通过；无真机运动、录音或播放。上游审批不代表本机确认，关节限位配置仍未验证；没有伪造限位或启用systemd/watchdog。用法见 `GuideBot/motion/README.md`，来源、逐文件hash见其 `UPSTREAM.json`，详细集成证据见 `docs/experiments/motion-integration-20261121.md`。
+
+2026-11-17 用户选定 LocalVQE v1.2 → WebRTC AGC2、关闭RMS gate为所有provider的标准默认。StepFun在AGC后重采样至24kHz，豆包上传16kHz。`--no-agc`可回退默认播放期gate；`--no-agc --no-mic-gate`关闭两者。启用诊断保存 `microphone-agc-16k.wav`，result含AGC统计。旧gate、v1.3、v1.4-AEC-only及门限试听保留为归档对照，不作默认。
+
+2026-11-17 用户反馈v1.4-AEC未压住播报回声。复核 `1794905160532021120`：软件时间线将麦克风收包与实际SDK提交参考PCM放在同一单调时钟上，RPC完成时刻用于参考可用性；声学/DAC起播点没有硬件回执，故零延迟物理对齐无法证明。v1.4-AEC参考延迟0/50/100/150/200ms离线扫描，播报窗口RMS仅降低约1.5–2.5dB，各候选无显著优胜点。处理后的回声对照片段见 `~/.local/state/guidebot/conversation/realtime-1794905160532021120/v14-aec-listen/speaker-echo-raw-v14-aec.wav`，完整参数记录见 `docs/experiments/normal-speech-20261117.md`。这说明当前AEC-only模型对本次声学回声抑制不足；不要把门限试听结果当成AEC校准。下一步若需准确校准，需取得扬声器/麦克风硬件回环或可靠声学延迟测量。
+
+2026-11-17 第二次现场复测 `realtime-1794905160532021120`：LocalVQE v1.2、AGC2启用、gate关闭；SetVolume(100)读回100。不要误记为no-AGC试验。U2 27.97s暂定“陪伴”且无completed；U3 32.53s最终“可以帮我做什？”，缺“你/么”后仍在34.12s获回复。两窗口上传RMS（含停顿）-29.2/-32.6 dBFS，较AEC输出高约6.2/4.9dB，无削波，单纯音量低解释不足。详细指标与下一步commit判停实验见 `docs/experiments/normal-speech-20261117.md`；当前未启用强制commit。
+
+2026-11-17 用户要求扬声器100%：StreamingSpeaker 在Enter启动后的SDK初始化阶段调用 AudioClient.SetVolume(100)，失败显式报错，随后GetVolume读回；不再只读音量。18项G1音频测试通过，未自动现场录放音。目标人声RMS补偿仅讨论，尚未实现，不能把现有AGC2描述为固定目标-27.6dBFS。
+
+2026-11-17 官方协议核查补充：当前JSON全双工/model 1.2.6.1明确支持 `input_audio_buffer.commit` 强制判停（确认query发完后发送），现有接入未调用；`transcription.completed` 官方定义为模型判定用户说话结束，缺失不能只归因于ASR漏字。公开表有 `extension.asr.extra.enable_asr_twopass`（默认false），未查到此接口公开的VAD能量门槛/静音等待参数。`enable_loudness_norm`官方明确仅为输出响度均衡。用户本轮仅要求查询，尚未实现commit或twopass。优先建议手动判停对照，不要未经验证按ASR停更自动提交。
+
+用户随后试听确认：明显被LocalVQE压低的片段就是“你可以帮我做什么”，共提问三次才回应；目标人声误抑制已有人工确认。v1.4 AEC-only现场试用效果一般，随后离线验证它对播报回声压制也弱；不采用为默认。三次失败未逐句精确标注，不应全部归为唯一原因。详见正常音量报告。
+
+2026-11-17 正常音量不响应排查：真实会话 `1794901057088801760` 有 LocalVQE 显著抑制片段，用户确认是目标人声；+12dB输入产生削波，未采用。之后v1.4-AEC现场体验一般；另一会话的AGC关闭试验有一次完整识别，但最近音量100%会话AGC实际上启用，两个较弱提问仍出现截断/未完成转写。已增加暂定ASR显示，修复暂定文本累加、轮次及主动结束时的预期传输错误。事件、试听与限制见 `docs/experiments/normal-speech-20261117.md`。当前统一标准为v1.2+AGC2，仍需真实场景持续观察。
+
+2026-11-17 豆包语音与 3A：新增 `--provider doubao`，复用 G1 AudioClient.PlayStream/PlayStop；ASR started 打断同时检查云端 active 与本地待播队列，修复云端生成结束后仍播放时漏打断。LocalVQE v1.2（AEC+NS+去混响）→ WebRTC AGC2，外部 RMS gate 关闭现为所有 provider 的标准默认；AGC2 3 dB/s、初始饱和余量24 dB、噪声增益约束-50 dBFS，浮点处理后量化前预留-1 dBFS输出余量。StepFun在AGC后重采样24kHz，豆包上传16kHz。v1.3在当前2线程本机超出16ms预算，未切默认。实验与可试听资产索引见 `docs/experiments/3a-front-end-evaluation-20261117.md`；未自动现场录放音、未保证大厅/弱声双讲/多人交谈或全部人声电平达标。原始、AEC中间、AGC后及SDK提交音频按会话存储；新增AGC状态统计。Key为仓库外DOUBAO_API_KEY，豆包暂未迁移StepFun云端检索/联网搜索。历史时间戳结论如下。
 
 本轮时间戳优化已收束，用户已取消原来的“接下来继续优化时间戳”要求。当前没有预设的下一项开发任务；接手后根据用户的新需求工作。以下是现状，不是待执行的优化计划。
 
 - 项目目标：流式语音交互，以及“流式文本 → LLM 稀疏动作规划 → 文字锚点对齐 → 动作调度”。语音始终不等待动作；用户允许牺牲开头动作质量。
 - 硬件约束：上肢有肘部，没有手部和头部自由度。动作提供开始时间；持续型动作另有持续时长，位姿型动作不需要。底层按上层指定的到位时刻平滑切换，是接口假设，尚未实测。
-- 当前主机：无机器人、无音频外设的服务器。历史宇树语音链路已有机器人验证，不能将本轮服务器回放表述为现场验证。
+- Gesture 模块是在无机器人、无音频外设的服务器环境开发和验证的；当前本地工作区位于 G1 主机，但 gesture 执行器仍为模拟接口。历史宇树语音链路已有机器人验证，不能将服务器动作回放表述为现场验证。
 - 已完成：`GuideBot/gesture/` 的 JSON 动作注册、动态 prompt、稀疏 few-shot、DeepSeek 流式规划、开始/到位双文字锚点、对齐与模拟调度，以及可选 `--gestures` 接入。真实 DeepSeek 合成样例 21/21，未示范动作 12/12；执行端仍是模拟接口。
 - 保留方案：FunASR INT8 单线程、同窗口 predictor 复用、完整前缀、step=.5s、tail=.1s、周期重同步关闭、结束全文修复。配置在 `GuideBot/gesture/timing.py`，用于 `--gestures`；单独 `--timestamps` 默认参数未改。完整前缀不代表等待满窗口。
 - 结果：17 组配置、51 次墙钟回放；固定完整音频 FP32 参考下，314/327 字同时满足“一字完整时长容差”和“参考起点前发布”。前两秒后为 295/303；8 处均为定位误差，不是发布迟到。该参考是模型输出，不是人工真值。
 - 独立后台复核：同一 104 字录音两次分别 102/104、104/104 联合通过。第一轮中“中”预测准确但发布迟到85ms，“息”预测偏晚440ms；两次合计四个模拟动作均通过、误差20–60ms。使用缓存人工计划，不是实时 LLM 全链路验证。不能声称稳定全量实时达标。
 - 最新验证：91 项无硬件测试通过。录音试听文件本身正常，用户已确认此前的近乎静音为其播放侧失误。
 
-按需阅读：动作接口与运行方法见 `GuideBot/gesture/README.md`；LLM 规划证据见 `docs/experiments/gesture-integration.md`；最终参数、失败边界与全部优化对照见 `docs/experiments/realtime-optimization.md`。下文保留历史硬件、依赖与实验背景，遇到日期或任务冲突以本节为准。
+按需阅读：动作接口与运行方法见 `GuideBot/gesture/README.md`；LLM 规划证据见 `docs/experiments/gesture-integration.md`；统筹框架与取消契约调查见 `docs/research/orchestration-options.md`；最终参数、失败边界与全部优化对照见 `docs/experiments/realtime-optimization.md`。下文保留历史硬件、依赖与实验背景，遇到日期或任务冲突以本节为准。
 
 服务器环境：`/148Dataset/data-fang.kai/miniconda3/envs/GuideBot/bin/python`。密钥由当前用户配置加载，录音在仓库本地 `recordings/`；密钥、录音、模型与运行状态不上传 Git。迁移主机后应核实依赖位置，不能照搬原机器路径。
 
@@ -63,7 +102,8 @@
 |---|---|
 | conversation.py | CLI、start_conversation、可选先同步知识库、Enter 控制 |
 | stepfun.py | 原生 WebSocket 实时协议、VAD 确认打断、播放和时间戳协调 |
-| audio.py | 宇树 SDK 加载、UDP 麦克风、SDK 播放队列、RMS gate、诊断；含旧 Speex 实验实现 |
+| audio.py | 宇树 SDK 加载、UDP 麦克风、SDK 播放队列、可选 RMS gate、诊断；含旧 Speex 实验实现 |
+| agc.py | WebRTC AGC2 流式处理与统计，所有 provider 共用 |
 | localvqe.py | LocalVQE C API ctypes 绑定、带时间参考适配 |
 | knowledge.py | soul 加载、SHA256 增量云端知识同步、可恢复状态 |
 | timestamps.py | FunASR MonotonicAligner 窗口化增量对齐、独立进程和版本结果 |
@@ -74,13 +114,13 @@
 
 ## 已验证语音链路
 
-模型 `stepaudio-3-realtime-preview`。16 kHz 单声道 PCM16 麦克风，经 LocalVQE、播放期间 gate、重采样到 24 kHz 上传；云端 24 kHz 回复转 16 kHz 送宇树 PlayStream。
+StepFun 模型 `stepaudio-3-realtime-preview`。16 kHz 单声道 PCM16 麦克风，经 LocalVQE v1.2 与 AGC2 后重采样到 24 kHz 上传；云端 24 kHz 回复转 16 kHz 送宇树 PlayStream。豆包输入保持16kHz。
 
 麦克风来自 UDP `239.168.123.161:5555`，发送方 PC1 `192.168.123.161`，本地接口地址 `192.168.123.164`，SDK eth0。用户明确不需要把本地 IP 改为参数。不是四路原始 ADC：只有一路可用 PCM，固件内部 DSP 未确认。
 
 官方助手需保持已验证可用的唤醒状态；早期全零包在官方语音恢复后消失。无法据此认定硬件故障。程序不改官方语音模式。官方语音和其他账户操作可能影响同一硬件资源；曾有 session_end 是其他账户截断，不是本程序错误。
 
-默认 LocalVQE 开启、额外参考延迟 0 ms；云端 VAD energy 4999；本地门限 -35 dBFS，仅预计播放期间启用，打断清空播放后恢复正常收音；20 ms RMS、6 dB 滞回、200 ms hold。诊断录音默认开启。SDK 音量只读，播放 gain 默认 1.5。
+当前默认 LocalVQE v1.2 + AGC2，RMS gate关闭；`--no-agc`才恢复−35 dBFS播放期间gate（20 ms RMS、6 dB滞回、200 ms保持）。额外AEC参考延迟0 ms，云端StepFun VAD energy 4999。诊断录音默认开启。SDK扬声器启动时设置100%并读回，播放PCM软件gain默认1.5。
 
 候选 `speech_started` 不是确认打断：等待云端 interrupt 确认才停止旧回复；backchannel 保留播放。早期“自我打断”确实发生，硬门限及 LocalVQE 在用户体验中有效。Speex 降噪改善但残余人声可辨，已弃作在线默认；不要恢复旧路径。
 

@@ -1,0 +1,38 @@
+[
+  {
+    "text": "欢迎来到香洲创港中心。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "greet_open",
+        "start_unit": 0,
+        "arrival_unit": 3,
+        "duration_s": 2.0
+      }
+    ]
+  },
+  {
+    "text": "大家好，很高兴见到你们。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "greet_wave",
+        "start_unit": 0,
+        "arrival_unit": 3,
+        "duration_s": 2.0
+      }
+    ]
+  },
+  {
+    "text": "最重要的一点是，请注意参观秩序。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "emphasize_once",
+        "start_unit": 0,
+        "arrival_unit": 4,
+        "duration_s": 2.5
+      }
+    ]
+  }
+]

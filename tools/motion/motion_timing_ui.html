@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>动作时间轴 | G1 导览动作库</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, "Noto Sans CJK SC", sans-serif; color: #172023; background: #f5f7f6; }
+    * { box-sizing: border-box; letter-spacing: 0; }
+    body { margin: 0; }
+    header { background: #163a38; color: #fff; padding: 18px max(20px, calc((100vw - 1120px)/2)); display: flex; align-items: baseline; gap: 18px; }
+    header strong { font-size: 18px; } header span { color: #b7d2ca; font-size: 13px; }
+    main { max-width: 1120px; margin: 0 auto; padding: 26px 20px 60px; }
+    .top { display: flex; align-items: end; gap: 24px; flex-wrap: wrap; border-bottom: 1px solid #d7dfdd; padding-bottom: 20px; }
+    label { display: grid; gap: 7px; font-size: 13px; font-weight: 600; color: #475c59; }
+    select, input[type=number] { min-height: 38px; border: 1px solid #b8c9c5; border-radius: 4px; padding: 6px 10px; background: white; color: #172023; font: inherit; }
+    select { min-width: min(290px, 80vw); }
+    h1 { margin: 26px 0 7px; font-size: 24px; } h2 { margin: 0 0 16px; font-size: 16px; }
+    .muted { color: #60736f; font-size: 13px; line-height: 1.55; }
+    .metrics { display: flex; gap: 30px; flex-wrap: wrap; margin: 18px 0 28px; }
+    .metric { display: grid; gap: 3px; } .metric b { font-size: 18px; font-variant-numeric: tabular-nums; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 34px; align-items: start; }
+    .timeline { border-top: 1px solid #d7dfdd; }
+    .segment { display: grid; grid-template-columns: 95px minmax(80px, 1fr) 86px 65px; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid #d7dfdd; }
+    .segment .frame { font-size: 13px; font-weight: 600; }
+    .segment input:disabled { opacity: .6; cursor: not-allowed; }
+    .segment small { color: #60736f; font-variant-numeric: tabular-nums; text-align: right; }
+    input[type=range] { width: 100%; accent-color: #147c71; cursor: pointer; }
+    .segment input[type=number] { width: 100%; min-width: 0; text-align: right; }
+    aside { border-left: 1px solid #d7dfdd; padding-left: 25px; }
+    aside label { margin-bottom: 17px; } aside input[type=number] { width: 100%; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0; }
+    button { min-height: 40px; padding: 8px 14px; border-radius: 4px; border: 1px solid #aec5bf; background: #fff; color: #173d37; font: inherit; font-weight: 600; cursor: pointer; }
+    button:hover { background: #e4efeb; } button:disabled { opacity: .5; cursor: not-allowed; }
+    button.primary { background: #147c71; border-color: #147c71; color: white; } button.primary:hover { background: #0e655b; }
+    button.danger { color: #a53426; border-color: #d9b6ae; }
+    .status { min-height: 55px; padding: 12px; border-left: 3px solid #147c71; background: #e8f2ee; color: #1b4b44; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+    .status.error { border-color: #b54432; background: #fae9e5; color: #852c20; }
+    .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0; }
+    .check input { accent-color: #147c71; }
+    .phase-inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .phase-inputs input { width: 100%; min-width: 0; }
+    .phase-bar { display: flex; height: 12px; margin: 16px 0 8px; background: #d7dfdd; }
+    .phase-bar span { min-width: 0; }
+    .phase-bar span:nth-child(1) { background: #147c71; }
+    .phase-bar span:nth-child(2) { background: #4679ac; }
+    .phase-bar span:nth-child(3) { background: #be7b26; }
+    .phase-result { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 28px; font-size: 13px; line-height: 1.7; }
+    .phase-result b { display: block; font-variant-numeric: tabular-nums; }
+    .combo-section { border-top: 1px solid #d7dfdd; margin-top: 36px; padding-top: 28px; }
+    .combo-step { display: grid; grid-template-columns: 28px minmax(150px, 1fr) 135px 120px auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #d7dfdd; }
+    .combo-step select { min-width: 0; width: 100%; }
+    .combo-step input { width: 100%; min-width: 0; }
+    .combo-step.active { background: #dbeee7; }
+    .combo-step .row { margin: 0; gap: 4px; }
+    .combo-step button { padding: 6px 10px; }
+    .combo-section pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+    @media (max-width: 760px) { .combo-step { grid-template-columns: 24px minmax(0, 1fr) 105px; } .combo-step .row { grid-column: 2 / -1; } }
+    @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } aside { border-left: 0; border-top: 1px solid #d7dfdd; padding: 22px 0 0; } .segment { grid-template-columns: 68px minmax(60px, 1fr) 70px 52px; gap: 7px; } .segment .frame { font-size: 11px; } header { display: block; } header span { display: block; margin-top: 3px; } }
+  </style>
+</head>
+<body>
+<header><strong>G1 导览动作库</strong><span>动作时间轴</span></header>
+<main>
+  <div class="top"><label>动作<select id="motion"></select></label><span id="identity" class="muted"></span><a href="#combo">组合试播 ↓</a></div>
+  <h1 id="title">选择动作</h1><div id="summary" class="muted"></div>
+  <div class="metrics"><div class="metric"><span class="muted">关键帧</span><b id="frames">—</b></div><div class="metric"><span class="muted">核心帧间比例</span><b id="ratio">—</b></div><div class="metric"><span class="muted">总时长请求 / 下限处理后</span><b id="requested">—</b></div><div class="metric"><span class="muted">实际规划总时长</span><b id="planned">—</b></div></div>
+  <div class="layout"><section><h2>完整动作比例</h2>
+    <div class="phase-inputs">
+      <label>入口<input id="transition" aria-label="入口比例" type="number" min="0.000001" max="10000" step="0.1" value="1"></label>
+      <label>核心<input id="duration" aria-label="核心比例" type="number" min="0.000001" max="10000" step="0.1" value="2"></label>
+      <label>保持<input id="hold" aria-label="保持比例" type="number" min="0" max="10000" step="0.1" value="1"></label>
+    </div>
+    <div id="phaseBar" class="phase-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="phase-result"><div>入口<b id="transitionResult">—</b></div><div>核心<b id="coreResult">—</b></div><div>保持<b id="holdResult">—</b></div></div>
+    <h2>核心帧间比例</h2><div id="timeline" class="timeline"></div></section>
+    <aside><h2>本次试播</h2>
+      <label>高层请求总时长（毫秒）<input id="total" type="number" min="1" max="600000" step="100" value="6000"></label>
+      <label>最短总时长（毫秒）<input id="minimum" type="number" min="1" max="600000" step="100" value="3000"></label>
+      <label class="check"><input id="offline" type="checkbox">离线演练</label>
+      <div class="row"><button id="preview" class="primary">真机试播</button><button id="cancel" class="danger" disabled>取消</button></div>
+      <div class="row"><button id="save">保存比例与最短时间</button></div>
+      <div id="status" class="status" role="status">等待选择动作</div>
+      <div class="row"><button id="shutdown" class="danger">关闭网页服务</button></div>
+    </aside></div>
+  <section id="combo" class="combo-section" aria-labelledby="comboTitle">
+    <h2 id="comboTitle">组合试播</h2>
+    <p class="muted">按顺序连续执行，一次接管、一次释放。每步总时长包含入口、核心和保持，沿用各动作已保存的比例与最短时间；全程使用原版线性插值。</p>
+    <div class="row"><button id="comboPreset">载入 neutral → greet_open → neutral → present_right → neutral</button><button id="comboAdd">添加动作</button></div>
+    <div id="comboSteps"></div>
+    <p id="comboSummary" class="muted"></p>
+    <label class="check"><input id="comboOffline" type="checkbox">离线演练</label>
+    <div class="row"><button id="comboCheck">校验组合</button><button id="comboPreview" class="primary">真机组合试播</button><button id="comboCancel" class="danger" disabled>取消组合</button><button id="comboExport">下载组合 JSON</button></div>
+    <div id="comboStatus" class="status" role="status">选择动作和每步总时长后试播</div>
+    <details><summary>查看对应的高层序列指令</summary><pre id="comboCommand"></pre></details>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let detail = null, weights = [], tested = false, busy = false, savedProfile = '', planDirty = true;
+let plannedSeconds = null, previewSettings = '';
+let comboCatalog = [], comboSteps = [], comboActive = null, comboRunning = false;
+async function api(path, data) {
+  const response = await fetch(path, data === undefined ? {} : {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  const body = await response.json();
+  if (!response.ok) throw Error(body.error || '请求失败');
+  return body;
+}
+function notice(message, error=false) { $('status').textContent=message; $('status').className='status'+(error?' error':''); }
+function profile() {
+  return {phase_weights:{transition:Number($('transition').value),core:Number($('duration').value),hold:Number($('hold').value)},
+    minimum_total_ms:Number($('minimum').value),frame_weights:[...weights]};
+}
+function changed() { return !detail.profile_saved || JSON.stringify(profile())!==savedProfile; }
+function updateSave() { $('save').disabled=busy||(!changed()&&!tested); }
+function invalidatePlan() {
+  planDirty=true; plannedSeconds=null; tested=false; $('planned').textContent='—';
+  if (detail) { updateSummary(); updateSave(); }
+}
+function ratioText(values) { const sum=values.reduce((a,b)=>a+b,0); return values.map(v=>(100*v/sum).toFixed(1)+'%').join(' / '); }
+function updateSummary() {
+  const values=Object.values(profile().phase_weights), sum=values.reduce((a,b)=>a+b,0);
+  const total=Number($('total').value), minimum=Number($('minimum').value);
+  const valid=values.every(v=>Number.isFinite(v)&&(v===0||v>=0.000001)&&v<=10000)&&values[0]>0&&
+    (detail.frames===1?values[1]===0:values[1]>0)&&Number.isInteger(total)&&total>0&&total<=600000&&
+    Number.isInteger(minimum)&&minimum>0&&minimum<=600000;
+  $('requested').textContent=valid ? (total/1000).toFixed(2)+' s / '+(Math.max(total,minimum)/1000).toFixed(2)+' s' : '—';
+  const seconds=plannedSeconds??Math.max(total,minimum)/1000;
+  ['transitionResult','coreResult','holdResult'].forEach((id,i)=>{
+    $(id).textContent=valid ? (values[i]/sum*100).toFixed(1)+'% · '+(seconds*values[i]/sum).toFixed(3)+' s' : '—';
+    $('phaseBar').children[i].style.flexGrow=valid?values[i]:0;
+    $('phaseBar').children[i].style.flexBasis='0';
+  });
+  $('preview').disabled=busy||!valid;
+}
+function draw() {
+  $('timeline').replaceChildren();
+  drawCombo();
+  if (!detail) return;
+  $('frames').textContent=detail.frames;
+  $('ratio').textContent=weights.length ? ratioText(weights) : detail.frames===2?'100%':'—';
+  updateSave();
+  $('preview').disabled=busy;
+  $('preview').textContent=$('offline').checked?'离线演练':'真机试播';
+  $('cancel').disabled=!busy;
+  $('shutdown').disabled=busy;
+  $('motion').disabled=busy;
+  $('offline').disabled=busy;
+  for (const id of ['duration','transition','hold','total','minimum']) $(id).disabled=busy||(id==='duration'&&detail.frames===1);
+  $('identity').textContent=detail.category+' · '+detail.type+' · '+detail.status;
+  $('title').textContent=detail.name;
+  $('summary').textContent='';
+  updateSummary();
+  if (!weights.length) { const p=document.createElement('p'); p.className='muted'; p.textContent=detail.frames===2?'1 → 2 · 100%':'—'; $('timeline').append(p); return; }
+  weights.forEach((value,i)=>{
+    const row=document.createElement('div'); row.className='segment';
+    const frame=document.createElement('span'); frame.className='frame'; frame.textContent=`${i+1} → ${i+2}`;
+    const slider=document.createElement('input'); slider.type='range'; slider.min='0.05'; slider.max='20'; slider.step='0.05'; slider.value=value;
+    const number=document.createElement('input'); number.type='number'; number.min='0.05'; number.max='20'; number.step='0.05'; number.value=value.toFixed(2);
+    slider.disabled=busy||weights.length===1; number.disabled=busy||weights.length===1;
+    const share=document.createElement('small'); share.textContent=(100*value/weights.reduce((a,b)=>a+b,0)).toFixed(1)+'%';
+    const update=raw=>{ const next=Number(raw); if (!Number.isFinite(next)||next<0.05||next>20) return; weights[i]=next; slider.value=next; number.value=next.toFixed(2); invalidatePlan(); $('ratio').textContent=ratioText(weights); [...document.querySelectorAll('.segment small')].forEach((el,j)=>el.textContent=(100*weights[j]/weights.reduce((a,b)=>a+b,0)).toFixed(1)+'%'); };
+    slider.addEventListener('input',()=>update(slider.value)); number.addEventListener('change',()=>update(number.value));
+    row.append(frame,slider,number,share); $('timeline').append(row);
+  });
+}
+async function select(name) {
+  try { detail=await api('/api/motion?name='+encodeURIComponent(name));
+    const p=detail.timing_profile; weights=[...p.frame_weights]; tested=false;
+    $('transition').value=p.phase_weights.transition; $('duration').value=p.phase_weights.core;
+    $('hold').value=p.phase_weights.hold; $('minimum').value=p.minimum_total_ms;
+    $('total').value=Math.max(6000,p.minimum_total_ms);
+    savedProfile=JSON.stringify(profile()); previewSettings=''; invalidatePlan(); draw(); notice('已载入动作');
+  } catch(error) { notice(error.message,true); }
+}
+function settings() { return {name:detail.name,sha256:detail.sha256,version:detail.version,timing_profile:profile(),total_ms:Number($('total').value),offline:$('offline').checked}; }
+$('preview').onclick=async()=>{ try { if (!detail) return; const request=settings(); await api('/api/preview',request); previewSettings=JSON.stringify(request); busy=true; invalidatePlan(); planDirty=false; draw(); notice('正在启动试播'); } catch(error) { notice(error.message,true); } };
+$('cancel').onclick=async()=>{ try { await api('/api/cancel',{}); notice('正在取消并释放控制权'); } catch(error) { notice(error.message,true); } };
+$('shutdown').onclick=async()=>{ try { await api('/api/shutdown',{}); document.querySelectorAll('button').forEach(button=>button.disabled=true); notice('网页服务已关闭'); } catch(error) { notice(error.message,true); } };
+$('save').onclick=async()=>{ try { const result=await api('/api/save',settings()); await select(detail.name); comboCatalog=(await api('/api/motions')).items; drawCombo(); notice(result.confirmed?'比例与最短时间已保存，试播结果已确认':result.changed?'比例与最短时间已保存，待真机确认':'配置未变化'); } catch(error) { notice(error.message,true); } };
+$('motion').onchange=()=>select($('motion').value);
+$('offline').onchange=()=>{ invalidatePlan(); draw(); };
+for (const id of ['duration','transition','hold','total','minimum']) $(id).addEventListener('input',invalidatePlan);
+setInterval(async()=>{ try {
+  const state=await api('/api/status');
+  const nextActive=state.mode==='combo'&&state.running?state.active_step_index:null;
+  const comboChanged=comboActive!==nextActive||comboRunning!==(state.mode==='combo'&&state.running);
+  comboActive=nextActive; comboRunning=state.mode==='combo'&&state.running;
+  if (busy!==state.running) { busy=state.running; tested=state.eligible&&JSON.stringify(settings())===previewSettings; draw(); }
+  if (comboChanged) drawCombo();
+  if (state.mode==='combo'&&state.message) {
+    const prefix=comboActive!=null?`第 ${comboActive+1}/${state.steps.length} 步：${state.steps[comboActive]?.name||''} · `:'';
+    comboNotice(prefix+state.message+(state.planned_seconds>0?` · 总规划 ${state.planned_seconds.toFixed(3)} s`:''),state.phase==='failed');
+  }
+  if (!planDirty&&state.planned_seconds>0) { plannedSeconds=state.planned_seconds; $('planned').textContent=plannedSeconds.toFixed(3)+' s'; updateSummary(); }
+  if (state.mode!=='combo'&&!planDirty&&state.message&&(busy||state.phase==='completed'||state.phase==='failed')) {
+    notice(state.message,state.phase==='failed');
+  }
+} catch(_) {} },500);
+function comboNotice(message,error=false) { $('comboStatus').textContent=message; $('comboStatus').className='status'+(error?' error':''); }
+function comboSequence() {
+  return {sequence_name:'web_combo',steps:comboSteps.map(step=>({type:comboCatalog.find(item=>item.name===step.name)?.type||'motion',name:step.name,total_ms:step.total_ms}))};
+}
+function rememberCombo() { try { localStorage.setItem('g1-combo-steps',JSON.stringify(comboSteps)); } catch(_) {} }
+function comboDefaults() {
+  comboSteps=['neutral','greet_open','neutral','present_right','neutral'].map(name=>({name,total_ms:name==='neutral'?1000:3000}));
+  rememberCombo(); drawCombo();
+}
+function drawCombo() {
+  const container=$('comboSteps'); container.replaceChildren();
+  let requested=0, planned=0, valid=comboSteps.length>0&&comboSteps.length<=64;
+  comboSteps.forEach((step,index)=>{
+    const item=comboCatalog.find(item=>item.name===step.name);
+    const good=item?.profile_saved&&Number.isInteger(step.total_ms)&&step.total_ms>=1&&step.total_ms<=600000;
+    valid=valid&&good; requested+=step.total_ms;
+    if (good) planned+=Math.max(step.total_ms,item.minimum_total_ms);
+    const row=document.createElement('div'); row.className='combo-step'+(comboActive===index?' active':'');
+    const number=document.createElement('b'); number.textContent=index+1;
+    const select=document.createElement('select'); select.setAttribute('aria-label',`第${index+1}步动作`);
+    const choices=[...comboCatalog]; if (!item) choices.push({name:step.name,profile_saved:false});
+    choices.forEach(choice=>{const option=document.createElement('option'); option.value=choice.name; option.textContent=choice.name+(choice.profile_saved?'':'（需先保存比例）'); select.append(option);});
+    select.value=step.name; select.disabled=busy;
+    select.onchange=()=>{step.name=select.value; rememberCombo(); drawCombo();};
+    const duration=document.createElement('label'); duration.textContent='请求（毫秒）';
+    const input=document.createElement('input'); input.type='number'; input.min='1'; input.max='600000'; input.step='100'; input.value=step.total_ms; input.disabled=busy; input.setAttribute('aria-label',`第${index+1}步总时长（毫秒）`);
+    input.onchange=()=>{step.total_ms=Number(input.value); rememberCombo(); drawCombo();}; duration.append(input);
+    const result=document.createElement('span'); result.className='muted'; result.textContent=good?`规划 ${(Math.max(step.total_ms,item.minimum_total_ms)/1000).toFixed(3)} s${step.total_ms<item.minimum_total_ms?'（已按下限）':''}`:'需先保存比例或检查时长';
+    const actions=document.createElement('div'); actions.className='row';
+    [['上移',-1],['下移',1],['移除',0]].forEach(([label,offset])=>{
+      const button=document.createElement('button'); button.textContent=label; button.setAttribute('aria-label',`${label}第${index+1}步`);
+      button.disabled=busy||(offset!==0&&(index+offset<0||index+offset>=comboSteps.length));
+      button.onclick=()=>{if(offset){[comboSteps[index],comboSteps[index+offset]]=[comboSteps[index+offset],comboSteps[index]];}else comboSteps.splice(index,1); rememberCombo(); drawCombo();}; actions.append(button);
+    });
+    row.append(number,select,duration,result,actions); container.append(row);
+  });
+  $('comboSummary').textContent=valid?`${comboSteps.length} 步 · 请求合计 ${(requested/1000).toFixed(3)} s · 规划合计 ${(planned/1000).toFixed(3)} s（不含接管、返回和释放）`:'请添加动作，并为每步设置有效总时长；未保存比例的动作需先在上方保存。';
+  $('comboCommand').textContent=JSON.stringify({'序列':comboSequence()},null,2);
+  for(const id of ['comboCheck','comboPreview','comboExport']) $(id).disabled=busy||!valid;
+  $('comboAdd').disabled=busy||comboSteps.length>=64||!comboCatalog.length;
+  $('comboPreset').disabled=busy; $('comboOffline').disabled=busy;
+  $('comboCancel').disabled=!comboRunning;
+  $('comboPreview').textContent=$('comboOffline').checked?'离线组合演练':'真机组合试播';
+}
+$('comboPreset').onclick=comboDefaults;
+$('comboAdd').onclick=()=>{const item=comboCatalog.find(item=>item.profile_saved)||comboCatalog[0]; comboSteps.push({name:item.name,total_ms:item.minimum_total_ms||3000}); rememberCombo(); drawCombo();};
+$('comboOffline').onchange=drawCombo;
+$('comboCheck').onclick=async()=>{try{const plan=await api('/api/combo-plan',{steps:comboSteps}); comboNotice(`组合有效：${plan.steps.length} 步，规划合计 ${(plan.planned_ms/1000).toFixed(3)} s`);}catch(error){comboNotice(error.message,true);}};
+$('comboPreview').onclick=async()=>{try{await api('/api/combo-preview',{steps:comboSteps,offline:$('comboOffline').checked}); busy=true; comboRunning=true; comboActive=null; invalidatePlan(); draw(); comboNotice('组合试播正在启动');}catch(error){comboNotice(error.message,true);}};
+$('comboCancel').onclick=async()=>{try{await api('/api/cancel',{}); comboNotice('正在取消组合并释放控制权');}catch(error){comboNotice(error.message,true);}};
+$('comboExport').onclick=()=>{const blob=new Blob([JSON.stringify(comboSequence(),null,2)+'\n'],{type:'application/json'}); const url=URL.createObjectURL(blob); const link=document.createElement('a'); link.href=url; link.download='web_combo.json'; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);};
+(async()=>{ try { const {items}=await api('/api/motions'); comboCatalog=items;
+  try{const saved=JSON.parse(localStorage.getItem('g1-combo-steps')); if(Array.isArray(saved)&&saved.length<=64&&saved.every(step=>typeof step?.name==='string'&&Number.isInteger(step.total_ms))) comboSteps=saved;}catch(_){}
+  if(!comboSteps.length) comboDefaults(); else drawCombo();
+  items.forEach(item=>{ const option=document.createElement('option'); option.value=item.name; option.textContent=item.name+' · '+item.type; $('motion').append(option); }); if (items.length) await select(items[0].name); else notice('尚无已录制动作',true); } catch(error) { notice(error.message,true); } })();
+</script>
+</body>
+</html>

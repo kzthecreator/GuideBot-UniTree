@@ -1,4 +1,4 @@
-"""Nonblocking conversation adapter; all commands are simulation-only."""
+"""Nonblocking conversation adapter with optional explicit motion execution."""
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 import json
@@ -26,7 +26,7 @@ class PlanningReply:
 
 class GestureService:
     def __init__(self, directory, on_event=None, *, catalog=None, planner=None, targets=(),
-                 debounce=.18, max_wait=.4):
+                 debounce=.18, max_wait=.4, executor_factory=None):
         self.directory = Path(directory)
         self.catalog = catalog or Catalog()
         self.planner = planner or Planner(self.catalog)
@@ -34,11 +34,13 @@ class GestureService:
         if len({t['id'] for t in self.targets}) != len(self.targets):
             raise ValueError('Duplicate scene target ID')
         self.on_event = on_event
+        self.emit_lock = threading.Lock()
         self.debounce, self.max_wait = debounce, max_wait
         self.queue = queue.Queue(maxsize=256)
         self.stopping = threading.Event()
         self.overflow = threading.Event()
-        self.scheduler = Scheduler(self.catalog, self._emit)
+        self.executor = executor_factory(self._emit) if executor_factory else None
+        self.scheduler = Scheduler(self.catalog, self._emit, executor=self.executor)
         self.replies = {}
         self.pool = self.thread = self.log = None
         self.request_id = 0
@@ -51,6 +53,8 @@ class GestureService:
             raise RuntimeError('DEEPSEEK_API_KEY is not set; gesture planning disabled')
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.log = (self.directory / 'gesture.jsonl').open('w', encoding='utf-8')
+        if self.executor:
+            self.executor.start()
         self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix='gesture-planner')
         self.thread = threading.Thread(target=self._run, name='gesture-scheduler', daemon=True)
         self.thread.start()
@@ -66,9 +70,10 @@ class GestureService:
 
     def _emit(self, kind, **details):
         value = dict(kind=kind, monotonic=time.monotonic(), **details)
-        if self.log is not None:
-            self.log.write(json.dumps(value, ensure_ascii=False) + '\n')
-            self.log.flush()
+        with self.emit_lock:
+            if self.log is not None:
+                self.log.write(json.dumps(value, ensure_ascii=False) + '\n')
+                self.log.flush()
         if self.on_event:
             try:
                 self.on_event(kind, **details)
@@ -92,7 +97,7 @@ class GestureService:
                 except queue.Empty:
                     kind, rid, value = None, None, {}
                 if kind == 'ready':
-                    self._emit('gesture.ready', simulated=True, **value)
+                    self._emit('gesture.ready', simulated=self.executor is None or self.executor.simulated, **value)
                 elif kind == 'cancel':
                     self._cancel(rid, value.get('reason', 'interrupted'))
                 elif rid in self.scheduler.closed:
@@ -192,6 +197,8 @@ class GestureService:
             state.cancelled.set()
         if self.thread and self.thread is not threading.current_thread():
             self.thread.join(timeout=3)
+        if self.executor:
+            self.executor.close()
         if self.pool:
             self.pool.shutdown(wait=True, cancel_futures=True)
         if self.log:

@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "hardware": "G1 导入的14关节上肢录制轨迹。仅播放注册轨迹；不控制头部、手指或行走，不生成关节角度。",
+  "actions": [
+    {
+      "id": "greet_open",
+      "asset": "greet_open",
+      "name": "迎宾展开手臂",
+      "description": "欢迎访客或开始介绍时，以手臂展开表达欢迎。",
+      "enabled": true
+    },
+    {
+      "id": "greet_wave",
+      "asset": "greet_wave",
+      "name": "挥手问候",
+      "description": "欢迎、问好或告别时挥手。",
+      "enabled": true
+    },
+    {
+      "id": "invite_follow",
+      "asset": "invite_follow",
+      "name": "邀请跟随",
+      "description": "播报邀请跟随或前往参观时作邀请动作；机器人本体不行走。",
+      "enabled": true
+    },
+    {
+      "id": "present_left",
+      "asset": "present_left",
+      "name": "向左介绍",
+      "description": "文字明确介绍左侧区域时作左侧展示动作，不猜测目标坐标。",
+      "enabled": true
+    },
+    {
+      "id": "present_right",
+      "asset": "present_right",
+      "name": "向右介绍",
+      "description": "文字明确介绍右侧区域时作右侧展示动作，不猜测目标坐标。",
+      "enabled": true
+    },
+    {
+      "id": "please_wait",
+      "asset": "please_wait",
+      "name": "请稍候",
+      "description": "需要访客稍等时作等候示意。",
+      "enabled": true
+    },
+    {
+      "id": "request_repeat",
+      "asset": "request_repeat",
+      "name": "请求重复",
+      "description": "请访客重复或进一步说明时作示意。",
+      "enabled": true
+    },
+    {
+      "id": "emphasize_once",
+      "asset": "emphasize_once",
+      "name": "单次强调",
+      "description": "强调重要结论时作一次强调动作，不在每句话重复。",
+      "enabled": true
+    }
+  ]
+}
