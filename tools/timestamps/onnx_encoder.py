@@ -38,7 +38,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    backend = MonotonicBackend(threads=1, reuse_predictor=True)
+    backend = MonotonicBackend(threads=1, reuse_predictor=True, device='cpu')
     torch = backend.torch
     original = backend.model.model.encoder
     from funasr.models.sanm.encoder import SANMEncoderExport

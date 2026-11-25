@@ -72,7 +72,7 @@ python tools/ros2/lifecycle_acceptance.py
 
 `runtime`由原`host_bridge`改名而来；ROS与SDK的进程环境隔离及IPC仍使用，不是Docker遗留依赖。Docker专用代码只保存在archive/docker-humble。正式时间戳采用FP32。
 
-当前 Python 3.8 固定依赖见 requirements.txt；requirement.txt 为兼容文件名。
+当前 Python 3.8 固定依赖见 requirements.txt；仅保留此标准文件名。
 environment.yml 创建名为 GuideBot 的 Conda 环境；本机新账户安装见 docs/setup.md。
 安装后驱动 models 链接到各账户 ~/.local/share/guidebot/deps，不进入 Git。
 

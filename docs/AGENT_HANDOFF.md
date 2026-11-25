@@ -1,3 +1,23 @@
+# 2026-11-25 GPU环境发布整理与唯一依赖清单
+
+按用户要求将本轮GPU时间戳代码、离线benchmark及Qwen调研文档纳入main发布。已删除兼容拼写requirement.txt，安装仅用requirements.txt，按正式GuideBot环境重建79项依赖：NVIDIA Torch官方URL及公共torchaudio wheel均固定SHA256，公共wheel在/var/tmp/guidebot-python-jetson511，所有本机账户可读，没有私有home依赖。安装步骤见docs/setup.md，清单限定本机JetPack5.1.1/CUDA11.4/aarch64/Python3.8。下方旧“CPU基线”“双文件”均为历史快照，已由本节替代。发布提交与推送结果以Git记录为准。
+
+发布验证：166项主Python测试、38项运动Python测试、正式环境pip check均通过；requirements dry-run及隔离克隆环境实际tools/deployment/setup.py python（含CycloneDDS源码重装）通过。并非空白新账户全量安装验收；运行音频/机器人仍需用户Enter。录音、试听页、模型、wheel和密钥不上传Git。
+
+# 2026-11-25 时间戳GPU Torch已安装与离线验证
+
+用户授权试用匹配CUDA的GPU Torch。正式GuideBot现为Python3.8.20 / NVIDIA Torch2.0.0+nv23.05 / torchaudio2.0.1，CUDA11.4可用；原CPU2.4.1环境完整备份GuideBot-cpu-backup-20261125。时间戳默认auto选择CUDA，显式GUIDEBOT_TIMESTAMP_DEVICE可覆盖；正常机器人模式仍默认不加载时间戳。FP32五组相同录音CPU/GPU边界一致，4秒输入1.0295→0.1995秒，8秒1.3786→0.3136秒，45.48秒6.3957→1.0715秒；仅此离线负载，不保证真机或Qwen并发时延。pip check、166测试及正式spawn CUDA worker197单元对齐通过。未采音/播放/真机/云调用。
+
+重要：NVIDIA wheel强制CPU对照4秒出现NaN，不能当可靠CPU回退；用原CPU备份。requirements已在发布整理时切到GPU版本，见开头。系统JetPack/CUDA不变，torchaudio源码/构建/wheel均仓库外。详见docs/experiments/timestamp-gpu-20261125.md。下方Qwen调研的“当前Torch为CPU”是调研时快照，已被本次更换。
+
+# 2026-11-25 Qwen2.5-3B本地部署调研与规划（未部署）
+
+用户要求查资料后规划，将DeepSeek动作规划尝试改为机器人本地Qwen2.5-3B。完成官方资料核对、本机只读检测及官方分词器计数；没有下载权重、安装构建或切换后端，现有main基线仍2c2ce58。方案与实施门槛docs/experiments/qwen25-3b-local-deployment-plan-20261125.md，一手证据qwen25-3b-local-sources-20261125.md。
+
+本机Orin NX约16GB、L4T35.3.1/Ubuntu20.04/CUDA11.4.315，nvcc支持sm_87；CMake3.16.3不足当前llama CUDA子项目3.18，GuideBot Torch2.4.1为CPU版。首选独立llama-server + 官方Q4_K_M（1.960GiB），Q5作质量对照；现有CUDA11.4兼容commit需实编确认，不自动升级JetPack。3B为Qwen Research License，研究评估与正式商用授权需区分。
+
+关键输入瓶颈：当前系统6653tokens，合成正文6/231/1111字的完整输入分别6890/12521/35841，最后一组超过模型32768上限。必须先压缩Catalog与units、设token预算，不能原样替换后预设更快。计划按工具链探针→单服务→中立provider→影子质量/时延→ROS原生offline→用户Enter真机验收推进；候选性能尚未实测。所有SDK/模型/构建物仍放仓库外，StepFun语音仍为云端。本轮仅新增调研文档，未提交推送。
+
 # 2026-11-25 main发布范围
 
 用户要求将当前代码推送main。本次发布包含0.3rad起步偏差阈值、WebSocket心跳诊断、固定动作截止期限与制动抢占、最低时间预算及执行失败反馈。验证为166项主Python、38项运动Python、4项C++及真实ROS→原生offline截止/抢占/结构化拒绝验收（foxy-r3f4lmip/deadline-acceptance.json），旧对齐与四组生命周期亦通过。未运行真机或云端，真实模型与关节效果仍待用户Enter验收。录音、密钥和运行产物不在提交范围。下方“未提交推送”是各实现轮次当时的历史状态；发布提交与远端状态以Git记录为准。

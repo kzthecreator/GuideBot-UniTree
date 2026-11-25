@@ -29,15 +29,24 @@ def text_units(text):
 
 class MonotonicBackend:
     def __init__(self, model_path=MODEL_PATH, threads=2, reuse_predictor=False, quantized=False,
-                 count_offset=-1):
+                 count_offset=-1, device=None):
         import torch
         from funasr import AutoModel
         if not (Path(model_path) / "model.pt").is_file():
             raise FileNotFoundError(f"Timestamp model not installed: {model_path}")
         torch.set_num_threads(threads)
         self.torch = torch
-        self.model = AutoModel(model=str(model_path), device="cpu", ncpu=threads,
+        selected = device or os.environ.get('GUIDEBOT_TIMESTAMP_DEVICE', 'auto')
+        if selected == 'auto':
+            selected = 'cuda' if torch.cuda.is_available() and not quantized else 'cpu'
+        self.device = torch.device(selected)
+        if quantized and self.device.type != 'cpu':
+            raise ValueError('Dynamic timestamp quantization requires CPU')
+        if self.device.type == 'cuda' and not torch.cuda.is_available():
+            raise RuntimeError('Timestamp CUDA requested but CUDA is unavailable')
+        self.model = AutoModel(model=str(model_path), device=str(self.device), ncpu=threads,
                                disable_update=True, disable_pbar=True)
+        print(f'Timestamp backend device: {self.device}', flush=True)
         self.reuse_predictor = reuse_predictor
         self.count_offset = count_offset
         if reuse_predictor and type(self.model.model.predictor).__name__ != 'CifPredictorV3':
@@ -59,6 +68,7 @@ class MonotonicBackend:
             features, lengths = extract_fbank([audio], frontend=self.model.kwargs["frontend"])
             self.last_profile['frontend_seconds'] = time.monotonic() - stage
             self.last_profile['feature_frames'] = int(lengths.reshape(-1)[0].item())
+            features, lengths = features.to(self.device), lengths.to(self.device)
             stage = time.monotonic()
             encoded, encoded_lengths = self.model.model.encode(features, lengths)
             self.last_profile['encoder_seconds'] = time.monotonic() - stage
@@ -384,6 +394,8 @@ class StreamingTimestamps:
         self.alignment_options = dict(alignment_options or {})
         self.backend_options = dict(backend_options or {})
         for name, value in self.backend_options.items():
+            if name == 'device' and value in {'auto', 'cpu', 'cuda', 'cuda:0'}:
+                continue
             if name in {'reuse_predictor', 'quantized'} and type(value) is bool:
                 continue
             if name == 'threads' and type(value) is int and 1 <= value <= 8:

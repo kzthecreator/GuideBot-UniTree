@@ -1,5 +1,7 @@
 # 本机其他账户安装与新环境恢复
 
+> requirements.txt 已更新为当前验证的 Jetson GPU 环境：NVIDIA Torch 2.0.0+nv23.05 / torchaudio 2.0.1。性能、CPU备份与限制见[实测记录](experiments/timestamp-gpu-20261125.md)。
+
 目标为当前 G1 主机：Ubuntu 20.04、Linux aarch64、ROS2 Foxy、Conda Python 3.8.20。
 其他账户可 fork/clone 后按以下步骤安装，不依赖 `/home/fk` 的私有目录。
 新账户仍需自己的 API 密钥与知识库同步。安装脚本不会采音、播放、连接云端或初始化机器人 DDS。
@@ -21,7 +23,7 @@ python tools/guidebot_preflight.py --dependencies-only
 
 `environment.yml` 创建本账户的 `GuideBot`，只指定 Python 和安装工具。
 安装脚本用 `requirements.txt` 安装固定版本依赖，构建本账户的 ROS 接口与运动程序。
-用户所称的 `requirement.txt` 也可使用；它引用同一份 `requirements.txt`，避免两份清单漂移。
+仓库只保留 `requirements.txt`，不提供另一个拼写的兼容文件。
 如果该账户已存在 `GuideBot`，先确认是 Python 3.8.20，跳过创建环境后运行安装脚本。
 脚本不删除或替换已有的不同版本资源；遇到冲突会明确退出。
 
@@ -62,10 +64,13 @@ python main.py --gesture-backend unitree    # 真实语音 + 真机上肢
 | ROS2 Foxy | `/opt/ros/foxy` | 复用系统安装，接口单独构建 |
 | Unitree SDK / CycloneDDS | `/opt/unitree_robotics` | 复用只读共享 SDK |
 | 模型与音频原生库包 | `/var/tmp/guidebot-runtime` | 校验 SHA256，复制到本账户 |
+| torchaudio 2.0.1 wheel | `/var/tmp/guidebot-python-jetson511` | pip 校验清单中的 SHA256 后安装 |
+| NVIDIA GPU Torch | NVIDIA 官方 JetPack 5.1.1 下载地址 | pip 下载并校验 SHA256 |
 | Python 依赖 | `requirements.txt` | 在本账户 Conda 环境安装 |
 | 运动源码与动作资产 | 当前 clone | 编译到本账户数据目录 |
 
 当前公共资源包已经在本机准备。它不进入 Git，目录与文件允许本机其他账户读取。
+torchaudio wheel 和许可证也已放入上述公共目录；它不依赖任何账户的 home。Torch 地址与两份 wheel 的 SHA256 固定在唯一的 requirements.txt 中。
 AGC2 的桥接库使用 `$ORIGIN` 定位同目录的 WebRTC 库，不再依赖维护者私有构建路径。
 公共包只有明确列出的模型、原生库、许可证和校验清单；不包含录音、密钥、日志、云端 ID。
 `/var/tmp` 可能被管理员清理。被清理后由保留完整模型与原生库的维护者重新导出：
@@ -83,6 +88,15 @@ python tools/deployment/setup.py install --shared-root /公共路径/guidebot-ru
 `--skip-python` 只跳过已安装的 Python 依赖，`--skip-build` 只做资源安装。
 一般首次安装不要使用这两个参数。
 
+torchaudio 公共 wheel 独立于模型导出包。若该目录被清理，由维护者恢复同一份已验证 wheel：
+
+```bash
+install -d -m 755 /var/tmp/guidebot-python-jetson511
+install -m 644 /保存位置/torchaudio-2.0.1-cp38-cp38-linux_aarch64.whl /var/tmp/guidebot-python-jetson511/
+```
+
+恢复后 pip 会验证 requirements 中固定的 SHA256；不同构建即使版本号相同也不能冒充该文件。构建来源和配置见[GPU实测记录](experiments/timestamp-gpu-20261125.md)。
+
 ## 每个账户得到的文件
 
 - `~/.local/share/guidebot/deps/LocalVQE/`：v1.2 模型和原生库。
@@ -96,8 +110,9 @@ python tools/deployment/setup.py install --shared-root /公共路径/guidebot-ru
 
 ## 新机器与纯 requirements 安装的边界
 
-`pip install -r requirement.txt` 只安装 Python 包，不能安装 ROS、SDK、模型和原生库。
+`pip install -r requirements.txt` 只安装 Python 包，不能安装 ROS、SDK、模型和原生库。
 本页的公共包针对当前 ARM64 Ubuntu 主机，不能复制到其他架构后直接使用。
+GPU wheel 还要求 JetPack 5.1.1 / L4T 35.3.1、CUDA 11.4。相同平台的新主机须先准备上述公共 torchaudio wheel；其他 JetPack 或架构需另行适配，不应直接安装此清单。
 新机器应先安装 Foxy、Unitree SDK/CycloneDDS、系统编译工具、OpenSSL 和 libsndfile。
 本机现有 `/opt/conda` 可供新账户创建自己的环境，新机器需自行安装兼容的 Conda。
 
@@ -116,7 +131,7 @@ python -m pip check
 共享 SDK 只有 include/lib，缺少上游构建器要求的 bin；视图补齐目录，不修改 /opt。
 不要直接对原始 SDK 前缀运行无缓存的 CycloneDDS 源码安装。
 清单固定的是正式 Python 3.8 环境版本，不是旧 Python 3.10 的 freeze。
-它不包含本机绝对 `file://` 依赖，不把 rclpy 当作 PyPI 包安装。
+仅 torchaudio 使用明确的本机公共 `file://` 地址；没有私有 home 地址，不把 rclpy 当作 PyPI 包安装。
 
 内部 ROS graph 默认 domain 为 `50 + UID % 40`，只使用 localhost。
 需要显式隔离时可设置 `GUIDEBOT_ROS_DOMAIN_ID`，例如 `export GUIDEBOT_ROS_DOMAIN_ID=83`。

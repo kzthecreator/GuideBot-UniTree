@@ -1,12 +1,9 @@
-# Validated target: CPython 3.8.20, Ubuntu 20.04, Linux aarch64.
-# SDK/ROS/native models are installed separately: docs/setup.md.
-# Use tools/deployment/setup.py python to prepare the per-user SDK build view.
+# Validated: Python 3.8.20, aarch64, JetPack 5.1.1 / L4T 35.3.1, CUDA 11.4.
+# NVIDIA GPU Torch; do not substitute a generic PyPI CUDA wheel.
+# torchaudio is the verified same-machine public wheel, not a private home path.
+# Prepare native SDK/models and the public wheel as described in docs/setup.md.
 --no-binary=cyclonedds
 
-Jinja2==3.1.6
-MarkupSafe==2.1.5
-PyYAML==6.0.3
-Pygments==2.19.2
 aliyun-python-sdk-core==2.16.1
 aliyun-python-sdk-kms==2.16.5
 antlr4-python3-runtime==4.9.3
@@ -30,6 +27,7 @@ importlib_resources==6.4.5
 jaconv==0.5.0
 jamo==0.4.1
 jieba==0.42.1
+Jinja2==3.1.6
 jmespath==1.0.1
 joblib==1.4.2
 kaldiio==2.18.1
@@ -37,6 +35,7 @@ lazy_loader==0.4
 librosa==0.11.0
 llvmlite==0.41.1
 markdown-it-py==3.0.0
+MarkupSafe==2.1.5
 mdurl==0.1.2
 modelscope==1.31.0
 mpmath==1.3.0
@@ -52,8 +51,10 @@ pooch==1.8.2
 protobuf==5.29.6
 pycparser==2.23
 pycryptodome==3.24.1
+Pygments==2.19.2
 pynndescent==0.7.0
 python-dotenv==1.0.1
+PyYAML==6.0.3
 rapidfuzz==3.9.7
 regex==2024.11.6
 requests==2.32.4
@@ -71,9 +72,9 @@ tensorboardX==2.6.2.2
 threadpoolctl==3.5.0
 tiktoken==0.7.0
 tokenizers==0.20.3
-torch==2.4.1
+torch @ https://developer.download.nvidia.com/compute/redist/jp/v511/pytorch/torch-2.0.0%2Bnv23.05-cp38-cp38-linux_aarch64.whl#sha256=39eeb9894ef8c7b84249ab917f212a91703f30255d591b956ab12cc10e836532
 torch-complex==0.4.4
-torchaudio==2.4.1
+torchaudio @ file:///var/tmp/guidebot-python-jetson511/torchaudio-2.0.1-cp38-cp38-linux_aarch64.whl#sha256=4f2745ac1335683690552235001fbdb0b655230b03fbf3db5fb6146136c13f6c
 tqdm==4.70.1
 transformers==4.46.3
 typing_extensions==4.13.2

@@ -29,7 +29,7 @@ python tools/deployment/setup.py install
 脚本从本机 `/var/tmp/guidebot-runtime` 校验并安装模型和音频原生库，
 安装当前 Python 3.8 固定依赖，构建本账户的运动程序与 ROS 接口。
 每个账户仍需填写自己的 API 密钥并显式同步知识库。
-完整步骤见[安装与环境恢复](docs/setup.md)。`requirement.txt` 引用标准清单 `requirements.txt`。
+完整步骤见[安装与环境恢复](docs/setup.md)。Python 依赖仅使用 `requirements.txt`。
 
 ## 边说边动（手动真机试验）
 

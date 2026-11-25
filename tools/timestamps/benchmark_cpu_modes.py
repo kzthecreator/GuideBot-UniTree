@@ -20,7 +20,7 @@ def main():
     audio, rate = sf.read('recordings/long-reply/reply.wav', dtype='int16')
     assert rate == 16000
     labels = text_units('测'*240)
-    backend = MonotonicBackend(reuse_predictor=True)
+    backend = MonotonicBackend(reuse_predictor=True, device='cpu')
     torch = backend.torch
     original = backend.model.model
     results = []

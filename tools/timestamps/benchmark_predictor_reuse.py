@@ -28,7 +28,7 @@ def main():
     event = next(e for e in events if e['type'] == 'client.reply-text' and
                  e.get('response_id') == provenance['response_id'])
     labels = text_units(event['message'].split('：', 1)[1])
-    backend = MonotonicBackend(reuse_predictor=True)
+    backend = MonotonicBackend(reuse_predictor=True, device='cpu')
     backend.model.model.eval()
     backend.torch.manual_seed(1729)
     backend.align(audio[:16000].astype('<i2').tobytes(), labels)
