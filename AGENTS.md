@@ -9,4 +9,5 @@ Use `docs/AGENT_HANDOFF.md` as the authoritative handoff, independently of that 
 
 Keep runtime audio manually triggered by Enter. Use the named GuideBot Conda
 environment; store SDKs/models outside business code and credentials/recordings
-outside Git. The user has deferred a requirements file.
+outside Git. For installation or dependency changes, read `docs/setup.md` and use
+the Python 3.8 environment and pinned `requirements.txt` (`requirement.txt` is an alias).

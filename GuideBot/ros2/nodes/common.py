@@ -1,4 +1,4 @@
-"""Local Foxy graph: typed speech events, planning Action and motion Action.
+"""Local Foxy graph: typed speech events, local gesture planning and motion Action.
 
 Never imports microphone or robot SDK. Host motion access is private bounded IPC.
 """
@@ -19,14 +19,14 @@ from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
 from guidebot_interfaces.msg import (ConversationInput, GestureEvent, InteractionContext,
                                     MotionState, Transcript)
 from guidebot_interfaces.srv import SessionControl
-from guidebot_interfaces.action import PlanGestures, ExecuteGesture
+from guidebot_interfaces.action import ExecuteGesture
 
 from GuideBot.runtime.ipc import Server, call
 from GuideBot.gesture.catalog import Catalog, Plan
 from GuideBot.gesture.planner import Planner
 from GuideBot.gesture.service import GestureService
 from ..protocol import Fence, context_from_wire
-from ..codec import message, to_dict, plan_message, plan_from_message, planning_message, planning_payload
+from ..codec import message, to_dict
 
 ROOT = Path(os.environ['GUIDEBOT_ROS_IPC'])
 QOS = QoSProfile(depth=128, reliability=ReliabilityPolicy.RELIABLE)

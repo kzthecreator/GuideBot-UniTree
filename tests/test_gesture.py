@@ -26,8 +26,8 @@ class GestureTests(unittest.TestCase):
                                                 'target_id': 'sand_table'}})
 
     def test_registry_drives_new_actions_without_prompt_code_changes(self):
-        self.assertEqual(len(self.catalog.actions), 9)
-        self.assertNotIn('neutral', self.catalog.actions)
+        self.assertEqual(len(self.catalog.actions), 10)
+        self.assertIn('neutral', self.catalog.actions)
         examples = json.loads(EXAMPLES.read_text())
         shown = {a['action'] for e in examples for a in e['actions']}
         self.assertEqual(shown, set(self.catalog.actions))
@@ -59,22 +59,16 @@ class GestureTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 Catalog(path)
 
-    def test_structured_trigger_gates_are_enforced(self):
-        eligible = range(len(self.units))
-        with self.assertRaisesRegex(ValueError, 'Trusted interaction context'):
-            self.catalog.validate(dict(action='invite_follow', start_unit=0, arrival_unit=1,
-                                       duration_s=2), eligible, [])
-        with self.assertRaisesRegex(ValueError, 'Trusted interaction context'):
-            self.catalog.validate(dict(action='present_left', start_unit=0, arrival_unit=1), eligible, [],
-                                  {'scene': {'confirmed': True, 'direction': 'right', 'target_id': 'x'}})
-        with self.assertRaisesRegex(ValueError, 'Trusted interaction context'):
-            self.catalog.validate(dict(action='request_repeat', start_unit=0, arrival_unit=1), eligible, [],
-                                  {'dialogue': {'state': 'clarification_needed'}})
-        allowed = {'navigation': {'status': 'ready', 'destination': 'next',
-                                  'route_confirmed': True, 'movement_allowed': True}}
-        follow = self.catalog.validate(dict(action='invite_follow', start_unit=0,
-                                            arrival_unit=1, duration_s=2), eligible, [], allowed)
-        self.assertEqual(follow.action, 'invite_follow')
+    def test_all_actions_allow_missing_or_conflicting_context(self):
+        for name, item in self.catalog.actions.items():
+            row = dict(action=name, start_unit=0, arrival_unit=1)
+            if item['kind'] == 'motion':
+                row['duration_s'] = 2
+            for context in (None, {'scene': {'confirmed': False},
+                                   'navigation': {'movement_allowed': False}}):
+                with self.subTest(action=name, context=context):
+                    plan = self.catalog.validate(row, range(len(self.units)), [], context)
+                    self.assertEqual(plan.action, name)
 
     def test_pose_release_events_and_scheduler_max_hold(self):
         self.now = 100.
@@ -299,6 +293,84 @@ class GestureTests(unittest.TestCase):
                 return
             time.sleep(.01)
         raise AssertionError('Timed out waiting for gesture event')
+
+    def test_listening_speaking_transitions_cancel_queue_and_ignore_old_events(self):
+        events = []
+        planner = Mock()
+        planner.model = 'offline/test'
+        planner.plan.return_value = {}
+        with tempfile.TemporaryDirectory() as tmp:
+            service = GestureService(tmp, lambda kind, **d: events.append(dict(kind=kind, **d)),
+                                     planner=planner, catalog=self.catalog)
+            service.scheduler.immediate = True
+            commands = lambda: [e for e in events if e['kind'] == 'gesture.command']
+            try:
+                service.start()
+                self.wait_for(lambda: any(e['kind'] == 'gesture.ready' for e in events))
+                self.assertEqual(service.mode, 'listening')
+                service.submit('text', 'r', text=self.text)
+                service.submit('done', 'r')
+                self.wait_for(lambda: planner.plan.called)
+                service.submit('action', 'r', plan=self.plan(), text=self.text,
+                               units=self.units, request_id=1)
+                self.wait_for(lambda: any(e['kind'] == 'gesture.planned' for e in events))
+                self.assertEqual(commands(), [])
+                service.submit('playback', 'r', origin=time.monotonic())
+                self.wait_for(lambda: len(commands()) == 1)
+                self.assertEqual(service.mode, 'speaking')
+                self.assertEqual(commands()[-1]['action'], 'present_right')
+                service.submit('cancel', 'r', reason='playback.drained_estimated')
+                self.wait_for(lambda: len(commands()) == 2)
+                self.assertEqual(service.mode, 'listening')
+                self.assertEqual(commands()[-1]['action'], 'neutral')
+                service.submit('action', 'r', plan=self.plan(), text=self.text,
+                               units=self.units, request_id=2)
+                service.submit('playback', 'r', origin=time.monotonic())
+                service.submit('playback', 'new', origin=time.monotonic())
+                self.wait_for(lambda: service.speaking_response == 'new')
+                service.submit('cancel', 'r', reason='playback.stopped')
+                # The next FIFO event proves the old cancellation was processed.
+                service.submit('text', 'new', text=self.text)
+                self.wait_for(lambda: 'new' in service.replies)
+                self.assertEqual(service.mode, 'speaking')
+                self.assertEqual(service.speaking_response, 'new')
+                self.assertEqual(len(commands()), 2)
+                service.submit('cancel', 'new', reason='confirmed_interrupt')
+                self.wait_for(lambda: service.mode == 'listening')
+                # The prior neutral is already active; no second motion is needed.
+                self.assertEqual(service.scheduler.active['job'].plan.action, 'neutral')
+            finally:
+                service.close()
+
+    def test_nonwaiting_close_does_not_wait_for_planner_or_accept_late_actions(self):
+        entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+        plan = self.plan()
+        class BlockingPlanner:
+            def plan(self, payload, callback, cancelled):
+                entered.set()
+                release.wait(3)
+                callback(plan)
+                finished.set()
+                return {}
+        events = []
+        with tempfile.TemporaryDirectory() as tmp:
+            service = GestureService(tmp, lambda kind, **d: events.append(dict(kind=kind, **d)),
+                                     planner=BlockingPlanner(), catalog=self.catalog, targets=self.targets)
+            try:
+                service.start()
+                service.submit('text','r',text=self.text)
+                service.submit('done','r')
+                self.assertTrue(entered.wait(1))
+                started = time.monotonic()
+                service.close(wait=False)
+                self.assertLess(time.monotonic()-started, 1)
+                self.assertFalse(release.is_set())
+                release.set()
+                self.assertTrue(finished.wait(1))
+                self.assertFalse(any(e['kind']=='gesture.planned' for e in events))
+            finally:
+                release.set()
+                service.close()
 
     def test_service_keeps_ticking_during_network_wait_and_cancels_inflight(self):
         entered, release = threading.Event(), threading.Event()

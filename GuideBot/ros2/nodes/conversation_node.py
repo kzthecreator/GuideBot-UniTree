@@ -1,10 +1,10 @@
 from .common import *
 from .state import NodeState
 
-class BridgeNode(Node):
+class ConversationNode(Node):
     def __init__(self):
-        super().__init__('voice_gateway')
-        self.session_state = NodeState(self, 'bridge')
+        super().__init__('conversation')
+        self.session_state = NodeState(self, 'conversation')
         self.inputs = self.create_publisher(ConversationInput, '/guidebot/conversation/input', QOS)
         self.contexts = self.create_publisher(InteractionContext, '/guidebot/interaction/context_input', STATE_QOS)
         self.transcripts = self.create_publisher(Transcript, '/guidebot/voice/transcript', QOS)

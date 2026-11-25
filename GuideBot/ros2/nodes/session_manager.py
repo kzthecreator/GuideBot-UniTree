@@ -1,7 +1,7 @@
 """Authoritative ROS session lifecycle; host workers never start themselves."""
 from .common import *
 
-ROLES = ('planner', 'interaction', 'motion', 'bridge', 'scheduler')
+ROLES = ('motion', 'conversation', 'gesture')
 
 
 class SessionManager(Node):

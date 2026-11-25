@@ -1,9 +1,0 @@
-string session_id
-uint64 generation
-string response_id
-TextUnit[] units
-uint32[] eligible_anchor_ids
-SceneTarget[] targets
-ActionPlan[] existing_actions
-bool response_complete
-InteractionContext context

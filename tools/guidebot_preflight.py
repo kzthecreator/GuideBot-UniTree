@@ -1,5 +1,6 @@
 """Read-only setup checks; does not initialize DDS or start audio/motion."""
 import importlib
+import argparse
 import json
 from pathlib import Path
 import sys
@@ -8,6 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'GuideBot/conversation'))
 failures = []
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--dependencies-only', action='store_true',
+                    help='Check installation without API keys or knowledge synchronization state')
+args = parser.parse_args()
 
 
 def check(name, operation):
@@ -75,12 +80,23 @@ def server():
         raise FileNotFoundError('build/motion_library_server')
 
 
-for name, operation in [('credentials', credentials), ('Unitree SDK import', sdk),
+def ros():
+    import subprocess
+    from GuideBot.runtime.environment import ros_environment
+    subprocess.run([sys.executable, '-c', 'import rclpy; import guidebot_interfaces.msg'],
+                   env=ros_environment(), check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return 'Foxy and generated interface imports OK (no DDS initialization)'
+
+
+if not args.dependencies_only:
+    check('credentials', credentials)
+for name, operation in [('ROS2 import', ros), ('Unitree SDK import', sdk),
                         ('timestamp model', aligner), ('LocalVQE initialization', aec), ('AGC2 initialization', agc),
                         ('action registry', library), ('motion server binary', server)]:
     check(name, operation)
 from GuideBot.conversation.knowledge import load_knowledge
-check('knowledge synchronization', load_knowledge)
+if not args.dependencies_only:
+    check('knowledge synchronization', load_knowledge)
 check('robot joint limits', limits)
 print('No audio, DDS connection, or physical movement was started.')
 sys.exit(bool(failures))

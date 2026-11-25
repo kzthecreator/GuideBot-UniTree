@@ -3,7 +3,7 @@ from .state import NodeState
 
 class MotionNode(Node):
     def __init__(self):
-        super().__init__('motion_gateway')
+        super().__init__('motion')
         self.session_state = NodeState(self, 'motion')
         self.lock = threading.Lock()
         self.goal_busy = False
@@ -17,15 +17,10 @@ class MotionNode(Node):
         try:
             if not math.isfinite(goal.start_monotonic) or goal.start_monotonic > goal.arrival_monotonic:
                 raise ValueError('Invalid motion time')
-            if goal.action == 'neutral':
-                if not goal.scheduler_managed or goal.has_duration:
-                    raise ValueError('Base pose must be scheduler managed')
-            else:
-                row = dict(action=goal.action, start_unit=0, arrival_unit=0)
-                if goal.has_duration:
-                    row['duration_s'] = goal.duration_s
-                # Recheck public ROS goals independently of model output.
-                self.catalog.validate(row, [0], [], enforce_context=False)
+            row = dict(action=goal.action, start_unit=0, arrival_unit=0)
+            if goal.has_duration:
+                row['duration_s'] = goal.duration_s
+            self.catalog.validate(row, [0], [], enforce_context=False)
             with self.lock:
                 if self.goal_busy:
                     return GoalResponse.REJECT

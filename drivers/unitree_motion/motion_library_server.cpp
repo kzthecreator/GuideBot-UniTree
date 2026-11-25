@@ -742,29 +742,14 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
     std::chrono::steady_clock::time_point yaw_start{};
     auto wake = std::chrono::steady_clock::now();
     auto previous = wake;
-    std::chrono::steady_clock::time_point stable_since{};
 
     while (true) {
         const auto now = std::chrono::steady_clock::now();
         if (now - wake > std::chrono::milliseconds(50) || !server.healthy()) return false;
         const Snapshot measured = snapshot();
         if (!ready(measured)) return false;
-        if (owned) {
-            if (!operator_preview && measured.max_leg_speed >= kAcquireLegSpeed) {
-                std::cerr << "[SAFETY] leg motion detected while upper body is owned; releasing control\n";
-                publish(publisher, cmd, session_initial, measured.arm, measured.yaw, 0.0);
-                weight = 0.0;
-                status.set_ownership("released");
-                return false;
-            }
-            if (std::abs(measured.yaw - yaw_command) > 0.12) return false;
-            for (size_t i = 0; i < standing_motion::kArmJoints; ++i)
-                if (std::abs(measured.arm[i] - arm_command[i]) > 0.30) return false;
-        } else if (operator_preview || standing_still(measured)) {
-            if (stable_since.time_since_epoch().count() == 0) stable_since = now;
-        } else {
-            stable_since = {};
-        }
+        // Acquisition is operator-authorized, independent of measured motion.
+        // Keep ready(), remote stop, finite-state and control-loop health checks.
 
         player.tick(play_style_active ? std::chrono::duration<double>(kPlayTick).count() :
                     std::chrono::duration<double>(now - previous).count());
@@ -782,16 +767,11 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
           try {
             if (pending_quit) continue;
             if (command.kind == Kind::Acquire) {
-                if (owned || stable_since.time_since_epoch().count() == 0 ||
-                    now - stable_since < std::chrono::milliseconds(500) ||
-                    (!operator_preview && std::abs(measured.yaw) > kMaxAbsoluteYaw))
-                    throw std::runtime_error(operator_preview ?
-                        "acquire requires 500 ms of fresh lowstate" :
-                        "acquire requires 500 ms of stable standing");
+                if (owned) throw std::runtime_error("upper body is already owned");
                 session_initial = measured;
-                if (!ramp_up(publisher, cmd, session_initial, weight, !operator_preview)) {
+                if (!ramp_up(publisher, cmd, session_initial, weight, false)) {
                     std::cerr << "[REJECTED] acquire ramp interrupted by stale lowstate, "
-                                 "remote exit or movement guard\n";
+                                 "remote exit or invalid state\n";
                     status.set_ownership("released");
                     wake = std::chrono::steady_clock::now();
                     previous = wake;
@@ -800,25 +780,6 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
                 owned = true;
                 const Snapshot acquired = snapshot();
                 if (!ready(acquired)) return false;
-                double arm_error = 0.0;
-                for (size_t i = 0; i < standing_motion::kArmJoints; ++i)
-                    arm_error = std::max(arm_error,
-                        std::abs(acquired.arm[i] - session_initial.arm[i]));
-                if (arm_error > (operator_preview ? 0.30 : 0.03) ||
-                    std::abs(acquired.yaw - session_initial.yaw) >
-                        (operator_preview ? 0.12 : 0.05)) {
-                    ramp_down(publisher, cmd, session_initial, arm_command, yaw_command, weight);
-                    weight = 0.0;
-                    owned = false;
-                    status.set_ownership("released");
-                    wake = std::chrono::steady_clock::now();
-                    previous = wake;
-                    std::cerr << "[REJECTED] arm failed to settle during acquire: "
-                              << "arm_error=" << arm_error << " rad, yaw_error="
-                              << std::abs(acquired.yaw - session_initial.yaw)
-                              << " rad\n";
-                    continue;
-                }
                 player.reset_idle_pose(acquired.arm);
                 play_style_active = false;
                 reverse_return_active = false;
@@ -828,7 +789,6 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
                 yaw_active = yaw_braking = false;
                 server.set_initial_yaw(session_initial.yaw);
                 status.set_ownership("owned");
-                stable_since = {};
                 wake = std::chrono::steady_clock::now();
                 previous = wake;
                 std::cout << "[ACQUIRE] upper body control active\n";
@@ -929,7 +889,6 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
             status.update(player);
             std::cout << "[RELEASE] arm_sdk weight is zero; native control owns upper body\n";
             if (pending_quit) return true;
-            stable_since = {};
             wake = std::chrono::steady_clock::now();
             previous = wake;
             continue;

@@ -153,32 +153,7 @@ class Catalog:
 
     @staticmethod
     def context_allows(item, context):
-        """Enforce safety-relevant context from trusted structured state."""
-        context = context or {}
-        trigger = item.get('trigger_source')
-        if trigger == 'llm_navigation_context':
-            navigation = context.get('navigation', {})
-            return (isinstance(navigation, dict) and navigation.get('status') == 'ready'
-                    and bool(navigation.get('destination'))
-                    and navigation.get('route_confirmed') is True
-                    and navigation.get('movement_allowed') is True)
-        if trigger == 'llm_scene_context':
-            scene = context.get('scene', {})
-            expected = {'present_left': 'left', 'present_right': 'right',
-                        'present_center': 'center'}.get(item['id'])
-            return (expected is not None and isinstance(scene, dict)
-                    and scene.get('confirmed') is True and scene.get('direction') == expected
-                    and isinstance(scene.get('target_id'), str) and bool(scene['target_id']))
-        if trigger == 'asr_dialogue_state':
-            asr = context.get('asr', {})
-            dialogue = context.get('dialogue', {})
-            return (isinstance(asr, dict) and asr.get('needs_repeat') is True
-                    and isinstance(dialogue, dict)
-                    and dialogue.get('state') in {'clarification_needed', 'awaiting_rephrase',
-                                                  'missing_required_information'})
-        if trigger == 'llm_task_state':
-            task = context.get('task', {})
-            return isinstance(task, dict) and task.get('status') in {'running', 'waiting'}
+        """Context is advisory; all registered actions may be selected without it."""
         return True
 
     def validate(self, row, eligible, targets, interaction_context=None, *, enforce_context=True):

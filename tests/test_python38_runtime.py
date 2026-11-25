@@ -2,10 +2,11 @@
 import os
 from pathlib import Path
 import threading
+import tempfile
 import unittest
 from unittest.mock import patch
 from GuideBot.compat import CancellableThreadPoolExecutor
-from GuideBot.runtime.environment import sdk_environment, _clean_ros_base
+from GuideBot.runtime.environment import sdk_environment, ros_environment, _clean_ros_base
 
 
 class CompatibilityTests(unittest.TestCase):
@@ -41,3 +42,28 @@ class CompatibilityTests(unittest.TestCase):
         self.assertNotIn('ROS_DOMAIN_ID',sdk)
         self.assertNotIn('LD_LIBRARY_PATH',ros)
         self.assertNotIn('PYTHONPATH',ros)
+
+    def test_new_account_uses_shared_sdk_without_private_home_symlink(self):
+        with patch.dict(os.environ, {}, clear=True):
+            sdk = sdk_environment()
+        self.assertEqual(sdk['CYCLONEDDS_HOME'], '/opt/unitree_robotics/cyclonedds')
+        self.assertIn('/opt/unitree_robotics/cyclonedds/lib', sdk['LD_LIBRARY_PATH'])
+
+    def test_ros_domains_are_per_account_and_explicit_override_is_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'foxy').mkdir()
+            (root / 'install').mkdir()
+            (root / 'foxy/setup.bash').touch()
+            (root / 'install/local_setup.bash').touch()
+            with patch('GuideBot.runtime.environment.FOXY', root / 'foxy'), \
+                 patch('GuideBot.runtime.environment.subprocess.check_output', return_value=b'PATH=/usr/bin\0'), \
+                 patch.dict(os.environ, {}, clear=True):
+                with patch('os.getuid', return_value=1002):
+                    first = ros_environment(install=root / 'install')
+                with patch('os.getuid', return_value=1003):
+                    second = ros_environment(install=root / 'install')
+                self.assertNotEqual(first['ROS_DOMAIN_ID'], second['ROS_DOMAIN_ID'])
+                self.assertEqual(ros_environment(install=root / 'install', domain=0)['ROS_DOMAIN_ID'], '0')
+                with patch.dict(os.environ, {'GUIDEBOT_ROS_DOMAIN_ID': '83'}):
+                    self.assertEqual(ros_environment(install=root / 'install')['ROS_DOMAIN_ID'], '83')

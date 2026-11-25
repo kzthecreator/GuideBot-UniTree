@@ -1,4 +1,45 @@
+# 2026-11-25 本机多账户部署与依赖发布
+
+用户已要求推送当前仓库并准备新环境requirements。当前提供environment.yml（GuideBot / Python3.8.20）、requirements.txt（79项固定Python依赖）及requirement.txt兼容引用；完整步骤docs/setup.md。tools/deployment/setup.py install从本机公共/var/tmp/guidebot-runtime校验并复制14个资源文件，构建各账户自己的ROS与运动程序。包仅含模型/音频原生库/许可证，无密钥、录音、日志或知识库ID；/var/tmp可能被清理，维护者可按文档重新导出。
+
+安装器为CycloneDDS源码构建建立本账户include/lib/bin视图（共享/opt前缀缺bin），强制不使用缓存轮子以避免编码其他账户路径。AGC2桥接使用$ORIGIN，不依赖fk私有目录。SDK环境默认使用/opt共享DDS；内部localhost ROS domain默认50+UID%40，可用GUIDEBOT_ROS_DOMAIN_ID覆盖。tools/ros2/build.py遵守GUIDEBOT_ROS_INSTALL。各账户需自己的API密钥和显式知识同步，Enter启动约定保持。
+
+全新Conda3.8环境、独立checkout和独立数据/ROS目录完成安装与依赖预检（未切换Linux UID），146主测试、4项C++通过；正式环境146主测试及38运动Python通过；新环境真实ROS→原生offline-server验收及正式环境四组生命周期通过。原始证据~/.local/state/guidebot/experiments/multi-user-install-20261125，离线链路foxy-ynid568m/acceptance.json。首轮无缓存Cyclone源码构建失败及domain42拥挤已分别由构建视图和账户domain解决。未初始化真机、音频或云端。
+
+recordings已取消Git跟踪并忽略，本机下载内容保持不变；未重写已有远端历史。当前真机已知问题仍保留：foxy-lj6qso7y的greet_open成功启动，播完请求neutral被左肩0.035737rad偏差（大于0.03）拒绝，随后ROS槽位等待超时。本轮只整理部署并推送，不取消该门禁，不宣称现场动作问题已修复。
+
+# 2026-11-25 人工验收：语音正常、LLM动作被到位检查拒绝
+
+现场foxy-z7itlovg为robot模式。DeepSeek生成greet_open及please_wait，ROS接受；motion-native.log只有两次neutral启动，两次arm has not settled at commanded pose拒绝，无greet_open启动。直接原因是sequence_library.hpp保留的actual-commanded最大关节误差>0.03rad检查；尚无逐关节轨迹，不能认定具体关节/硬件故障，也不能证明neutral实际到位。后续ROS motion goal rejected是队列/执行状态问题，非模型未出动作。原生idle仅表示规划轨迹结束，不代表实测到位。
+
+本轮补充拒绝日志最大偏差关节名、gap_rad、actual_rad、commanded_rad和limit_rad；不改变0.03rad判定。回归先红后绿，原生服务已重编译，4项C++测试通过。真实SDK/音频/云未由Agent启动。下次用户按原命令Enter验收后读取motion-native.log确认实际偏差，现场症状尚未宣称修复。原现场gesture.jsonl有双写导致的坏行，分析时跳过坏行并对照原生日志，不把ROS accepted当作动作已开始。
+
+# 2026-11-25 倾听／说话动作状态
+
+新增本地播放驱动状态：初始listening，音频playback.ready后请求neutral，避免ROS节点启动时资源尚未激活。playback.started进入speaking；aligned和immediate均以播放开始为动作执行前提，文本仍可提前规划。确认打断、停止或预计播完取消当前队列/执行并请求neutral；迟到动作和旧回复停止事件不能恢复或打断新回复。云端response.done不结束speaking。播完仍为drained_estimated，不是硬件结束回执。
+
+验证：GuideBot环境141项主回归通过，Python编译与git diff --check通过。真实ROS四节点→原生offline-server验收通过，含初始neutral、播放前已规划但不执行、取消后等待idle再neutral；证据~/.local/state/guidebot/ros2/foxy-ae3pkq2q/acceptance.json。neutral过渡采用2秒，为本地IPC保留余量；ROS取消等待Action结果及原生idle，避免减速期间复位被拒。旧contract_checks中上下文缺失应拒绝的断言同步改为允许，符合上一轮门禁取消策略。未连接云/音频/机器人，现场效果待用户Enter验收；未提交推送。
+
+# 2026-11-25 动作上下文与接管运动门禁已取消
+
+按用户要求，10个动作全部可选（含neutral），Catalog.context_allows恒为True，Motion不再为neutral要求scheduler_managed；提示词同步取消结构化状态前置条件，neutral支持LLM及显式调度器请求。资产审批、参数/锚点/时长、执行互斥和关节限位仍保留。
+
+原生接管取消500ms稳定等待、腿/臂/gyro速度、腰绝对角及渐入后姿态偏差门禁；仍用约2秒渐入。取消owned主循环腿速立即撤权及腰/臂跟踪误差撤权。仍保留ready（有效新鲜lowstate、R1+R2、信号、有限姿态）、50ms迟到/socket健康退出；序列开始0.03rad误差检查与正常释放回位检查保留。已明确向用户说明并非无条件对失效状态强制控制。
+
+本次仅离线回归与编译，不初始化硬件；主测试139项通过。启动前仍需运控模式，main.py等待Enter。上轮四节点与本轮改动均未提交推送。
+
 # GuideBot 维护续接文档
+
+## 2026-11-25 四核心节点已实现，业务与Runtime独立保留
+
+按用户四节点建议合并ROS通信边界：session_manager、conversation、gesture、motion。Gesture合并Interaction/Planner/Scheduler，直接调用业务Planner，不再跨ROS规划Action；业务GestureService调度线程、输入队列与两线程规划池保留，ROS回调不做阻塞HTTP。Conversation仅承接原语音Gateway职责，StepFun实时语音和16ms音频流水线仍在Runtime资源进程。Motion独立执行/取消/保护边界不变，四ROS节点不等于四总进程。
+
+节点文件conversation_node.py、gesture_node.py、motion_node.py及session_manager.py。删除内部PlanGestures及专用四个消息、转换器，重新清理构建Foxy接口与launch包；外部旧规划Action调用者需改，未保留兼容端点。上下文可信来源、版本、TTL在Gesture内校验后发布Motion。内部控制roles为motion/conversation/gesture，生命周期顺序与Enter授权保持。
+
+139项主测试（含close(wait=False)停止不等待HTTP和迟到动作拒绝）、实际四节点/无旧Action图检查、原生离线执行/取消/fence及不可信高版本上下文拒绝通过；真实FP32后台工作进程→锚点→ROS→模拟Motion通过；四组生命周期和EOF待命无激活/凭证清理通过。证据~/.local/state/guidebot/experiments/four-nodes-20261125，详见docs/experiments/four-core-nodes-20261125.md。未初始化真机/采音/播放/云；现场仍待用户Enter。标准语音、FP32及原生运动规则不改，腿速保护问题独立保留。
+
+命令仍conda activate GuideBot后python main.py --gesture-backend unitree，先开运控、不另起serve。上轮e7dea13已推GitHub，本轮四节点改动尚未提交推送。下方六节点描述均为历史。
+
 
 ## 2026-11-25 正式FP32与runtime改名已完成，全链路离线复核通过
 

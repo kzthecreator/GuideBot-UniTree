@@ -34,7 +34,11 @@ def ros_environment(*, install=None, domain=None):
     environment = dict(item.decode().split('=',1) for item in raw.split(b'\0') if b'=' in item)
     environment['PYTHONPATH'] = os.pathsep.join([str(REPO), sysconfig.get_paths()['purelib'], environment.get('PYTHONPATH',''), '/usr/lib/python3/dist-packages'])
     environment['LD_LIBRARY_PATH'] = os.pathsep.join(filter(None,[environment.get('LD_LIBRARY_PATH',''), str(Path(sys.prefix)/'lib')]))
-    environment.update(ROS_DOMAIN_ID=str(domain or os.environ.get('GUIDEBOT_ROS_DOMAIN_ID','42')),
+    # Internal localhost graph only; separate account defaults avoid joining
+    # another user's graph and exhausting the same DDS participant range.
+    default_domain = 50 + os.getuid() % 40
+    environment.update(ROS_DOMAIN_ID=str(domain if domain is not None else
+                                        os.environ.get('GUIDEBOT_ROS_DOMAIN_ID', default_domain)),
                        ROS_LOCALHOST_ONLY='1', RMW_IMPLEMENTATION='rmw_cyclonedds_cpp',
                        GUIDEBOT_PYTHON=sys.executable, PYTHONNOUSERSITE='1')
     return environment
@@ -46,8 +50,7 @@ def sdk_environment():
         if key.startswith(('ROS_', 'RMW_', 'AMENT_', 'COLCON_')) or key in {'PYTHONPATH','LD_LIBRARY_PATH','PYTHONHOME','CMAKE_PREFIX_PATH'}:
             environment.pop(key, None)
     sdk = environment.setdefault('UNITREE_SDK_PATH', '/opt/unitree_robotics/unitree_sdk2_python')
-    dds = environment.get('GUIDEBOT_DDS_HOME') or environment.get('CYCLONEDDS_HOME') or str(
-        Path.home()/'.local/share/guidebot/deps/cyclonedds')
+    dds = environment.get('GUIDEBOT_DDS_HOME') or environment.get('CYCLONEDDS_HOME') or '/opt/unitree_robotics/cyclonedds'
     environment.update(CYCLONEDDS_HOME=dds, PYTHONPATH=os.pathsep.join([str(REPO),sdk]),
                        LD_LIBRARY_PATH=os.pathsep.join([str(Path(dds)/'lib'),str(Path(sys.prefix)/'lib')]),
                        PYTHONNOUSERSITE='1')

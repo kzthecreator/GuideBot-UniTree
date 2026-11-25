@@ -49,6 +49,11 @@ class GestureIntegrationTests(unittest.TestCase):
         session._playback_event('playback.drained_estimated', response_id='r')
         session.gestures.submit.assert_called_with('cancel','r',reason='playback.drained_estimated')
 
+    def test_audio_ready_requests_initial_listening_pose(self):
+        session = self.session()
+        session._playback_event('playback.ready')
+        session.gestures.request_base_pose.assert_called_once_with('session_started')
+
     def test_confirmed_interrupt_cancels_and_old_deltas_are_ignored(self):
         session = self.session()
         session.on_event(dict(type='input_audio_buffer.speech_interrupted', item_id='speech'))

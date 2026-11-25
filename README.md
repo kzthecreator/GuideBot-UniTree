@@ -15,6 +15,22 @@ python main.py --gestures
 按 Enter 开始，再按 Enter 结束。正常入口仅使用 StepFun。
 启动需要本机 Foxy、SDK、模型、Python3.8 GuideBot 环境和已同步知识库，不是全新机器的一键安装器。
 
+## 本机其他账户首次安装
+
+fork/clone 后运行：
+
+```bash
+source /opt/conda/etc/profile.d/conda.sh
+conda env create -f environment.yml
+conda activate GuideBot
+python tools/deployment/setup.py install
+```
+
+脚本从本机 `/var/tmp/guidebot-runtime` 校验并安装模型和音频原生库，
+安装当前 Python 3.8 固定依赖，构建本账户的运动程序与 ROS 接口。
+每个账户仍需填写自己的 API 密钥并显式同步知识库。
+完整步骤见[安装与环境恢复](docs/setup.md)。`requirement.txt` 引用标准清单 `requirements.txt`。
+
 ## 边说边动（手动真机试验）
 
 先开启 G1 运控模式并关闭旧运动服务。在仓库根目录使用单终端：
@@ -26,11 +42,17 @@ python main.py --gesture-backend unitree
 按 Enter 后自动启动运动子进程、接管上肢并连接语音；再次 Enter 停止并释放。
 不要同时手动运行运动服务。原 `--skip-joint-limits` 参数已移除，使用 fork 的 URDF 范围审计配置。
 需配置 `STEP_SECRET` 和 `DEEPSEEK_API_KEY`；默认录音保留。
-动作采用 fork b84ff1f 的物理语义、上下文门禁、Sequence 下发和生命周期。
-真实模式默认 `immediate`，计划到达后安排动作，不等待文字对齐；
+动作采用 fork b84ff1f 的物理资产、Sequence 下发和生命周期；上下文只作建议。
+真实模式默认 `immediate`，播放开始后执行已到达的计划，不等待文字对齐；
 可显式设置 `GUIDEBOT_GESTURE_TIMING_MODE=aligned` 使用 fork 的对齐模式。
-10个有效资产中9个供LLM选择，neutral只由状态机显式请求。
-无可信场景、导航、澄清或任务状态时，对应动作会被门禁拒绝。
+10个有效资产均可供LLM选择，包括neutral。
+本地状态分为倾听和说话：倾听请求neutral，播放开始后才执行LLM队列。
+确认打断或预计播完时取消当前队列并回neutral；云端response.done不结束说话。
+文本可提前规划，但播放前不执行；过期回复和迟到结果不能恢复动作。
+播完沿用播放时长估计，SDK没有设备结束回执。
+
+当前真机已知限制：实测与指令关节偏差超过0.03rad会拒绝包括neutral在内的新动作。
+现场已出现左肩约0.0357rad偏差，导致greeting后无法回neutral；本次部署整理未修复该问题。
 
 不加参数仍是原来的纯语音，`--gestures` 为模拟动作。
 原有目录与 LocalVQE v1.2 → AGC2 语音完整保留。
@@ -96,7 +118,7 @@ AGC2 动态库可用 `GUIDEBOT_AGC2_LIBRARY` 指定；构建入口为 `drivers/a
 
 ### ROS2统一运行
 
-正式入口只有main.py。本机Foxy与GuideBot Python3.8，ROS launch管理六个独立节点；宿主保留音频、模型与宇树SDK，接受ROS会话管理器控制。旧直连入口已归档。
+正式入口只有main.py。本机Foxy与GuideBot Python3.8，ROS launch管理四个核心节点；宿主保留音频、模型与宇树SDK，接受ROS会话管理器控制。旧直连入口已归档。
 
 ```bash
 # 语音＋模拟动作；需按Enter，使用真实语音API
@@ -112,3 +134,14 @@ python main.py --gesture-backend unitree
 本机迁移验证与时间戳性能限制见 [实施报告](docs/experiments/foxy-local-migration-20261124.md)。
 
 时间戳已采用 FP32，保留1线程、预测器复用和完整前缀策略。对照见 [复测报告](docs/experiments/timestamp-runtime-retest-20261125.md)。
+
+### 四个核心节点
+
+- Session Manager：会话激活、健康检查和停止协调。
+- Conversation：语音事件、转写和Runtime资源入口。
+- Gesture：可信上下文、Planner和Scheduler；内部函数调用，不再有规划ROS Action。
+- Motion：动作执行、取消、控制权与硬件保护边界。
+
+GestureService保留调度线程、输入队列和规划线程池；ROS回调不执行阻塞式模型请求。
+StepFun仍提供端到端实时语音，音频16ms流水线留在隔离的Runtime资源进程。
+四个ROS节点不代表系统只有四个进程。结构与验收见[四节点收敛](docs/experiments/four-core-nodes-20261125.md)。

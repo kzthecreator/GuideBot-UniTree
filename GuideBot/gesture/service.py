@@ -51,6 +51,14 @@ class GestureService:
         self.pool = self.thread = self.log = None
         self.request_id = 0
         self.requests = []
+        self.mode = 'listening'
+        self.speaking_response = None
+
+    def _listen(self, reason):
+        self.mode = 'listening'
+        self.speaking_response = None
+        self._emit('gesture.mode', mode=self.mode, reason=reason)
+        self.scheduler.request_base_pose(reason)
 
     @staticmethod
     def _validate_interaction_context(context):
@@ -159,8 +167,11 @@ class GestureService:
                     kind, rid, value = None, None, {}
                 if kind == 'ready':
                     self._emit('gesture.ready', simulated=True, **value)
+                    self._emit('gesture.mode', mode=self.mode, reason='session_started')
                 elif kind == 'cancel':
                     self._cancel(rid, value.get('reason', 'interrupted'))
+                    if rid == self.speaking_response:
+                        self._listen(value.get('reason', 'interrupted'))
                 elif kind == 'base_pose':
                     self.scheduler.request_base_pose(
                         value.get('reason', 'interaction_state_change'))
@@ -187,6 +198,12 @@ class GestureService:
                 elif kind == 'alignment':
                     self.scheduler.alignment(rid, value)
                 elif kind == 'playback':
+                    if self.speaking_response is not None and self.speaking_response != rid:
+                        self._cancel(self.speaking_response, 'playback_replaced')
+                    if self.mode != 'speaking' or self.speaking_response != rid:
+                        self.mode, self.speaking_response = 'speaking', rid
+                        self._emit('gesture.mode', mode=self.mode, response_id=rid,
+                                   reason='playback.started')
                     self.scheduler.playback(rid, value['origin'])
                 elif kind == 'action':
                     state = self.replies.get(rid)
@@ -264,7 +281,8 @@ class GestureService:
             message = str(error) if type(error) is RuntimeError else type(error).__name__
             self.submit('result', rid, request_id=request_id, error=message)
 
-    def close(self):
+    def close(self, *, wait=True):
+        """Stop scheduling immediately; ROS control may avoid waiting for provider I/O."""
         self.stopping.set()
         for state in list(self.replies.values()):
             state.cancelled.set()
@@ -272,9 +290,9 @@ class GestureService:
             self.thread.join(timeout=3)
         if self.pool:
             try:
-                self.pool.shutdown(wait=True, cancel_futures=True)
+                self.pool.shutdown(wait=wait, cancel_futures=True)
             except TypeError:
-                self.pool.shutdown(wait=True)
+                self.pool.shutdown(wait=wait)
         if self.log:
             self.log.close()
 

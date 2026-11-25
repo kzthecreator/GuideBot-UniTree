@@ -20,9 +20,9 @@ class MotionExecutorTests(unittest.TestCase):
 
     def test_inventory_and_physical_mapping(self):
         self.assertEqual(len(self.catalog.assets), 10)
-        self.assertEqual(len(self.catalog.actions), 9)
+        self.assertEqual(len(self.catalog.actions), 10)
         self.assertIn('present_center', self.catalog.actions)
-        self.assertNotIn('neutral', self.catalog.actions)
+        self.assertIn('neutral', self.catalog.actions)
         self.assertEqual(self.catalog.assets['greet_open']['frames'], 1)
         self.assertEqual(self.catalog.actions['greet_open']['kind'], 'pose')
         self.assertEqual(self.catalog.actions['greet_open']['asset_type'], 'motion')
@@ -59,9 +59,9 @@ class MotionExecutorTests(unittest.TestCase):
         system = messages(self.catalog, make_input('r', '欢迎大家'))[0]['content']
         self.assertIn('semantic_intents', system)
         self.assertIn('"id": "present_center"', system)
-        self.assertNotIn('"id": "neutral"', system)
+        self.assertIn('"id": "neutral"', system)
         definitions = {item['id']: item for item in self.catalog.document['actions']}
-        self.assertFalse(definitions['neutral']['llm_selectable'])
+        self.assertTrue(definitions['neutral']['llm_selectable'])
         self.assertTrue(definitions['neutral']['enabled'])
         for item in definitions.values():
             for function in item['interaction_functions']:
@@ -152,7 +152,7 @@ class MotionExecutorTests(unittest.TestCase):
         self.assertIsNone(scheduler.active)
         self.assertIn('gesture.skipped', events)
 
-    def test_immediate_dispatch_does_not_wait_for_alignment_or_playback(self):
+    def test_immediate_dispatch_waits_for_playback_but_not_alignment(self):
         events = []
         def emit(kind, **details):
             events.append((kind, details))
@@ -165,6 +165,9 @@ class MotionExecutorTests(unittest.TestCase):
             range(len(units)), [], {'stage': 'welcome'})
         scheduler.text('r', '欢迎大家')
         scheduler.add('r', plan, units)
+        scheduler.tick()
+        self.assertFalse(any(kind == 'gesture.command' for kind, _ in events))
+        scheduler.playback('r', 100)
         scheduler.tick()
         command = next(details for kind, details in events if kind == 'gesture.command')
         self.assertEqual(command['timing_mode'], 'immediate')
@@ -188,6 +191,7 @@ class MotionExecutorTests(unittest.TestCase):
             range(len(units)), [], {'stage': 'welcome'})
         scheduler.text('r', '欢迎大家')
         scheduler.add('r', plan, units)
+        scheduler.playback('r', 100)
         scheduler.tick()
         self.assertIsNone(scheduler.active)
         self.assertEqual(next(details['reason'] for kind, details in events
@@ -217,9 +221,9 @@ class MotionExecutorTests(unittest.TestCase):
         self.assertEqual(command['action'], 'neutral')
         self.assertTrue(command['scheduler_managed'])
         executor = MotionExecutor(self.catalog, mode='simulation', clock=lambda: 100)
-        with self.assertRaisesRegex(ValueError, 'Unknown or disabled'):
-            executor.sequence({**command, 'scheduler_managed': False,
-                               'start_monotonic': 100, 'arrival_monotonic': 100.5})
+        llm_seq = executor.sequence({**command, 'scheduler_managed': False,
+                                     'start_monotonic': 100, 'arrival_monotonic': 100.5})
+        self.assertEqual(llm_seq['序列']['steps'][0]['name'], 'neutral')
         seq = executor.sequence({**command, 'start_monotonic': 100, 'arrival_monotonic': 100.5})
         self.assertEqual(seq['序列']['steps'][0]['name'], 'neutral')
         cases = json.loads((Path(__file__).resolve().parents[1] / 'tools/gesture/evaluation.json').read_text())

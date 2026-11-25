@@ -159,11 +159,7 @@ __pycache__/
 *.env
 .vscode/
 *.wav
-!/recordings/long-reply/reply.wav
-!/recordings/live-session/microphone-16k.wav
-!/recordings/live-session/microphone-aec-16k.wav
-!/recordings/live-session/microphone-gated-16k.wav
-!/recordings/live-session/speaker-16k.wav
+/recordings/
 *.pcm
 *.gguf
 *.pt

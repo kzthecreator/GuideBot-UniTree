@@ -13,7 +13,7 @@ GuideBot/
     workers/                       语音流水线、原生运动生命周期与执行适配
     transport.py、ipc.py            ROS事件代理与内部IPC
   ros2/
-    nodes/                         六个独立进程的ROS节点
+    nodes/                         四个核心ROS节点，各独立进程
     launch/                        唯一节点编排
     config/                        非秘密节点参数
     interfaces/guidebot_interfaces/ 消息、服务、Actions生成包
@@ -26,6 +26,7 @@ GuideBot/
  drivers/                          SDK与模型适配
  assets/motion/                    轨迹、位姿、元数据和动作目录
  tools/                            制作、运维、离线验收
+   deployment/setup.py             同机公共资源导出与每账户安装
  tests/                            主回归
  docs/                             当前规范、交接与实验记录
  archive/                          历史实现，禁止作为正式路径导入
@@ -35,7 +36,7 @@ GuideBot/
 
 main.py只调用runtime的启动接口。runtime准备本机ROS图和空闲worker；Enter后授权宿主资源并请求ROS会话开始。
 
-由GuideBot Python3.8显式运行ROS LaunchService，启动session_manager、voice_gateway、interaction_manager、gesture_planner、gesture_scheduler、motion_gateway。节点各自有本地会话副本，启动和停止由SessionControl服务明确协调；不再共享可变Shared对象。
+由GuideBot Python3.8显式运行ROS LaunchService，启动session_manager、conversation、gesture、motion。节点各自有本地会话副本，启动和停止由SessionControl服务明确协调；不再共享可变Shared对象。
 
 session_manager是会话状态权威，依次配置节点并激活宿主资源。纯语音也走这条链路，模式voice不启动动作规划业务。底层保护不依赖ROS可达；节点退出会使launch关闭整个图，宿主失联watchdog停止语音和释放运动。
 
@@ -70,3 +71,17 @@ python tools/ros2/lifecycle_acceptance.py
 后三项使用本机Foxy及模拟资源，不连接云端、机器人SDK或音频设备。动作制作工具的真机预览属于人工设备操作，不等同于这些离线验证。
 
 `runtime`由原`host_bridge`改名而来；ROS与SDK的进程环境隔离及IPC仍使用，不是Docker遗留依赖。Docker专用代码只保存在archive/docker-humble。正式时间戳采用FP32。
+
+当前 Python 3.8 固定依赖见 requirements.txt；requirement.txt 为兼容文件名。
+environment.yml 创建名为 GuideBot 的 Conda 环境；本机新账户安装见 docs/setup.md。
+安装后驱动 models 链接到各账户 ~/.local/share/guidebot/deps，不进入 Git。
+
+## 四节点内部边界
+
+Conversation只适配ROS语音事件与Runtime资源，不重复实现本地ASR/LLM/TTS。
+Gesture复用独立业务模块GestureService、Planner、Scheduler、Catalog；上下文来源、版本与TTL校验在Gesture入口执行。
+规划在GestureService线程池，调度在独立线程，ROS回调只校验并入队。
+Motion保留独立ExecuteGesture Action；移除仅用于跨进程规划的PlanGestures及其专用消息。
+可信上下文仍通过ROS发布给Motion做执行时校验。
+节点文件为conversation_node.py、gesture_node.py、motion_node.py和session_manager.py。
+运行/故障清理仍由独立runtime负责，不将SDK动态库混入ROS进程。

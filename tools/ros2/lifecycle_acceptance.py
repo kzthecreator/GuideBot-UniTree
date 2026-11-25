@@ -54,9 +54,9 @@ def run(mode, fail=False, kill=False):
             assert session_control(runtime.root,sid,'start',mode)['state'] == 'active'
             until(lambda: 'heartbeat' in operations)
             if kill:
-                # Kill exactly the planner child process; launch must stop the graph.
+                # Kill exactly the gesture child process; launch must stop the graph.
                 import signal
-                runtime.signal_node('planner', signal.SIGTERM)
+                runtime.signal_node('gesture', signal.SIGTERM)
                 until(lambda: proxy.failed.is_set(), seconds=10)
                 assert proxy.error == 'ROS heartbeat expired'
             else:

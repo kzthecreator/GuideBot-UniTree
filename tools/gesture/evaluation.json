@@ -40,5 +40,7 @@
   {"id":"repeat_understood","group":"negative","text":"我已经听清您的问题，展厅在前方。","expected":[]},
   {"id":"emphasis_routine","group":"negative","text":"展厅有三层，每层开放时间相同。","expected":[]},
   {"id":"unknown_action","group":"negative","text":"请机器人点头并抓起这个物体。","expected":[]},
-  {"id":"qa_user_turn_scheduler_base","group":"negative","interaction":"scheduler_base_pose","sequence_id":"qa_flow","turn":2,"interaction_context":{"stage":"user_question","history":["机器人刚发出邀请提问"]},"text":"","expected":[],"scheduler_action":"neutral"}
+  {"id":"qa_user_turn_scheduler_base","group":"negative","interaction":"scheduler_base_pose","sequence_id":"qa_flow","turn":2,"interaction_context":{"stage":"user_question","history":["机器人刚发出邀请提问"]},"text":"","expected":[],"scheduler_action":"neutral"},
+  {"id": "neutral_seen", "group": "seen", "interaction": "return_to_neutral", "text": "我在听，请继续。", "expected": ["neutral"]},
+  {"id": "neutral_unseen", "group": "unseen", "interaction": "return_to_neutral", "text": "我会恢复自然待机。", "expected": ["neutral"]}
 ]

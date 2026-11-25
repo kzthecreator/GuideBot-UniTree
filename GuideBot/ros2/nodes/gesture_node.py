@@ -1,37 +1,23 @@
 from .common import *
 from .state import NodeState
 
-class RemotePlanner:
-    model = 'ROS2/DeepSeek'
-    def __init__(self, node, shared):
-        self.node, self.session_state = node, shared
-        self.client = ActionClient(node, PlanGestures, '/guidebot/gesture/plan',
-                                   callback_group=ReentrantCallbackGroup())
+class OfflinePlanner:
+    """Fixed local planner, selected only by the explicit offline test runtime."""
+    model = 'offline/fixed'
+
+    def __init__(self, catalog):
+        self.catalog = catalog
 
     def plan(self, payload, on_action, cancelled):
-        shared = self.session_state
-        if not self.client.wait_for_server(timeout_sec=5):
-            raise RuntimeError('ROS planner unavailable')
-        request = PlanGestures.Goal()
-        request.input = planning_message(payload, shared.fence.session, shared.fence.generation,
-                                         shared.context_version, shared.context_expiry)
-        def feedback(value):
-            if not cancelled.is_set():
-                on_action(plan_from_message(value.feedback.candidate))
-        goal = wait(self.client.send_goal_async(request, feedback_callback=feedback))
-        if not goal.accepted:
-            raise RuntimeError('ROS planner rejected goal')
-        future = goal.get_result_async()
-        deadline = time.monotonic() + 50
-        while not future.done():
-            if cancelled.wait(.03) or time.monotonic() >= deadline:
-                wait(goal.cancel_goal_async())
-                return {'cancelled': True}
-        result = future.result().result
-        if result.error:
-            raise RuntimeError('ROS planning failed: ' + result.error)
-        return dict(valid_actions=result.valid_actions, invalid_actions=result.invalid_actions,
-                    invalid_reasons=list(result.invalid_reasons), cancelled=result.cancelled)
+        if cancelled.is_set():
+            return {'cancelled': True}
+        plan = self.catalog.validate(
+            {'action':'greet_open', 'start_unit':0, 'arrival_unit':len(payload['units'])-1},
+            payload['eligible_anchor_ids'], payload['targets'], payload['interaction_context'])
+        if not payload['existing_actions'] and not cancelled.is_set():
+            on_action(plan)
+        return {'valid_actions':1, 'invalid_actions':0, 'cancelled':cancelled.is_set()}
+
 
 class ROSMotionExecutor:
     def __init__(self, node, shared):
@@ -48,8 +34,16 @@ class ROSMotionExecutor:
                 goal, self.active = self.active, None
             if goal is not None:
                 wait(goal.cancel_goal_async())
+                # A cancel acknowledgement precedes Motion releasing its busy slot.
+                # Wait for execution to stop before submitting the listening pose.
+                wait(goal.get_result_async())
             # Also covers a completed static-pose goal still holding its end pose.
             self.session_state.host({'op':'stop_motion'})
+            deadline = time.monotonic() + 3
+            while self.session_state.host({'op':'motion_status'}).get('state') != 'idle':
+                if time.monotonic() >= deadline:
+                    raise ValueError('Motion did not become idle after cancellation')
+                time.sleep(.01)
             return {'mode': self.mode, 'cancel_requested': True}
         if kind != 'gesture.command':
             return None
@@ -78,15 +72,16 @@ class ROSMotionExecutor:
         future.add_done_callback(completed)
         return {'mode': self.mode, 'accepted': True, 'job_id': event['job_id']}
 
-class SchedulerNode(Node):
+class GestureNode(Node):
     def __init__(self):
-        super().__init__('gesture_scheduler')
-        self.session_state, self.service = NodeState(self, 'scheduler'), None
+        super().__init__('gesture')
+        self.session_state, self.service = NodeState(self, 'gesture'), None
         self.group = ReentrantCallbackGroup()
-        # Session control is registered by NodeState under the internal scheduler endpoint.
+        # Session control is registered by NodeState under the internal gesture endpoint.
         self.input = self.create_subscription(ConversationInput, '/guidebot/conversation/input',
                                              self.consume, QOS)
-        self.context_sub = self.create_subscription(InteractionContext, '/guidebot/interaction/context',
+        self.contexts = self.create_publisher(InteractionContext, '/guidebot/interaction/context', STATE_QOS)
+        self.context_sub = self.create_subscription(InteractionContext, '/guidebot/interaction/context_input',
                                                    self.accept_context, STATE_QOS)
         self.events = self.create_publisher(GestureEvent, '/guidebot/gesture/events', QOS)
         self.context_timer = self.create_timer(.1, self.expire)
@@ -113,7 +108,8 @@ class SchedulerNode(Node):
                     result.accepted, result.state = True, 'active'
                     return result
                 catalog = Catalog()
-                planner = RemotePlanner(self, self.session_state)
+                planner = (OfflinePlanner(catalog) if os.environ.get('GUIDEBOT_ROS_OFFLINE') == '1'
+                           else Planner(catalog))
                 self.service = GestureService(Path(os.environ['GUIDEBOT_SESSION_DIR']), self.emit,
                             catalog=catalog, planner=planner, execution_mode=request.mode)
                 # Keep timing profiles and policy unchanged; only transport differs.
@@ -122,13 +118,13 @@ class SchedulerNode(Node):
             elif request.command == 'stop':
                 self.session_state.fence.check(request.session_id, request.generation)
                 if self.service:
-                    self.service.close()
+                    self.service.close(wait=False)
                     self.service = None
                 self.session_state.fence.close()
             elif request.command != 'health':
                 raise ValueError('Unknown session command')
             result.accepted = True
-            result.state = 'active' if self.service else 'standby'
+            result.state = 'active' if self.session_state.fence.session else 'standby'
         except Exception as error:
             result.reason = type(error).__name__
             if request.command == 'start':
@@ -162,6 +158,8 @@ class SchedulerNode(Node):
     def accept_context(self, event):
         try:
             self.session_state.fence.check(event.session_id, event.generation)
+            if event.source not in {'operator','scene_config','navigation','task_manager','dialogue_manager'}:
+                raise ValueError('Untrusted context source')
             if event.version <= self.session_state.context_version or event.expires_monotonic <= time.monotonic():
                 raise ValueError('Stale context')
             context = context_from_wire(to_dict(event))
@@ -170,6 +168,7 @@ class SchedulerNode(Node):
             self.session_state.context = context
             self.session_state.context_version = event.version
             self.session_state.context_expiry = event.expires_monotonic
+            self.contexts.publish(event)
         except Exception as error:
             self.emit('gesture.context_rejected', reason=type(error).__name__)
 

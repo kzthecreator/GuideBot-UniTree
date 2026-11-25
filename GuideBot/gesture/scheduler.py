@@ -126,10 +126,10 @@ class Scheduler:
             reply.playback_origin = origin
 
     def request_base_pose(self, reason='interaction_state_change'):
-        """Explicit lifecycle request; never called automatically after speech."""
+        """Request the listening pose after cancelling any speaking action."""
         item = self.catalog.definitions.get('neutral')
         asset = self.catalog.assets.get('neutral')
-        if not item or item.get('llm_selectable', True) or not asset:
+        if not item or not asset:
             raise ValueError('Scheduler base pose is unavailable')
         now = self.clock()
         if self.active and now < self.active['busy_until']:
@@ -143,7 +143,8 @@ class Scheduler:
         self.base_pose_serial += 1
         job = Job(f'base_pose:{self.base_pose_serial}', Plan('neutral', 0, 0, {}),
                   (), 0, status='committed')
-        arrival = now + .5
+        # Leave transport margin above the native minimum 500ms transition.
+        arrival = now + 2.0
         self.active = dict(rid='__scheduler__', job=job, end=None, busy_until=arrival)
         result = self.event('gesture.command', '__scheduler__', job_id=job.id,
                             action='neutral', scheduler_managed=True, simulated=True,
@@ -240,6 +241,8 @@ class Scheduler:
         if self.active and now < self.active['busy_until']:
             return
         for rid, reply in self.replies.items():
+            if reply.playback_origin is None:
+                continue
             for job in reply.jobs:
                 if job.status != 'waiting':
                     continue

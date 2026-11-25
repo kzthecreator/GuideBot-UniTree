@@ -3,15 +3,45 @@
   "hardware": "Unitree G1 EDU+，已录制并完成真机验收的上肢动作库。一个物理动作可以表达多种语义；机器人不具备手指精确指向或抓握能力。",
   "actions": [
     {
-      "id": "neutral", "motion_name": "neutral", "asset_type": "pose", "kind": "pose",
-      "name": "调度器基础姿态", "description": "已录制的双臂自然待机单帧姿态，由 Scheduler 生命周期管理，不是 LLM 语义动作。",
-      "semantic_intents": [], "interaction_functions": [], "example_phrases": [],
-      "when_to_use": "仅由调度器或显式生命周期控制逻辑管理姿态时",
-      "avoid_when": "作为普通对话动作规划输出；每段语音结束后自动插入",
-      "parameters": {}, "required": [], "trigger_source": "scheduler_state_machine",
-      "llm_selectable": false, "context_requirements": ["调度器确认需要恢复基础姿态"],
-      "hold_policy": "until_next_state_change", "post_action_policy": "remain_in_base_pose",
-      "verified": true, "enabled": true
+      "id": "neutral",
+      "motion_name": "neutral",
+      "asset_type": "pose",
+      "kind": "pose",
+      "name": "自然待机姿态",
+      "description": "双臂自然待机，可由模型选择或调度器显式请求。",
+      "semantic_intents": [
+        "恢复自然待机"
+      ],
+      "interaction_functions": [
+        {
+          "function": "return_to_neutral",
+          "description": "恢复自然待机姿态",
+          "example_phrases": [
+            "我在听，请继续。"
+          ],
+          "context_requirements": [
+            "适合自然待机"
+          ],
+          "avoid_when": "不必每句重复"
+        }
+      ],
+      "example_phrases": [
+        "我在听，请继续。"
+      ],
+      "when_to_use": "适合恢复自然待机时",
+      "avoid_when": "无需每段播报结束后重复插入",
+      "parameters": {},
+      "required": [],
+      "trigger_source": "scheduler_state_machine",
+      "llm_selectable": true,
+      "context_requirements": [],
+      "hold_policy": "until_next_state_change",
+      "post_action_policy": "remain_in_base_pose",
+      "verified": true,
+      "enabled": true,
+      "release_conditions": [
+        "action_switch_needed"
+      ]
     },
     {
       "id": "greet_open", "motion_name": "greet_open", "asset_type": "motion", "kind": "pose",

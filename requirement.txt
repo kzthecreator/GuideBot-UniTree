@@ -1,0 +1,2 @@
+# Compatibility spelling; keep the single dependency list in requirements.txt.
+-r requirements.txt

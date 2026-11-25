@@ -203,6 +203,8 @@ class RealtimeSession:
                             response_id=response_id, **details)
 
     def _playback_event(self, kind, **details):
+        if kind == 'playback.ready' and self.gestures is not None:
+            self.gestures.request_base_pose('session_started')
         if kind == "playback.stopped" and self.echo is not None:
             self.echo.stop_reference(time.monotonic())
         rid = details.get("response_id")

@@ -172,7 +172,14 @@ int main() {
     measured[0] = 0.04;
     bool gap_rejected = false;
     try { sequence_library::resolve(definition, library, limits, actual, measured); }
-    catch (const std::runtime_error&) { gap_rejected = true; }
+    catch (const std::runtime_error& error) {
+        gap_rejected = true;
+        const std::string message = error.what();
+        require(message.find("joint=left_shoulder_pitch") != std::string::npos);
+        require(message.find("gap_rad=0.040000") != std::string::npos);
+        require(message.find("actual_rad=0.040000") != std::string::npos);
+        require(message.find("commanded_rad=0.000000") != std::string::npos);
+    }
     require(gap_rejected);
 
     motion_interrupt::Player player(actual);

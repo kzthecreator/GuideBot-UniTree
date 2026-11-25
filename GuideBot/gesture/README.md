@@ -1,20 +1,46 @@
-> 2026-11-24：正式入口已统一为根main.py，由ROS2管理。节点适配在GuideBot/ros2/nodes，宿主执行适配在GuideBot/runtime/workers。下文历史实验结论仍有参考价值，旧入口不再有效。
+# 动作规划与执行
 
-# 上肢动作规划与真实动作库适配
+## 当前规则（2026-11-25）
 
-## 当前集成（2026-11-17）
+唯一正式入口为仓库根目录 `main.py`，安装见 `docs/setup.md`。
+`--gestures` 或 `--gesture-backend simulated` 使用模拟动作；`--gesture-backend unitree` 使用真机上肢。
+两种动作模式均使用真实 StepFun 语音和 DeepSeek 规划；离线验收工具使用显式固定规划器。
 
-真机初始联动测试暂用即时调度：`GUIDEBOT_GESTURE_EXECUTION_MODE=robot` 时，规划动作通过校验后直接下发，按当前时刻起 2 秒到位，不等待 FunASR 或语音锚点。动作仍受上下文、已验收资产、机器人 ownership/state 和上半身占用约束；播报结束或打断仍可停止动作。`gesture.jsonl` 的 `timing_mode=immediate` 标记此模式。需要恢复原有语音对齐实验时显式设置 `GUIDEBOT_GESTURE_TIMING_MODE=aligned`；模拟模式默认保留原对齐调度。
+- 10 个录制动作全部可供 LLM 选择，包括 neutral。
+- 动作声明与示例在 `assets/motion/actions.json`、`conversation-few-shots.json`。
+- 上下文作为语义建议，不作为动作选择的前置门禁；来源、版本和 TTL 校验仍保留。
+- Gesture 节点内部调用 `GestureService → Planner / Scheduler`，规划不再使用 ROS Action。
+- 运动由独立 Motion 节点通过 `ExecuteGesture` 调用 Runtime 原生资源。
 
-底层位于 drivers/unitree_motion/，资产位于 assets/motion/。config/motion_catalog.json 含22项，poses、motions与metadata均在资产目录，通过驱动assets.py校验。10 项录制资产数据有效且已批准；9 项可由 LLM 选择，neutral 留给 Scheduler 管理。当前验证见 docs/experiments/fork-logic-preserved-layout-20261124.md。
+## 倾听与说话
 
-assets/motion/actions.json 的每个 ID 等于物理 motion_name，一个物理动作包含多个 interaction_functions；每项说明社交功能、典型表达、上下文条件和禁用场景，semantic_intents 仅作短索引。kind 是规划类型，asset_type 是物理文件类型；单帧物理 motion 按 pose 规划，只有 greet_wave、invite_follow、emphasize_once 是多帧动态动作。neutral 保留在注册表并由调度器显式管理，llm_selectable=false；不会在每段话后自动插入。原 wave、point、hold_object、present_sweep、open_arms、compare_sides、frame_object、emphasis_beat 抽象 ID 均已移除。assets/motion/conversation-few-shots.json 覆盖每个动作的原始、扩展和易混淆场景及负例，并示范顺序组合；tools/gesture/evaluation.json 按 seen、unseen、negative 分类。
+模式由本地播放事件决定。初始倾听，音频资源就绪后请求 neutral。
+`playback.started` 进入说话，才允许 LLM 队列执行；文本可提前规划。
+真机默认 immediate：不等待字级对齐，但仍等待播放开始。
+模拟默认 aligned；真机可显式设置 `GUIDEBOT_GESTURE_TIMING_MODE=aligned`。
+确认打断、停止或 `playback.drained_estimated` 会取消当前回复并请求 neutral。
+`response.done` 仅表示云端生成结束。播完为时长估计，没有设备结束回执。
+旧回复的停止和迟到规划不能恢复旧动作或打断新回复。
 
-调用链：播报文本和交互上下文 → DeepSeek 先判断交互目的，再规划 action 与双文字锚点 → catalog.py 校验真实动作和可信结构化上下文 → Scheduler 发 gesture.command → motion_executor.py 使用 asset_type 定位已验收资产并映射 Sequence → drivers/unitree_motion/client.py 的 UNIX socket 客户端 → motion_library_server → G1。单个回复可按锚点顺序安排多个阶段动作；同一物理 ID 不会因多个功能标签重复触发。GestureService.set_interaction_context() 可传入交互阶段、历史和已知事实，并应由状态机同时传入 navigation/scene/asr/dialogue/task 状态；缺少硬门禁字段时动作会被拒绝。通过 visitor_responded、task_completed、new_valid_input、display_target_changed 等布尔事件字段释放匹配姿态；Scheduler 默认最大保持 30 秒，可在 Scheduler 构造时配置。释放姿态只清除 Scheduler 的保持状态并发出 gesture.released，不自动插入 neutral；是否请求基础姿态由状态机显式决定。多帧动作使用 transition_ms 和 duration_ms；单帧只使用 transition_ms。
+## 执行边界与已知问题
 
-默认 GUIDEBOT_GESTURE_EXECUTION_MODE=simulation，仅记录转换结果。`conversation.py` 默认仍纯语音，`--gestures`启用模拟规划，`--gesture-backend unitree`启用真实执行。标准语音保持LocalVQE v1.2→AGC2，gate关闭。显式设置为 robot 后，会话入口在第一次 Enter 后自动启动运动服务、接管上半身，并在会话结束时停止动作、释放控制权和退出服务。已有运动服务时拒绝启动。关节限位已依据宇树官方 G1 29 自由度 URDF 核对名称、顺序及全部录制帧，并记录来源与核验范围；这不是现场标定或碰撞测试。打断时对本适配器已提交动作发送原服务的“停止”，不自动回 neutral。现场仍需验证实际到位误差和资源冲突；模拟测试不代表真机验证。本机配置与步骤见 docs/experiments/fork-logic-preserved-layout-20261124.md。
+资产批准、格式、参数、时长、会话 fence、控制权、执行互斥和关节限位仍保留。
+原生序列开始前，14 个手臂关节最大实测／指令差大于 0.03 rad 时拒绝，包括 neutral。
+现场左肩约 0.0357 rad 偏差已造成 greeting 后保持原姿态，该问题尚未修复。
+原生 idle 与 ROS accepted 不代表实测关节已经到位。
+
+接管前静止等待、腿／臂／gyro速度、腰绝对角及渐入后姿态偏差门禁已取消。
+普通持有控制期间不再因腿速或腰／臂跟踪偏差自动撤权。
+lowstate 新鲜度、有限姿态、R1+R2、信号中断、循环延迟、服务健康仍检查。
+正常释放回位还保留腿速与腰／臂跟踪偏差检查，不等同于 neutral 请求。
+所有真机运行须由用户 Enter 开始和结束。
+
+最新状态见 `docs/AGENT_HANDOFF.md`，四节点验收见 `docs/experiments/four-core-nodes-20261125.md`。
 
 ## 历史模拟方案（2026-11-15）
+
+以下章节为历史实验记录。旧动作 ID、入口和调度描述不作为当前运行规范。
+
 
 离线回放只输出模拟命令；正式unitree模式由ROS运动网关调用宿主执行器控制G1上肢。FunASR使用 `drivers/timestamps/runtime.py`，新动作逻辑均在本目录。语音不会等待 DeepSeek 或时间戳。
 

@@ -1,0 +1,9 @@
+name: GuideBot
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.8.20
+  - pip=24.3.1
+  - setuptools=75.3.0
+  - wheel=0.45.1

@@ -184,7 +184,7 @@ def load_knowledge(directory=AGENT_DIRECTORY / "knowledge", *, state_dir=None):
     state = _read_manifest(_manifest_path(directory, state_dir), directory)
     if not state.get("ready") or not state.get("vector_store_id") or not state.get("files"):
         raise RuntimeError("No successfully synchronized knowledge base. Add documents and run "
-                           "knowledge.py, or start conversation.py with --sync-knowledge.")
+                           "python -m GuideBot.conversation.knowledge, or python main.py --sync-knowledge.")
     return state["vector_store_id"]
 
 

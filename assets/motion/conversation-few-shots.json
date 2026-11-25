@@ -34,5 +34,7 @@
   {"text":"假设我们邀请大家体验，但活动区今天并未开放。","targets":[],"actions":[]},
   {"text":"机器人可以抓取展品并递给访客。","targets":[],"actions":[]},
   {"text":"请精确指出左上方第三个按钮。","targets":[],"actions":[]},
-  {"text":"机器人说“请稍候”这句话出现在历史录音里。","targets":[],"actions":[]}
+  {"text":"机器人说“请稍候”这句话出现在历史录音里。","targets":[],"actions":[]},
+  {"text": "我在听，请继续。", "targets": [], "actions": [{"action": "neutral", "start_unit": 0, "arrival_unit": 1}]},
+  {"text": "我会恢复自然待机。", "targets": [], "actions": [{"action": "neutral", "start_unit": 0, "arrival_unit": 1}]}
 ]

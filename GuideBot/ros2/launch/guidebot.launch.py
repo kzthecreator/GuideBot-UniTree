@@ -13,7 +13,7 @@ def generate_launch_description():
         cmd=[sys.executable, '-m', 'GuideBot.ros2.nodes.runner', '--node', role,
              '--ros-args', '--params-file', config],
         name='guidebot_'+role, output='screen', sigterm_timeout='10', sigkill_timeout='10')
-        for role in ('session','planner','scheduler','interaction','motion','bridge')]
+        for role in ('session','conversation','gesture','motion')]
     handlers = [RegisterEventHandler(OnProcessExit(target_action=process,
         on_exit=[EmitEvent(event=Shutdown(reason='Required GuideBot node exited'))]))
         for process in processes]
