@@ -133,7 +133,8 @@ class Planner:
                             stats['first_content_seconds'] = time.monotonic() - started
                         for row in stream.feed(content):
                             try:
-                                plan = self.catalog.validate(row, payload['eligible_anchor_ids'], payload['targets'])
+                                plan = self.catalog.validate(row, payload['eligible_anchor_ids'], payload['targets'],
+                                                             payload.get('interaction_context'))
                             except ValueError as error:
                                 stats['invalid_actions'] += 1
                                 stats['invalid_reasons'].append(str(error))

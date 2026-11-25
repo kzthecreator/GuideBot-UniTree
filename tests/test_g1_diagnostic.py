@@ -9,8 +9,8 @@ import wave
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'GuideBot/conversation'))
-from audio import AudioDiagnostic, StreamingSpeaker
-from stepfun import RealtimeSession
+from GuideBot.conversation.audio import AudioDiagnostic, StreamingSpeaker
+from GuideBot.conversation.stepfun import RealtimeSession
 
 
 class DiagnosticTests(unittest.TestCase):
@@ -36,7 +36,7 @@ class DiagnosticTests(unittest.TestCase):
                                       aec=False, mic_gate_dbfs=None)
             session.audio_diagnostic = AudioDiagnostic(root, session.started_at)
             pcm = b'\x23\x01' * 2560
-            with patch('stepfun.microphone_packets', return_value=iter([pcm])):
+            with patch('GuideBot.conversation.stepfun.microphone_packets', return_value=iter([pcm])):
                 session._capture()
             session.audio_diagnostic.close()
             with wave.open(str(root / 'microphone-16k.wav')) as track:
@@ -67,7 +67,7 @@ class DiagnosticTests(unittest.TestCase):
                                    on_reference=reference)
         speaker.feed('response', b'\x01\x00' * 4800)
         speaker.finish('response')
-        with patch('audio.load_audio_sdk', return_value=(lambda *_: None, Client)):
+        with patch('GuideBot.conversation.playback.load_audio_sdk', return_value=(lambda *_: None, Client)):
             speaker._run()
         self.assertFalse(errors)
         self.assertEqual(recorded[0][0], sent[0])

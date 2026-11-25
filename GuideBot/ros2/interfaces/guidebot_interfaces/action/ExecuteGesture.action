@@ -1,0 +1,19 @@
+string session_id
+uint64 generation
+string response_id
+string job_id
+string action
+float64 start_monotonic
+float64 arrival_monotonic
+bool has_duration
+float64 duration_s
+bool scheduler_managed
+---
+bool success
+string outcome
+string reason
+bool estimated
+bool holds_end_pose
+---
+string phase
+bool estimated

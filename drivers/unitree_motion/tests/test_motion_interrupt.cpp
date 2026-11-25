@@ -1,4 +1,4 @@
-#include "../motion_interrupt.hpp"
+#include "motion_interrupt.hpp"
 
 #include <cmath>
 #include <stdexcept>

@@ -4,8 +4,6 @@
 import argparse
 import getpass
 import json
-import os
-import socket
 import subprocess
 import sys
 import time
@@ -13,21 +11,14 @@ import uuid
 from pathlib import Path
 
 
-SOCKET_NAME = "\0g1_arm_motion_library"
-REPO = Path(__file__).resolve().parents[2]
-ROOT = REPO / "assets/motion"
-TOOLS = REPO / "tools/motion"
-DRIVER = REPO / "drivers/unitree_motion"
-BUILD_DIR = Path(os.environ.get("GUIDEBOT_MOTION_BUILD_DIR",
-                                Path.home() / ".local/share/guidebot/deps/motion/build-reorganized"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from drivers.unitree_motion.client import request, SOCKET_NAME
 
-
-sys.path.insert(0, str(REPO))
-from drivers.unitree_motion.client import request
+from drivers.unitree_motion.paths import ASSETS as ROOT, BUILD, LIMITS
 
 
 def preview_server_args(args, socket_name):
-    command = [str(BUILD_DIR / "motion_library_server"), "--allow-preview",
+    command = [str(BUILD / "motion_library_server"), "--allow-preview",
                "--socket-name", socket_name[1:],
                "--limits", str(args.limits), "--catalog", str(args.catalog),
                "--dir", str(args.dir), "--poses", str(args.poses),
@@ -71,7 +62,7 @@ def confirm_preview(args):
     if status == "approved":
         print("动作已在动作库中，无需重复确认")
         return
-    common = [sys.executable, str(TOOLS / "motion_library.py"),
+    common = [sys.executable, str(Path(__file__).with_name("motion_library.py")),
               "--dir", str(args.dir), "--poses", str(args.poses),
               "--metadata", str(args.metadata), "--catalog", str(args.catalog)]
     if status == "draft":
@@ -93,7 +84,7 @@ def confirm_preview(args):
 
 def preview_once(args):
     check = subprocess.run(
-        [str(BUILD_DIR / "motion_library_server"), "--check-preview-request", "-",
+        [str(BUILD / "motion_library_server"), "--check-preview-request", "-",
          "--limits", str(args.limits), "--catalog", str(args.catalog),
          "--dir", str(args.dir), "--poses", str(args.poses),
          "--metadata", str(args.metadata)],
@@ -215,7 +206,7 @@ def main():
     sequence = commands.add_parser("sequence", help="发送 YAML 高层动作序列")
     sequence.add_argument("--file", type=Path, required=True, help="Sequence YAML 文件")
     sequence.add_argument("--check", action="store_true", help="只做离线规划校验，不连接机器人")
-    sequence.add_argument("--limits", type=Path, default=DRIVER / "config/arm_joint_limits.json")
+    sequence.add_argument("--limits", type=Path, default=LIMITS)
     sequence.add_argument("--catalog", type=Path, default=ROOT / "config/motion_catalog.json")
     sequence.add_argument("--dir", type=Path, default=ROOT / "motions")
     sequence.add_argument("--poses", type=Path, default=ROOT / "poses")
@@ -227,7 +218,7 @@ def main():
     preview_mode.add_argument("--check", action="store_true", help="只做离线校验，不连接机器人")
     preview_mode.add_argument("--offline", action="store_true", help="离线演练完整流程，不连接机器人")
     preview_mode.add_argument("--send", action="store_true", help="发送给已运行的试播服务端")
-    preview.add_argument("--limits", type=Path, default=DRIVER / "config/arm_joint_limits.json")
+    preview.add_argument("--limits", type=Path, default=LIMITS)
     preview.add_argument("--catalog", type=Path, default=ROOT / "config/motion_catalog.json")
     preview.add_argument("--dir", type=Path, default=ROOT / "motions")
     preview.add_argument("--poses", type=Path, default=ROOT / "poses")
@@ -272,7 +263,7 @@ def main():
                 raise ValueError("序列YAML顶层必须是对象")
             if args.check:
                 result = subprocess.run(
-                    [str(BUILD_DIR / "motion_library_server"), "--check-sequence", "-",
+                    [str(BUILD / "motion_library_server"), "--check-sequence", "-",
                      "--limits", str(args.limits), "--catalog", str(args.catalog),
                      "--dir", str(args.dir), "--poses", str(args.poses),
                      "--metadata", str(args.metadata)],
@@ -302,14 +293,7 @@ def main():
             payload = {"接管": True}
         else:
             payload = {"退出": True}
-        encoded = (json.dumps(payload, ensure_ascii=False, allow_nan=False) + "\n").encode("utf-8")
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-            client.settimeout(3.0)
-            client.connect(SOCKET_NAME)
-            client.sendall(encoded)
-            client.shutdown(socket.SHUT_WR)
-            response = client.makefile(encoding="utf-8").readline()
-        result = json.loads(response)
+        result = request(SOCKET_NAME, payload)
         if result.get("ok"):
             if args.command == "status":
                 print(json.dumps(result["status"], ensure_ascii=False, indent=2))
@@ -318,8 +302,6 @@ def main():
                 if result.get("warning"):
                     print("注意：" + result["warning"], file=sys.stderr)
             return 0
-        print("指令被拒绝：" + result.get("error", "未知错误"), file=sys.stderr)
-        return 1
     except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"发送失败：{error}", file=sys.stderr)
         return 1

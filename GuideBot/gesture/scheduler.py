@@ -1,10 +1,9 @@
-"""Resolve text anchors and dispatch immutable commands to an optional executor."""
+"""Resolve mutable text anchors and dispatch immutable simulated commands."""
 from dataclasses import dataclass, field
 import math
-import queue
 import time
 
-from .catalog import units_for
+from .catalog import Plan, units_for
 
 
 @dataclass
@@ -29,16 +28,34 @@ class Reply:
 
 
 class Scheduler:
-    def __init__(self, catalog, emit, clock=time.monotonic, dispatch_lead=.03, executor=None):
+    def __init__(self, catalog, emit, clock=time.monotonic, dispatch_lead=.03,
+                 pose_max_hold_s=30., immediate=False):
+        if type(pose_max_hold_s) not in (int, float) or not math.isfinite(pose_max_hold_s) or pose_max_hold_s <= 0:
+            raise ValueError('pose_max_hold_s must be a positive finite Scheduler setting')
         self.catalog, self.emit, self.clock = catalog, emit, clock
-        self.executor = executor
-        self.execution_events = queue.SimpleQueue()
-        if executor is not None:
-            executor.set_listener(lambda kind, **details: self.execution_events.put((kind, details)))
         self.dispatch_lead = dispatch_lead
+        self.pose_max_hold_s = float(pose_max_hold_s)
+        self.immediate = immediate
         self.replies = {}
         self.closed = set()
         self.active = None
+        self.base_pose_serial = 0
+
+    def release_active(self, condition):
+        """Release an active pose when a trusted lifecycle condition occurs."""
+        active = self.active
+        if not active or self.catalog.definitions.get(active['job'].plan.action, {}).get('kind') != 'pose':
+            return False
+        item = self.catalog.definitions.get(active['job'].plan.action, {})
+        if condition not in item.get('release_conditions', []):
+            return False
+        rid = active['rid']
+        job = active['job']
+        job.status = 'completed'
+        self.active = None
+        self.event('gesture.released', rid, job_id=job.id, action=job.plan.action,
+                   condition=condition)
+        return True
 
     def reply(self, rid):
         if rid in self.closed:
@@ -46,7 +63,7 @@ class Scheduler:
         return self.replies.setdefault(rid, Reply())
 
     def event(self, kind, rid, **details):
-        self.emit(kind, response_id=rid, **details)
+        return self.emit(kind, response_id=rid, **details)
 
     def text(self, rid, text):
         reply = self.reply(rid)
@@ -108,6 +125,37 @@ class Scheduler:
         if reply is not None and reply.playback_origin is None:
             reply.playback_origin = origin
 
+    def request_base_pose(self, reason='interaction_state_change'):
+        """Explicit lifecycle request; never called automatically after speech."""
+        item = self.catalog.definitions.get('neutral')
+        asset = self.catalog.assets.get('neutral')
+        if not item or item.get('llm_selectable', True) or not asset:
+            raise ValueError('Scheduler base pose is unavailable')
+        now = self.clock()
+        if self.active and now < self.active['busy_until']:
+            return self.event('gesture.skipped', '__scheduler__', action='neutral',
+                              reason='upper_body_busy')
+        if asset['metadata']['status'] != 'approved':
+            raise ValueError('Scheduler base pose is not approved')
+        if self.active:
+            self.event('gesture.superseded', self.active['rid'],
+                       job_id=self.active['job'].id)
+        self.base_pose_serial += 1
+        job = Job(f'base_pose:{self.base_pose_serial}', Plan('neutral', 0, 0, {}),
+                  (), 0, status='committed')
+        arrival = now + .5
+        self.active = dict(rid='__scheduler__', job=job, end=None, busy_until=arrival)
+        result = self.event('gesture.command', '__scheduler__', job_id=job.id,
+                            action='neutral', scheduler_managed=True, simulated=True,
+                            start_monotonic=now, arrival_monotonic=arrival,
+                            compressed=False, reason=reason)
+        if isinstance(result, dict) and result.get('execution_error'):
+            job.status = 'skipped'
+            self.active = None
+            self.event('gesture.skipped', '__scheduler__', job_id=job.id,
+                       reason='execution_rejected', detail=result['execution_error'])
+        return result
+
     def discard_request(self, rid, request_id):
         reply = self.replies.get(rid)
         if reply:
@@ -116,32 +164,21 @@ class Scheduler:
                     job.status = 'cancelled'
                     self.event('gesture.cancelled', rid, job_id=job.id, reason='planner_failed')
 
-    def _execution_updates(self):
-        terminal = {'execution.rejected': 'rejected', 'execution.driver_rejected': 'rejected',
-                    'execution.cancelled': 'cancelled', 'execution.driver_cancelled': 'cancelled',
-                    'execution.driver_completed': 'completed', 'execution.fault': 'failed'}
-        while True:
-            try:
-                kind, details = self.execution_events.get_nowait()
-            except queue.Empty:
-                return
-            if kind not in terminal:
-                continue
-            reply = self.replies.get(details.get('response_id'))
-            if reply:
-                for job in reply.jobs:
-                    if job.id == details.get('job_id'):
-                        job.status = terminal[kind]
-                        if self.active and self.active['job'] is job:
-                            self.active = None
-
     def tick(self):
-        self._execution_updates()
         now = self.clock()
-        if self.executor is None and self.active and self.active['end'] is not None and now >= self.active['end']:
+        if self.active and self.active.get('release_deadline') is not None and now >= self.active['release_deadline']:
+            rid, job = self.active['rid'], self.active['job']
+            job.status = 'completed'
+            self.active = None
+            self.event('gesture.released', rid, job_id=job.id,
+                       action=job.plan.action, condition='maximum_hold_time')
+        if self.active and self.active['end'] is not None and now >= self.active['end']:
             self.event('gesture.completed', self.active['rid'], job_id=self.active['job'].id)
             self.active['job'].status = 'completed'
             self.active = None
+        if self.immediate:
+            self._tick_immediate(now)
+            return
         ready = []
         for rid, reply in self.replies.items():
             for job in reply.jobs:
@@ -170,14 +207,11 @@ class Scheduler:
             arrival_wall = reply.playback_origin + arrival
             start_wall = reply.playback_origin + start
             if now >= arrival_wall:
-                if self.executor is None or not self.executor.allow_late:
-                    job.status = 'skipped'
-                    self.event('gesture.skipped', rid, job_id=job.id, reason='arrival_passed',
-                               lateness_s=now-arrival_wall)
-                    continue
-                self.event('gesture.late', rid, job_id=job.id, lateness_s=now-arrival_wall,
-                           policy='preserve_full_duration')
-            if self.active and (self.executor is not None or now < self.active['busy_until']):
+                job.status = 'skipped'
+                self.event('gesture.skipped', rid, job_id=job.id, reason='arrival_passed',
+                           lateness_s=now-arrival_wall)
+                continue
+            if self.active and now < self.active['busy_until']:
                 job.status = 'skipped'
                 self.event('gesture.skipped', rid, job_id=job.id, reason='upper_body_busy')
                 continue
@@ -186,20 +220,53 @@ class Scheduler:
                 self.event('gesture.superseded', self.active['rid'], job_id=self.active['job'].id)
             job.status = 'committed'
             duration = job.plan.parameters.get('duration_s')
+            item = self.catalog.definitions[job.plan.action]
+            is_pose = item['kind'] == 'pose'
             self.active = dict(rid=rid, job=job, end=arrival_wall+duration if duration is not None else None,
+                               release_deadline=(arrival_wall+self.pose_max_hold_s
+                                                 if is_pose and item.get('release_conditions') else None),
                                busy_until=arrival_wall+(duration or 0))
-            command = dict(response_id=rid, job_id=job.id, simulated=self.executor is None or self.executor.simulated,
-                           **job.plan.as_dict(), start_audio_s=start, arrival_audio_s=arrival,
-                           start_monotonic=max(now, start_wall), arrival_monotonic=arrival_wall,
-                           compressed=now > start_wall, alignment_version=reply.version)
-            self.event('gesture.command', rid, **{k: v for k, v in command.items() if k != 'response_id'})
-            if self.executor is not None:
-                self.executor.submit(dict(command, start_monotonic=start_wall))
+            result = self.event('gesture.command', rid, job_id=job.id, simulated=True,
+                                **job.plan.as_dict(), start_audio_s=start, arrival_audio_s=arrival,
+                                start_monotonic=max(now, start_wall), arrival_monotonic=arrival_wall,
+                                compressed=now > start_wall, alignment_version=reply.version)
+            if isinstance(result, dict) and result.get('execution_error'):
+                job.status = 'skipped'
+                self.active = None
+                self.event('gesture.skipped', rid, job_id=job.id,
+                           reason='execution_rejected', detail=result['execution_error'])
 
+    def _tick_immediate(self, now):
+        if self.active and now < self.active['busy_until']:
+            return
+        for rid, reply in self.replies.items():
+            for job in reply.jobs:
+                if job.status != 'waiting':
+                    continue
+                if self.active:
+                    self.active['job'].status = 'completed'
+                    self.event('gesture.superseded', self.active['rid'], job_id=self.active['job'].id)
+                arrival = now + 2.0
+                duration = job.plan.parameters.get('duration_s')
+                item = self.catalog.definitions[job.plan.action]
+                job.status = 'committed'
+                self.active = dict(rid=rid, job=job,
+                                   end=arrival+duration if duration is not None else None,
+                                   release_deadline=(arrival+self.pose_max_hold_s
+                                                     if item['kind'] == 'pose' and item.get('release_conditions') else None),
+                                   busy_until=arrival+(duration or 0))
+                result = self.event('gesture.command', rid, job_id=job.id,
+                                    **job.plan.as_dict(), simulated=True,
+                                    start_monotonic=now, arrival_monotonic=arrival,
+                                    timing_mode='immediate')
+                if isinstance(result, dict) and result.get('execution_error'):
+                    job.status = 'skipped'
+                    self.active = None
+                    self.event('gesture.skipped', rid, job_id=job.id,
+                               reason='execution_rejected', detail=result['execution_error'])
+                return
 
     def cancel(self, rid, reason='interrupted'):
-        if self.executor is not None:
-            self.executor.cancel(rid, reason)
         self.closed.add(rid)
         reply = self.replies.pop(rid, None)
         if reply:
@@ -209,4 +276,4 @@ class Scheduler:
                     self.event('gesture.cancelled', rid, job_id=job.id, reason=reason)
         if self.active and self.active['rid'] == rid:
             self.active = None
-            self.event('gesture.reset', rid, simulated=self.executor is None or self.executor.simulated, reason=reason)
+            self.event('gesture.reset', rid, simulated=True, reason=reason)

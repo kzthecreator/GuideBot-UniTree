@@ -7,7 +7,8 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[3] / "tools/motion/motion_library.py"
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = PROJECT_ROOT / "tools/motion/motion_library.py"
 spec = importlib.util.spec_from_file_location("motion_library", SCRIPT)
 motion_library = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(motion_library)
@@ -22,7 +23,7 @@ class MotionLibraryTest(unittest.TestCase):
         self.poses = self.root / "poses"
         self.metadata = self.root / "metadata"
         self.catalog = self.root / "catalog.json"
-        source = SCRIPT.parents[2] / "assets/motion/config" / "motion_catalog.json"
+        source = PROJECT_ROOT / "assets/motion/config/motion_catalog.json"
         self.catalog.write_bytes(source.read_bytes())
 
     def motion(self, name="neutral", row=None):

@@ -11,7 +11,7 @@ import numpy as np
 import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'GuideBot/conversation'))
-from timestamps import StreamingTimestamps, text_units
+from drivers.timestamps.runtime import StreamingTimestamps, text_units
 
 ROOT=Path(os.environ.get('GUIDEBOT_ALIGNMENT_DATA', Path.home()/'.local/state/guidebot/conversation/phrase-alignment/f1b32726-cda0-453a-8c76-ed204c6acb0f'))
 OUT=ROOT/'live-replay-validated'

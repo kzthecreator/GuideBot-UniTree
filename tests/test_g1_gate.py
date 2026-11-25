@@ -6,8 +6,8 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'GuideBot/conversation'))
-from audio import LevelGate, StreamingSpeaker
-from stepfun import RealtimeSession
+from GuideBot.conversation.audio import LevelGate, StreamingSpeaker
+from GuideBot.conversation.stepfun import RealtimeSession
 
 def frame(amplitude):
     return np.full(320, amplitude, dtype='<i2').tobytes()
@@ -40,7 +40,7 @@ class GateTests(unittest.TestCase):
         s.echo = Mock()
         s.speaker.is_playing = Mock(return_value=True)
         s.echo.process.return_value = frame(100)*8
-        with patch('stepfun.microphone_packets',return_value=iter([frame(3000)*8])):
+        with patch('GuideBot.conversation.stepfun.microphone_packets',return_value=iter([frame(3000)*8])):
             s._capture()
         queued = b''.join(list(s.input_queue.queue))
         self.assertGreater(len(queued),0)
@@ -58,7 +58,7 @@ class GateTests(unittest.TestCase):
     def test_session_only_gates_during_playback(self):
         s = RealtimeSession('dummy',Path('/tmp/unused-gate'),mic_gate_dbfs=-35)
         s.speaker.is_playing = Mock(side_effect=[False,True,False])
-        with patch('stepfun.microphone_packets',return_value=iter([frame(100)*8]*3)):
+        with patch('GuideBot.conversation.stepfun.microphone_packets',return_value=iter([frame(100)*8]*3)):
             s._capture()
         self.assertEqual(s.gate.stats['muted_frames'],8)
         self.assertEqual(s.gate.stats['bypassed_frames'],16)
@@ -67,14 +67,14 @@ class GateTests(unittest.TestCase):
     def test_playback_state_ignores_cloud_buffer_and_covers_tail(self):
         speaker = StreamingSpeaker(threading.Event(), lambda error: None)
         speaker.feed('not-yet-submitted', frame(100))
-        with patch('audio.time.monotonic', return_value=10):
+        with patch('GuideBot.conversation.audio.time.monotonic', return_value=10):
             self.assertFalse(speaker.is_playing())
             speaker._submitting = True
             self.assertTrue(speaker.is_playing())
             speaker._submitting = False
             speaker._playback_until = 9.9
             self.assertTrue(speaker.is_playing())
-        with patch('audio.time.monotonic', return_value=10.2):
+        with patch('GuideBot.conversation.audio.time.monotonic', return_value=10.2):
             self.assertFalse(speaker.is_playing())
 
     def test_invalid_threshold_rejected(self):
@@ -86,7 +86,7 @@ class GateTests(unittest.TestCase):
         speaker = StreamingSpeaker(threading.Event(), lambda error: None)
         speaker._submitting = True
         speaker._playback_until = 100
-        with patch('audio.time.monotonic', return_value=10):
+        with patch('GuideBot.conversation.audio.time.monotonic', return_value=10):
             self.assertTrue(speaker.is_playing())
             speaker.interrupt()
             self.assertFalse(speaker.is_playing())
@@ -110,7 +110,7 @@ class GateTests(unittest.TestCase):
         client.PlayStream.side_effect = play
         speaker = StreamingSpeaker(threading.Event(), errors.append, chunk_ms=200)
         pcm = np.full(6000,1000,dtype='<i2').tobytes()
-        with patch('audio.load_audio_sdk',return_value=(lambda *_:None,lambda:client)):
+        with patch('GuideBot.conversation.playback.load_audio_sdk',return_value=(lambda *_:None,lambda:client)):
             try:
                 self.assertTrue(speaker.start())
                 speaker.feed('old',pcm)

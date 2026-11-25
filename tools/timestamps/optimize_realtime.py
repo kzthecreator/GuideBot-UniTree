@@ -16,7 +16,7 @@ import numpy as np
 import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from GuideBot.conversation.timestamps import MonotonicBackend, ResponseAlignment, text_units
+from drivers.timestamps.runtime import MonotonicBackend, ResponseAlignment, text_units
 
 
 def load_cases(root):

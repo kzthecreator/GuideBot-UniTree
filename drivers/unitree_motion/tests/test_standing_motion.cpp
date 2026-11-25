@@ -1,4 +1,4 @@
-#include "../standing_motion.hpp"
+#include "standing_motion.hpp"
 
 #include <cmath>
 #include <stdexcept>

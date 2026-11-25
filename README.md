@@ -5,36 +5,36 @@ LocalVQE 与 AGC2 增强、知识检索，以及可选的文字时间戳、动�
 
 ```bash
 conda activate GuideBot
-source /etc/profile.d/guidebot-audio.sh
-python GuideBot/conversation/conversation.py
+python main.py
 # 不保存音频，仍保存事件、错误和会话结果
-python GuideBot/conversation/conversation.py --no-diagnose-audio
-# 可选时间戳、动作规划（当前动作执行仍为模拟）
-python GuideBot/conversation/conversation.py --gestures
+python main.py --no-diagnose-audio
+# 可选时间戳、动作规划（模拟执行）
+python main.py --gestures
 ```
 
 按 Enter 开始，再按 Enter 结束。正常入口仅使用 StepFun。
-启动需要本机 SDK、模型、GuideBot 环境和已同步知识库，不是全新机器的一键安装器。
+启动需要本机 Foxy、SDK、模型、Python3.8 GuideBot 环境和已同步知识库，不是全新机器的一键安装器。
 
 ## 边说边动（手动真机试验）
 
-终端一启动运动服务：
+先开启 G1 运控模式并关闭旧运动服务。在仓库根目录使用单终端：
 
 ```bash
-python tools/motion/serve.py --skip-joint-limits
+python main.py --gesture-backend unitree
 ```
 
-按提示输入 `RUN`；Ready后在终端二启动会话：
-
-```bash
-python GuideBot/conversation/conversation.py --gesture-backend unitree --skip-joint-limits
-```
-
-按Enter开始，结束时取消动作并释放上肢。两端显式使用相同的跳过限位选项，不改写限位配置。
+按 Enter 后自动启动运动子进程、接管上肢并连接语音；再次 Enter 停止并释放。
+不要同时手动运行运动服务。原 `--skip-joint-limits` 参数已移除，使用 fork 的 URDF 范围审计配置。
 需配置 `STEP_SECRET` 和 `DEEPSEEK_API_KEY`；默认录音保留。
-真实后端开放8个已有approved轨迹，迟到时完整执行而不压缩，属于尽力同步。
-不加参数仍是纯语音；仅加 `--gestures` 仍是模拟。
-完整步骤、动作名单与日志判断见 [真机联动说明](docs/experiments/conversation-unitree-20261121.md)。
+动作采用 fork b84ff1f 的物理语义、上下文门禁、Sequence 下发和生命周期。
+真实模式默认 `immediate`，计划到达后安排动作，不等待文字对齐；
+可显式设置 `GUIDEBOT_GESTURE_TIMING_MODE=aligned` 使用 fork 的对齐模式。
+10个有效资产中9个供LLM选择，neutral只由状态机显式请求。
+无可信场景、导航、澄清或任务状态时，对应动作会被门禁拒绝。
+
+不加参数仍是原来的纯语音，`--gestures` 为模拟动作。
+原有目录与 LocalVQE v1.2 → AGC2 语音完整保留。
+详细适配与验证见 [fork逻辑接入](docs/experiments/fork-logic-preserved-layout-20261124.md)。
 
 ## 固定语音前端
 
@@ -56,10 +56,9 @@ AGC2 动态库可用 `GUIDEBOT_AGC2_LIBRARY` 指定；构建入口为 `drivers/a
 | `--voice NAME` | StepFun 音色，未指定时沿用 STEP_VOICE 或服务默认 |
 | `--sync-knowledge` | 启动前同步知识库 |
 | `--diagnose-audio` / `--no-diagnose-audio` | 保存/不保存音频，默认保存 |
-| `--timestamps` | 可选字级时间戳 |
-| `--gestures` | 动作规划并开启时间对齐；默认模拟执行 |
-| `--gesture-registry PATH` | 动作注册表 |
-| `--gesture-targets PATH` | 场景目标配置 |
+| `--timestamps` | 可选 FP32 字级时间戳 |
+| `--gestures` | 动作规划；模拟执行，同样经ROS2管理 |
+| `--gesture-backend simulated/unitree` | 模拟/真实动作 |
 
 密钥读取 `~/.config/guidebot/conversation.env` 中的 `STEP_SECRET`；
 可通过 `GUIDEBOT_CONFIG_FILE` 指定配置文件。现有环境变量 `STEP_VOICE`、
@@ -68,7 +67,7 @@ AGC2 动态库可用 `GUIDEBOT_AGC2_LIBRARY` 指定；构建入口为 `drivers/a
 
 ## 音频与日志
 
-会话输出位于 `~/.local/state/guidebot/conversation/realtime-*`。
+会话输出位于 `~/.local/state/guidebot/ros2/foxy-*/session`。
 默认保存原始麦克风、LocalVQE 后、AGC 后及扬声器提交参考音频。
 各轨按样本拼接；精确收包/SDK 提交时间见 `audio-index.jsonl`。
 扬声器参考可能含中断时尚未实际播出的部分，不能视为实际声学输出。
@@ -78,16 +77,38 @@ AGC2 动态库可用 `GUIDEBOT_AGC2_LIBRARY` 指定；构建入口为 `drivers/a
 
 ## 仓库结构
 
-- `GuideBot/`：运行时业务；`agent/` 仅放人设和知识文本。
+- `GuideBot/runtime/`：本机Foxy进程引导、独立环境和资源工作进程管理。
+- `GuideBot/ros2/`：节点、launch、配置、接口定义。
+- `GuideBot/conversation/`、`gesture/`：语音和动作业务，与节点适配分离。
+- `GuideBot/agent/`：人设和知识文本。
 - `tools/`：动作制作、预览、诊断及实验入口。
 - `drivers/`：硬件与模型适配；LocalVQE 和时间戳权重位于本机 models 目录，不纳入 Git。
 - `assets/motion/`：轨迹、位姿、序列、元数据及动作目录。
 - `archive/`：豆包 demo、历史豆包 provider 和旧运动示例，不参与正式运行。
 
 运动入口见 [驱动说明](drivers/unitree_motion/README.md)。
-语音不会自动启动运动服务；`--gesture-backend unitree` 使用真实执行，默认仍模拟。
+仅真实动作模式在 Enter 后自动启动运动服务；纯语音和模拟模式不接管上肢。
 目录与依赖说明见 [仓库结构](docs/repository-layout.md)，归档范围见 [归档清单](archive/README.md)。
 实验依据保留在 `docs/experiments/`，不将历史方案作为当前默认。
 
 继续开发先读 [Agent 续接文档](docs/AGENT_HANDOFF.md)。
 知识文本仍需运营方核实，不把示例或待确认信息当成场所事实。
+
+### ROS2统一运行
+
+正式入口只有main.py。本机Foxy与GuideBot Python3.8，ROS launch管理六个独立节点；宿主保留音频、模型与宇树SDK，接受ROS会话管理器控制。旧直连入口已归档。
+
+```bash
+# 语音＋模拟动作；需按Enter，使用真实语音API
+python main.py --gesture-backend simulated
+# 真机上肢；先开运控，不要另外启动运动服务；仍需按Enter
+python main.py --gesture-backend unitree
+```
+
+[本机Foxy迁移方案](docs/plans/foxy-local-runtime-migration.md)；[结构和运行关系](docs/repository-layout.md)。
+
+迁移已通过离线测试；真实语音与真机效果仍需按Enter人工验收。
+
+本机迁移验证与时间戳性能限制见 [实施报告](docs/experiments/foxy-local-migration-20261124.md)。
+
+时间戳已采用 FP32，保留1线程、预测器复用和完整前缀策略。对照见 [复测报告](docs/experiments/timestamp-runtime-retest-20261125.md)。

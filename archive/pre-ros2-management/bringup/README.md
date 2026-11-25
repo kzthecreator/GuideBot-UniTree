@@ -1,0 +1,9 @@
+# GuideBot启动边界
+
+当前统一入口为宿主tools/ros2/conversation.py，可在GuideBot环境下直接用python运行，不依赖sh脚本。
+它是容器和宿主worker的会话supervisor：先启动待命ROS容器，再保留原conversation的Enter授权。
+容器的五个业务节点由GuideBot.ros2.nodes集中启动，使用MultiThreadedExecutor。
+配置与挂载见deploy/ros2，接口见interfaces/guidebot_interfaces。
+
+初期不依赖宿主Foxy的ros2 launch，也不需要Compose插件。Compose描述符是可选部署资料，
+当前机器尚未通过Compose插件启动验证。不要同时手动启动Compose容器和会话supervisor。

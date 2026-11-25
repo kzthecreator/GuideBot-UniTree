@@ -10,9 +10,9 @@ from scipy import signal
 import webrtcvad
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'GuideBot/conversation'))
-from audio import save_wav
-from localvqe import LocalVQEEcho, Processor
-from agc import AGC2
+from GuideBot.conversation.audio import save_wav
+from drivers.localvqe.runtime import LocalVQEEcho, Processor
+from drivers.agc2.runtime import AGC2
 from compare_frontends import read
 
 RATE = 16000

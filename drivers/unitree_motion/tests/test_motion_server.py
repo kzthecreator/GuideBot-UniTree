@@ -1,6 +1,6 @@
+from drivers.unitree_motion.paths import BUILD
 import hashlib
 import json
-import os
 import socket
 import subprocess
 import tempfile
@@ -8,12 +8,9 @@ import time
 import unittest
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
-ROOT = REPO / "assets/motion"
-BUILD_DIR = Path(os.environ.get("GUIDEBOT_MOTION_BUILD_DIR",
-                                Path.home() / ".local/share/guidebot/deps/motion/build-reorganized"))
-BINARY = BUILD_DIR / "motion_library_server"
-SOCKET = "\0guidebot_motion_test_" + str(os.getpid())
+ROOT = Path(__file__).resolve().parents[3] / "assets/motion"
+BINARY = BUILD / "motion_library_server"
+SOCKET = "\0g1_arm_motion_library"
 
 
 @unittest.skipUnless(BINARY.is_file(), "build motion_library_server first")
@@ -50,7 +47,6 @@ class OfflineServerTest(unittest.TestCase):
             }
             process = subprocess.Popen(
                 [str(BINARY), "--offline-server", "--dir", str(motions),
-                 "--socket-name", SOCKET[1:],
                  "--poses", str(poses),
                  "--metadata", str(metadata)], cwd=ROOT,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

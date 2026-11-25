@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'GuideBot/conversation'))
-from agc import AGC2
+from drivers.agc2.runtime import AGC2
 
 
 class AGC2Tests(unittest.TestCase):

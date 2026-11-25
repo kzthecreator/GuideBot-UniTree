@@ -44,12 +44,6 @@ struct JointLimits {
         return limits;
     }
 
-    static JointLimits unchecked() {
-        JointLimits limits;
-        limits.verified = false;  // Explicit operator option, not a verified profile.
-        return limits;
-    }
-
     static JointLimits for_preview(const std::string& path) {
         const auto data = motion_catalog::read_json(path);
         if (!data.is_object() || data.value("schema_version", 0) != 1 ||

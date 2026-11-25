@@ -31,12 +31,8 @@ def main():
                         help='Enable gesture planning and the validated timestamp profile (simulated unless backend=unitree)')
     parser.add_argument('--gesture-registry', type=Path, help='Action registry JSON')
     parser.add_argument('--gesture-targets', type=Path, help='Scene target JSON; default no targets')
-    parser.add_argument('--gesture-backend', choices=('simulated', 'unitree'), default='simulated',
+    parser.add_argument('--gesture-backend', choices=('simulated', 'unitree'), default=None,
                         help='Motion backend; unitree enables gestures and commands the real robot after Enter')
-    parser.add_argument('--motion-manifest', type=Path, help='Published physical action bindings')
-    parser.add_argument('--motion-socket', default='g1_arm_motion_library', help='Motion server abstract socket name')
-    parser.add_argument('--skip-joint-limits', action='store_true',
-                        help='Explicit experiment option; motion server must also use --skip-joint-limits')
     args = parser.parse_args()
     return start_conversation(**vars(args))
 
@@ -44,11 +40,13 @@ def main():
 def start_conversation(*, sync_knowledge_before_start=False, diagnose_audio=DEFAULT_DIAGNOSE_AUDIO,
                        vad_energy=DEFAULT_VAD_ENERGY, agent_directory=AGENT_DIRECTORY,
                        timestamps=False, gestures=False, gesture_registry=None,
-                       gesture_targets=None, voice=None, gesture_backend="simulated",
-                       motion_manifest=None, motion_socket="g1_arm_motion_library", skip_joint_limits=False):
+                       gesture_targets=None, voice=None, gesture_backend=None):
     """Use the standard StepFun frontend; audio starts only after Enter."""
-    if skip_joint_limits and gesture_backend != 'unitree':
-        raise ValueError('--skip-joint-limits requires --gesture-backend unitree')
+    if gesture_backend is None:
+        mode = os.environ.get('GUIDEBOT_GESTURE_EXECUTION_MODE', 'simulation')
+        if mode not in {'simulation', 'robot'}:
+            raise ValueError('Invalid gesture execution mode')
+        gesture_backend = 'unitree' if mode == 'robot' else 'simulated'
     gestures = gestures or gesture_backend == 'unitree'
     instructions = read_soul(agent_directory)
     secret = load_secret()
@@ -75,8 +73,7 @@ def start_conversation(*, sync_knowledge_before_start=False, diagnose_audio=DEFA
         aec_model=STANDARD_AEC_MODEL, agc=True, instructions=instructions,
         timestamps=timestamps, gestures=gestures,
         gesture_registry=gesture_registry, gesture_targets=gesture_targets,
-        gesture_backend=gesture_backend, motion_manifest=motion_manifest,
-        motion_socket=motion_socket, skip_joint_limits=skip_joint_limits)
+        gesture_backend=gesture_backend)
     print(f"Provider: stepfun; model: {MODEL}. Keep the official assistant in the working wake-up state.")
     print("G1 microphone 16 kHz -> cloud 24 kHz; cloud reply 24 kHz -> G1 speaker 16 kHz.")
     print(f"Knowledge base: {vector_store_id}.")
@@ -90,9 +87,20 @@ def start_conversation(*, sync_knowledge_before_start=False, diagnose_audio=DEFA
     if gestures:
         print(f"DeepSeek gestures: backend={gesture_backend}; log: {directory / 'gesture.jsonl'}")
         if gesture_backend == 'unitree':
-            print(f"Real upper-body execution after Enter; joint limits skipped: {skip_joint_limits}")
+            print("Fork motion lifecycle after Enter: start server, acquire, release on exit; URDF limits enabled.")
     wait_for_enter("Press Enter to start realtime conversation, or Ctrl+C to cancel. ")
+    motion_runtime = None
     try:
+        if gestures and gesture_backend == 'unitree':
+            from GuideBot.gesture.motion_runtime import MotionRuntime
+            motion_runtime = MotionRuntime()
+            motion_runtime.log_directory = directory
+            try:
+                motion_runtime.start()
+            except Exception as error:
+                session.fail(error)
+                raise
+            print('Motion server acquired upper-body control.', flush=True)
         session.start()
         print("Connecting. Press Enter again at any time to stop.", flush=True)
         deadline = time.monotonic() + 20
@@ -105,7 +113,12 @@ def start_conversation(*, sync_knowledge_before_start=False, diagnose_audio=DEFA
                 sys.stdin.readline()
                 break
     finally:
-        result = session.stop()
+        try:
+            result = session.stop()
+        finally:
+            if motion_runtime is not None:
+                motion_runtime.stop()
+                print('Motion server released upper-body control.', flush=True)
         if directory.exists():
             (directory / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         print("Realtime conversation stopped.")

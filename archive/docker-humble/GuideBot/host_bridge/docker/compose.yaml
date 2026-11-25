@@ -1,0 +1,17 @@
+# Optional deployment descriptor. Primary launcher works without the Compose plugin.
+services:
+  guidebot-ros2:
+    image: guidebot-ros2:runtime
+    network_mode: host
+    user: "${GUIDEBOT_UID:?set host uid}:${GUIDEBOT_GID:?set host gid}"
+    environment:
+      HOME: /tmp
+      ROS_DOMAIN_ID: "42"
+      ROS_LOCALHOST_ONLY: "1"
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      GUIDEBOT_ROS_OFFLINE: "0"
+    volumes:
+      - "${GUIDEBOT_ROS_RUN_DIR:?set private runtime dir}/ipc:/guidebot-ipc"
+      - "${GUIDEBOT_ROS_RUN_DIR}/session:/guidebot-session"
+      - "${GUIDEBOT_ROS_RUN_DIR}/secrets:/guidebot-secrets:ro"
+    restart: "no"

@@ -1,7 +1,8 @@
-"""Nonblocking conversation adapter with optional explicit motion execution."""
-from concurrent.futures import ThreadPoolExecutor
+"""Nonblocking conversation adapter for planning and motion dispatch."""
+from GuideBot.compat import CancellableThreadPoolExecutor as ThreadPoolExecutor
 from dataclasses import dataclass, field
 import json
+import os
 from pathlib import Path
 import queue
 import re
@@ -26,25 +27,77 @@ class PlanningReply:
 
 class GestureService:
     def __init__(self, directory, on_event=None, *, catalog=None, planner=None, targets=(),
-                 debounce=.18, max_wait=.4, executor_factory=None):
+                 debounce=.18, max_wait=.4, interaction_context=None, execution_mode=None, executor=None):
         self.directory = Path(directory)
         self.catalog = catalog or Catalog()
         self.planner = planner or Planner(self.catalog)
         self.targets = list(targets)
+        self.interaction_context = self._validate_interaction_context(interaction_context)
         if len({t['id'] for t in self.targets}) != len(self.targets):
             raise ValueError('Duplicate scene target ID')
         self.on_event = on_event
-        self.emit_lock = threading.Lock()
         self.debounce, self.max_wait = debounce, max_wait
         self.queue = queue.Queue(maxsize=256)
         self.stopping = threading.Event()
         self.overflow = threading.Event()
-        self.executor = executor_factory(self._emit) if executor_factory else None
-        self.scheduler = Scheduler(self.catalog, self._emit, executor=self.executor)
+        self.executor = executor
+        execution_mode = execution_mode or os.getenv('GUIDEBOT_GESTURE_EXECUTION_MODE', 'simulation')
+        timing_mode = os.getenv('GUIDEBOT_GESTURE_TIMING_MODE',
+                                'immediate' if execution_mode == 'robot' else 'aligned')
+        if timing_mode not in {'immediate', 'aligned'}:
+            raise ValueError('Invalid gesture timing mode')
+        self.scheduler = Scheduler(self.catalog, self._emit, immediate=timing_mode == 'immediate')
         self.replies = {}
         self.pool = self.thread = self.log = None
         self.request_id = 0
         self.requests = []
+
+    @staticmethod
+    def _validate_interaction_context(context):
+        if context is None:
+            return {'stage': 'unspecified', 'history': [], 'facts': []}
+        allowed = {'stage', 'history', 'facts', 'navigation', 'scene', 'asr', 'dialogue', 'task',
+                   'visitor_responded', 'interaction_changed', 'task_completed', 'task_cancelled',
+                   'new_valid_input', 'clarification_completed', 'interaction_cancelled',
+                   'display_target_changed', 'explanation_ended', 'action_switch_needed'}
+        if not isinstance(context, dict) or set(context) - allowed:
+            raise ValueError('Invalid interaction context')
+        stage = context.get('stage', 'unspecified')
+        history = context.get('history', [])
+        facts = context.get('facts', [])
+        if (not isinstance(stage, str) or not stage.strip()
+                or not isinstance(history, list) or not isinstance(facts, list)
+                or not all(isinstance(value, str) and value.strip() for value in history + facts)):
+            raise ValueError('Invalid interaction context')
+        result = {'stage': stage, 'history': list(history), 'facts': list(facts)}
+        for key in ('navigation', 'scene', 'asr', 'dialogue', 'task'):
+            if key in context:
+                if not isinstance(context[key], dict):
+                    raise ValueError('Invalid structured interaction state')
+                result[key] = dict(context[key])
+        result.update({key: context[key] for key in allowed - {
+            'stage', 'history', 'facts', 'navigation', 'scene', 'asr', 'dialogue', 'task'
+        } if key in context})
+        return result
+
+    def set_interaction_context(self, context):
+        self.interaction_context = self._validate_interaction_context(context)
+        lifecycle = (
+            ('visitor_responded', 'visitor_responded'), ('interaction_changed', 'interaction_changed'),
+            ('task_completed', 'task_completed'), ('task_cancelled', 'task_cancelled'),
+            ('maximum_hold_time', 'maximum_hold_time'),
+            ('new_valid_input', 'new_valid_input'), ('clarification_completed', 'clarification_completed'),
+            ('interaction_cancelled', 'interaction_cancelled'), ('display_target_changed', 'display_target_changed'),
+            ('explanation_ended', 'explanation_ended'), ('action_switch_needed', 'action_switch_needed'),
+        )
+        for key, condition in lifecycle:
+            if self.interaction_context.get(key) is True:
+                self.submit('release_pose', condition=condition)
+        self._emit('gesture.context', interaction_context=self.interaction_context)
+
+    def request_base_pose(self, reason='interaction_state_change'):
+        """Queue an explicit scheduler lifecycle transition; does not auto-reset."""
+        self.submit('base_pose', reason=reason)
 
     def start(self):
         if self.thread is not None:
@@ -53,8 +106,6 @@ class GestureService:
             raise RuntimeError('DEEPSEEK_API_KEY is not set; gesture planning disabled')
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.log = (self.directory / 'gesture.jsonl').open('w', encoding='utf-8')
-        if self.executor:
-            self.executor.start()
         self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix='gesture-planner')
         self.thread = threading.Thread(target=self._run, name='gesture-scheduler', daemon=True)
         self.thread.start()
@@ -70,15 +121,25 @@ class GestureService:
 
     def _emit(self, kind, **details):
         value = dict(kind=kind, monotonic=time.monotonic(), **details)
-        with self.emit_lock:
-            if self.log is not None:
-                self.log.write(json.dumps(value, ensure_ascii=False) + '\n')
-                self.log.flush()
+        if kind in {'gesture.command', 'gesture.reset'} and self.executor is not None:
+            try:
+                execution = self.executor.handle(kind, details)
+                if execution is not None:
+                    value['execution'] = execution
+                    if kind == 'gesture.command' and execution['mode'] == 'robot':
+                        value['simulated'] = False
+                        details['simulated'] = False
+            except (ValueError, OSError, KeyError) as error:
+                value['execution_error'] = str(error)
+        if self.log is not None:
+            self.log.write(json.dumps(value, ensure_ascii=False) + '\n')
+            self.log.flush()
         if self.on_event:
             try:
                 self.on_event(kind, **details)
             except Exception:
                 pass
+        return value
 
     def _cancel(self, rid, reason):
         state = self.replies.pop(rid, None)
@@ -97,9 +158,14 @@ class GestureService:
                 except queue.Empty:
                     kind, rid, value = None, None, {}
                 if kind == 'ready':
-                    self._emit('gesture.ready', simulated=self.executor is None or self.executor.simulated, **value)
+                    self._emit('gesture.ready', simulated=True, **value)
                 elif kind == 'cancel':
                     self._cancel(rid, value.get('reason', 'interrupted'))
+                elif kind == 'base_pose':
+                    self.scheduler.request_base_pose(
+                        value.get('reason', 'interaction_state_change'))
+                elif kind == 'release_pose':
+                    self.scheduler.release_active(value['condition'])
                 elif rid in self.scheduler.closed:
                     continue
                 elif kind in {'text', 'text_delta', 'done'}:
@@ -125,7 +191,13 @@ class GestureService:
                 elif kind == 'action':
                     state = self.replies.get(rid)
                     if state and state.text.startswith(value['text']):
-                        self.scheduler.add(rid, value['plan'], value['units'], value['request_id'])
+                        item = self.catalog.actions.get(value['plan'].action)
+                        if item is None or not self.catalog.context_allows(item, self.interaction_context):
+                            self._emit('gesture.rejected', response_id=rid,
+                                       reason='trusted_interaction_context_changed',
+                                       action=value['plan'].action)
+                        else:
+                            self.scheduler.add(rid, value['plan'], value['units'], value['request_id'])
                     else:
                         self._emit('gesture.rejected', response_id=rid, reason='stale_planner_snapshot')
                 elif kind == 'result':
@@ -168,7 +240,8 @@ class GestureService:
             # Keep a short overlap for a lead-in whose object arrived later.
             first = max(0, len(units_for(state.submitted_text or '')) - 16)
             payload = make_input(rid, state.text, self.targets, existing,
-                                 range(first, len(reply.units)), state.complete)
+                                 range(first, len(reply.units)), state.complete,
+                                 self.interaction_context)
             state.in_flight = True
             state.submitted_text, state.submitted_complete = state.text, state.complete
             state.changed_at = 0
@@ -197,10 +270,11 @@ class GestureService:
             state.cancelled.set()
         if self.thread and self.thread is not threading.current_thread():
             self.thread.join(timeout=3)
-        if self.executor:
-            self.executor.close()
         if self.pool:
-            self.pool.shutdown(wait=True, cancel_futures=True)
+            try:
+                self.pool.shutdown(wait=True, cancel_futures=True)
+            except TypeError:
+                self.pool.shutdown(wait=True)
         if self.log:
             self.log.close()
 

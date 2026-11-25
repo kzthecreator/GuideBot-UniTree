@@ -1,0 +1,310 @@
+{
+  "repository": "https://github.com/424419808-cell/kwx-unitree",
+  "commit": "486408e3f7b4842601e63b7d9ca0af40df005623",
+  "integration_date": "2026-11-21",
+  "license": "MIT",
+  "excluded": [
+    ".gitignore",
+    "requirements.txt"
+  ],
+  "adapted_files": [
+    "tests/test_motion_server.py",
+    "tests/test_sequence_cli.py",
+    "tools/motion_ctl.py",
+    "tools/motion_timing_ui.py"
+  ],
+  "files": {
+    "CMakeLists.txt": {
+      "destination": "CMakeLists.txt",
+      "upstream_sha256": "2208395a248a5fb1dfa1a4374b3ea6d2cae106347b262f782b0dfd44605b3147"
+    },
+    "LICENSE": {
+      "destination": "LICENSE",
+      "upstream_sha256": "e20d3cac6012bdb82bdc34ed228d39d9db21fd4363c47aaba5bde492052c51ce"
+    },
+    "README.md": {
+      "destination": "README.upstream.md",
+      "upstream_sha256": "30a225317ae06c3164c53d387bdfde7e2bfb4777ffaf1585d20e2560deb2915e"
+    },
+    "action_sequence.hpp": {
+      "destination": "action_sequence.hpp",
+      "upstream_sha256": "16980dd642f779697135a7b49bfae0410651ad3b5caa526fe9454b0ee84bafa2"
+    },
+    "config/arm_joint_limits.json": {
+      "destination": "config/arm_joint_limits.json",
+      "upstream_sha256": "d6d999285d0f54b34f382026531d79d8bff97004158a54c465e1139532a8f26d"
+    },
+    "config/motion_catalog.json": {
+      "destination": "config/motion_catalog.json",
+      "upstream_sha256": "9c323d7ffcd43663210bb0909bf8a61622c432284b08f8200b263dce42411990"
+    },
+    "demo_standing_waist_gesture.cpp": {
+      "destination": "demo_standing_waist_gesture.cpp",
+      "upstream_sha256": "0820f26d1b94cb193edd837dba56c67fdcd0a72d0d74f987fb3437e8dd310777"
+    },
+    "docs/action-sequence-interface.md": {
+      "destination": "docs/action-sequence-interface.md",
+      "upstream_sha256": "47504aa7ee37553f28b83c56f7c43b4caa34b7926838704eee7aefe7f92570e4"
+    },
+    "docs/env-setup.md": {
+      "destination": "docs/env-setup.md",
+      "upstream_sha256": "3625e56f1ab4517b5e6523bc94794fad5e1f6b70ae0f1b36aea712ed46924bc5"
+    },
+    "docs/motion-library.md": {
+      "destination": "docs/motion-library.md",
+      "upstream_sha256": "bddf43750cd03526eb87c4e2f58e64ea4c5e44df98d9bfda27857ba7103b3819"
+    },
+    "docs/standing-waist-gesture-demo.md": {
+      "destination": "docs/standing-waist-gesture-demo.md",
+      "upstream_sha256": "91713a5c5b521df83f98e7166411f77f2f8fe1824d1a70c1f7126aca814df4ae"
+    },
+    "metadata/.gitkeep": {
+      "destination": "metadata/.gitkeep",
+      "upstream_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "metadata/emphasize_once.json": {
+      "destination": "metadata/emphasize_once.json",
+      "upstream_sha256": "fdb3c47b48971e7a736adc44c28a5026b340a8f16fffabcbc22e5a8fa03e4e3b"
+    },
+    "metadata/greet_open.json": {
+      "destination": "metadata/greet_open.json",
+      "upstream_sha256": "d6760a41255256c96cbb052d67fb0ad9f021d9c6c125595e07936140f4ea890d"
+    },
+    "metadata/greet_wave.json": {
+      "destination": "metadata/greet_wave.json",
+      "upstream_sha256": "2e40a9b246765f66cc2ae0cb078135018af6363bc3421d8c05ea1f322aeb42af"
+    },
+    "metadata/invite_follow.json": {
+      "destination": "metadata/invite_follow.json",
+      "upstream_sha256": "f4ff90eb1305e0712b0861cbb1abc00d1796ae18f2df47088358ecf6b5e78e89"
+    },
+    "metadata/neutral.json": {
+      "destination": "metadata/neutral.json",
+      "upstream_sha256": "9e89f072346304d022a954b769b0e08057da71999d45f6e4ad4e312e226293f2"
+    },
+    "metadata/please_wait.json": {
+      "destination": "metadata/please_wait.json",
+      "upstream_sha256": "92017397f13e7173084481e938ff872766fa473e90ec86542e651a51d94df14f"
+    },
+    "metadata/present_center.json": {
+      "destination": "metadata/present_center.json",
+      "upstream_sha256": "ebeab0c7b752f9f7fd5718885fe1e2dd628eb9d0b7156e0816ebdbb74abfd81c"
+    },
+    "metadata/present_left.json": {
+      "destination": "metadata/present_left.json",
+      "upstream_sha256": "bb8a21ec607735f027b37ac5d36ec97096f3119a0e8873248f539f929d668317"
+    },
+    "metadata/present_right.json": {
+      "destination": "metadata/present_right.json",
+      "upstream_sha256": "c3f3b5a1635ebecf5a00574b2761e80d2a7cbe56537a435bce45aaaaad8915ee"
+    },
+    "metadata/request_repeat.json": {
+      "destination": "metadata/request_repeat.json",
+      "upstream_sha256": "03cb714f49a268a05075562e83d06302d1d6fcac543f866a20f8f05d1185ec32"
+    },
+    "motion_catalog.hpp": {
+      "destination": "motion_catalog.hpp",
+      "upstream_sha256": "1836c666eb5d3701a8396468f23de67b7c09a642ff3fc60b2309995546dde64e"
+    },
+    "motion_interrupt.hpp": {
+      "destination": "motion_interrupt.hpp",
+      "upstream_sha256": "ee3dcc4eb04233062fc5105711b34bad64838d127e4d5f8d43ef0c0f3ef660f0"
+    },
+    "motion_library_server.cpp": {
+      "destination": "motion_library_server.cpp",
+      "upstream_sha256": "9ad3a2808231323fcfbd0e7f1d3fc04054952423a3d4ed1314bde91409b9a3de"
+    },
+    "motions/.gitkeep": {
+      "destination": "motions/.gitkeep",
+      "upstream_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "motions/elevator/.gitkeep": {
+      "destination": "motions/elevator/.gitkeep",
+      "upstream_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "motions/interaction/.gitkeep": {
+      "destination": "motions/interaction/.gitkeep",
+      "upstream_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "motions/interaction/emphasize_once.dat": {
+      "destination": "motions/interaction/emphasize_once.dat",
+      "upstream_sha256": "a2a3ceaea9d5f71ba2e27570eaafecac89c89b282de86176ca1b34580fdacb32"
+    },
+    "motions/interaction/please_wait.dat": {
+      "destination": "motions/interaction/please_wait.dat",
+      "upstream_sha256": "8cc927720c466d90a684e34474c7e6194b2321bc6c8f2d6d080c5cb53871bfef"
+    },
+    "motions/interaction/request_repeat.dat": {
+      "destination": "motions/interaction/request_repeat.dat",
+      "upstream_sha256": "743b8dd322c166be166a18adf6b8c667342d83f675d579520bb218f0c0451a4a"
+    },
+    "motions/presentation/.gitkeep": {
+      "destination": "motions/presentation/.gitkeep",
+      "upstream_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "motions/presentation/present_center.dat": {
+      "destination": "motions/presentation/present_center.dat",
+      "upstream_sha256": "ef9faeac3b099e88ef47f3606b7767609c6060733ac18ead7eba44d369795fea"
+    },
+    "motions/presentation/present_left.dat": {
+      "destination": "motions/presentation/present_left.dat",
+      "upstream_sha256": "b9c32a3c8b13ae8ad93e1d243ddf2b33e1969ba1d168d9767181796acc38e481"
+    },
+    "motions/presentation/present_right.dat": {
+      "destination": "motions/presentation/present_right.dat",
+      "upstream_sha256": "b5e01218b3c31ad1bc1b37af8a8d344005b004789c10b0859294e932e32a5674"
+    },
+    "motions/reception/.gitkeep": {
+      "destination": "motions/reception/.gitkeep",
+      "upstream_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "motions/reception/greet_open.dat": {
+      "destination": "motions/reception/greet_open.dat",
+      "upstream_sha256": "a8f2b0423b98a9e093bde29d95d9ef53004d29d3a240a2959881020b001cbaf1"
+    },
+    "motions/reception/greet_wave.dat": {
+      "destination": "motions/reception/greet_wave.dat",
+      "upstream_sha256": "68148c8031afb5e45404017e041e1c1afb022122078d0d14af71c4e8dd205457"
+    },
+    "motions/reception/invite_follow.dat": {
+      "destination": "motions/reception/invite_follow.dat",
+      "upstream_sha256": "77153e3954ddafbe4e45f3c8901c6d2cb7790e26968a76bce702719bc68a9a32"
+    },
+    "play.cpp": {
+      "destination": "play.cpp",
+      "upstream_sha256": "16618ca3ffd0b0e4f893b62c7bae64203216d89f731efb9f6d703b7b17dcba7a"
+    },
+    "play_with_motions.cpp": {
+      "destination": "play_with_motions.cpp",
+      "upstream_sha256": "70ff1eb5c5d3d694599ad1c5b88183c4d26fa574cf5d75000d8dfc6f65e21e18"
+    },
+    "poses/basic/.gitkeep": {
+      "destination": "poses/basic/.gitkeep",
+      "upstream_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "poses/basic/neutral.dat": {
+      "destination": "poses/basic/neutral.dat",
+      "upstream_sha256": "7ac7579a561dc6b93e4c9041fdf6fc7e75c4b0e9652f7d44045e85f112c32684"
+    },
+    "sequence_library.hpp": {
+      "destination": "sequence_library.hpp",
+      "upstream_sha256": "110e002196b9210bea8a0cf53c5e1e4b244b569d1cad46c07a84871ed5700f04"
+    },
+    "sequences/greet_guest.yaml": {
+      "destination": "sequences/greet_guest.yaml",
+      "upstream_sha256": "b96c08462f87214cf953c92c969be3296d852d8c3f33f22f8ff46fde6452462c"
+    },
+    "sequences/neutral_greet_present_demo.json": {
+      "destination": "sequences/neutral_greet_present_demo.json",
+      "upstream_sha256": "79a19f4466d74b4a5cafb7dc3fe01631856f3d06149bcd10fa821241817e7aac"
+    },
+    "standing_motion.hpp": {
+      "destination": "standing_motion.hpp",
+      "upstream_sha256": "6411c7be97b2c23c4d9120522724619844baf6ddc53b81bc75c6f8ae3f3eb1ee"
+    },
+    "systemd/g1-arm7-watchdog.service": {
+      "destination": "systemd/g1-arm7-watchdog.service",
+      "upstream_sha256": "1347070a3ffa03d90d49a47396b000c2a02ba5ef85698667784e96c00c42ce64"
+    },
+    "teach.cpp": {
+      "destination": "teach.cpp",
+      "upstream_sha256": "a4693be95b5ccd37c4a3ff00be81d7f7414b579102e8c335b876f9e2b9b9b415"
+    },
+    "teach_with_name.cpp": {
+      "destination": "teach_with_name.cpp",
+      "upstream_sha256": "638cc7825bdc637355261d45e022cf33553219311737d95a55997650009d0ffa"
+    },
+    "tests/fixtures/phase_a.dat": {
+      "destination": "tests/fixtures/phase_a.dat",
+      "upstream_sha256": "ac4249e3c3dead931451809b4bd5abd47b49f1a283f62c00754f57525f851bac"
+    },
+    "tests/fixtures/phase_b.dat": {
+      "destination": "tests/fixtures/phase_b.dat",
+      "upstream_sha256": "f457db88e503effb821c5fd35290d1e500a5213631e61cf716ba572cc22dc946"
+    },
+    "tests/fixtures/phase_c.dat": {
+      "destination": "tests/fixtures/phase_c.dat",
+      "upstream_sha256": "4179dd86aae403fbaca0c1f634f119be4a8a8c4f20caf97aa41fbdeeffb8dd10"
+    },
+    "tests/fixtures/phase_d.dat": {
+      "destination": "tests/fixtures/phase_d.dat",
+      "upstream_sha256": "ac4249e3c3dead931451809b4bd5abd47b49f1a283f62c00754f57525f851bac"
+    },
+    "tests/fixtures/sequence.json": {
+      "destination": "tests/fixtures/sequence.json",
+      "upstream_sha256": "bb25c87976ab6b4e945f0262746904f81a79026aff19fb89a0b235c686801cd1"
+    },
+    "tests/fixtures/standing_invalid.dat": {
+      "destination": "tests/fixtures/standing_invalid.dat",
+      "upstream_sha256": "6ff40aafd2bfe5ccaa3f0b94f1f59f60712e10975e7f7a9b9a786d6e8284e475"
+    },
+    "tests/fixtures/standing_legacy.dat": {
+      "destination": "tests/fixtures/standing_legacy.dat",
+      "upstream_sha256": "59d358b870faa439736cdac0808ad4fd30dda066d50ba013ace524d7e33278f9"
+    },
+    "tests/fixtures/standing_timed.dat": {
+      "destination": "tests/fixtures/standing_timed.dat",
+      "upstream_sha256": "ee4c1d3efb94662027dce74c0182119378a1b4caa6c2ba7e15918ac6c108f762"
+    },
+    "tests/test_action_sequence.cpp": {
+      "destination": "tests/test_action_sequence.cpp",
+      "upstream_sha256": "f68ae27b25b8ddb4dcd331bdeaf8d7421db12f428873ebeab187e3fba4781164"
+    },
+    "tests/test_motion_interrupt.cpp": {
+      "destination": "tests/test_motion_interrupt.cpp",
+      "upstream_sha256": "ed0f2ccb2a76a133accdcdba96551697cde4feff54ae13304bf22fd2b63d5060"
+    },
+    "tests/test_motion_library.py": {
+      "destination": "tests/test_motion_library.py",
+      "upstream_sha256": "a033ae97df902cb7c782084ed9e7e4cdd3b505dbf5c15ef6d315b21ca1a5d2a7"
+    },
+    "tests/test_motion_server.py": {
+      "destination": "tests/test_motion_server.py",
+      "upstream_sha256": "39ad024b7627ec4ae8f955df3f17febc631436dd79198d788851c78d406b5309"
+    },
+    "tests/test_motion_timing_ui.js": {
+      "destination": "tests/test_motion_timing_ui.js",
+      "upstream_sha256": "42f353389880319d3b22a7a81767707282afb6a6dbc81b8ad1fdf27166f4212d"
+    },
+    "tests/test_motion_timing_ui.py": {
+      "destination": "tests/test_motion_timing_ui.py",
+      "upstream_sha256": "6ebcce169d54136e46cf41bdf91bae85d65ec689603e22bad52d68a66d9f8113"
+    },
+    "tests/test_sequence_cli.py": {
+      "destination": "tests/test_sequence_cli.py",
+      "upstream_sha256": "16645294b9095ddf0d61054b0b172ceec881bb77cfdf664a14a76954eea75c3e"
+    },
+    "tests/test_sequence_library.cpp": {
+      "destination": "tests/test_sequence_library.cpp",
+      "upstream_sha256": "1df8dd5a5c62489b517e0e2d21a59b2a8fdc04e47ea1849a151dbcf035354cba"
+    },
+    "tests/test_standing_motion.cpp": {
+      "destination": "tests/test_standing_motion.cpp",
+      "upstream_sha256": "a7c8a1c73db9c4c337f93726f5e9b2948f9aa66dfb047cfe36109027a481fdb7"
+    },
+    "tools/motion_ctl.py": {
+      "destination": "tools/motion_ctl.py",
+      "upstream_sha256": "536ae0fbf884d58a6e703213a1243c29e10c81cf1c60c71beb5349757b360a0c"
+    },
+    "tools/motion_library.py": {
+      "destination": "tools/motion_library.py",
+      "upstream_sha256": "e393cd931f76b6d824dd1f3d3b64e2d93083b341e8574ef1a0f2d0715efa9785"
+    },
+    "tools/motion_timing_ui.html": {
+      "destination": "tools/motion_timing_ui.html",
+      "upstream_sha256": "fa9e9218c77c303a71a73b1cb8a1a73184a2bcca8811310e5cc368cb2f944d9e"
+    },
+    "tools/motion_timing_ui.py": {
+      "destination": "tools/motion_timing_ui.py",
+      "upstream_sha256": "2defccd7325f722152a43a1b142bb4496f843c35e1a0dad111e093012427ba54"
+    },
+    "tts_probe.cpp": {
+      "destination": "tts_probe.cpp",
+      "upstream_sha256": "72a057c03b41028551733e53b4ddf90f0ee7ce7f47154a590c32fd0e2027b164"
+    },
+    "watchdog.cpp": {
+      "destination": "watchdog.cpp",
+      "upstream_sha256": "2c12427ab977b03e1e726ee2fa9d1be90e62d431faa6a4b9322a68d9d47d52f3"
+    }
+  }
+}

@@ -15,7 +15,6 @@
 #include <iterator>
 #include <limits>
 #include <mutex>
-#include <set>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -55,6 +54,8 @@ constexpr uint16_t kKeyR2 = 1u << 4;
 constexpr double kPi = 3.141592653589793;
 constexpr double kMaxYawDegrees = 15.0;
 constexpr double kMaxAbsoluteYaw = 0.40;
+constexpr double kAcquireLegSpeed = 0.18;
+constexpr double kAcquireRampLegSpeed = 0.25;
 constexpr auto kTick = std::chrono::milliseconds(2);
 constexpr auto kOwnershipTick = std::chrono::milliseconds(10);
 constexpr auto kPlayTick = std::chrono::milliseconds(2);
@@ -159,7 +160,13 @@ bool stationary_base(const Snapshot& state) {
 }
 
 bool standing_still(const Snapshot& state) {
-    return stationary_base(state) && state.max_arm_speed < 0.12;
+    return ready(state) && state.max_leg_speed < kAcquireLegSpeed &&
+           state.max_gyro_speed < 0.15 && state.max_arm_speed < 0.12;
+}
+
+bool acquire_ramp_still(const Snapshot& state) {
+    return ready(state) && state.max_leg_speed < kAcquireRampLegSpeed &&
+           state.max_gyro_speed < 0.15;
 }
 
 std::string pick_iface() {
@@ -205,21 +212,33 @@ bool ramp_up(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
     auto wake = std::chrono::steady_clock::now();
     for (int i = 0; i < 200; ++i) {
         const Snapshot state = snapshot();
-        // Arms can move as ownership gains weight. Require base stability here;
-        // full-body stillness is checked before ramp-up, arm position afterward.
-        if (!ready(state) || (require_still && !stationary_base(state))) {
-            std::cerr << "[ACQUIRE-GUARD] step=" << i << "/200"
-                      << " received=" << state.received
-                      << " age_ms=" << std::chrono::duration<double, std::milli>(
-                             std::chrono::steady_clock::now() - state.time).count()
-                      << " interrupted=" << static_cast<bool>(g_interrupted)
-                      << " remote_exit=" << static_cast<bool>(
-                             (state.keys & kKeyR1) && (state.keys & kKeyR2))
-                      << " ready=" << ready(state)
-                      << " require_still=" << require_still
-                      << " leg_speed=" << state.max_leg_speed << " (limit 0.12 rad/s)"
+        if (!ready(state) || (require_still && !acquire_ramp_still(state))) {
+            const double age_ms = state.received ?
+                std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - state.time).count() : -1.0;
+            const bool remote_exit = (state.keys & kKeyR1) && (state.keys & kKeyR2);
+            bool finite_pose = std::isfinite(state.yaw) && std::isfinite(state.roll) &&
+                               std::isfinite(state.pitch);
+            for (double angle : state.arm) finite_pose = finite_pose && std::isfinite(angle);
+            std::cerr << "[ACQUIRE-GUARD] step=" << (i + 1) << "/200"
+                      << " received=" << state.received << " age_ms=" << age_ms
+                      << " interrupted=" << static_cast<int>(g_interrupted)
+                      << " remote_exit=" << remote_exit << " finite_pose=" << finite_pose
+                      << " ready=" << ready(state) << " require_still=" << require_still
+                      << " leg_speed=" << state.max_leg_speed
+                      << " (limit " << kAcquireRampLegSpeed << " rad/s)"
+                      << " gyro_speed=" << state.max_gyro_speed << " (limit 0.15 rad/s)"
                       << " arm_speed=" << state.max_arm_speed << " (informational during ramp)"
-                      << " gyro_speed=" << state.max_gyro_speed << " (limit 0.15 rad/s)\n";
+                      << " reasons=";
+            if (g_interrupted) std::cerr << "signal,";
+            if (!state.received) std::cerr << "no_lowstate,";
+            if (state.received && age_ms > 300.0) std::cerr << "stale_lowstate,";
+            if (remote_exit) std::cerr << "remote_exit,";
+            if (!finite_pose) std::cerr << "nonfinite_pose,";
+            if (require_still && !(state.max_leg_speed < kAcquireRampLegSpeed))
+                std::cerr << "leg_speed,";
+            if (require_still && !(state.max_gyro_speed < 0.15)) std::cerr << "gyro_speed,";
+            std::cerr << "\n";
             publish(publisher, cmd, initial, initial.arm, initial.yaw, 0.0);
             weight = 0.0;
             return false;
@@ -252,14 +271,7 @@ void ramp_down(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
 
 enum class Kind { Action, Sequence, Preview, Answer, Waist, Interrupt, Resume, Stop, Release, Acquire, Quit };
 
-double monotonic_seconds() {
-    return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
-}
-
 struct Command {
-    std::string execution_id;
-    double start_before = 0;
-    int expected_ms = 0;
     bool combo_preview = false;
     Kind kind;
     action_sequence::Resolved action;
@@ -309,62 +321,6 @@ private:
 
 class StatusStore {
 public:
-    void set_skip_limits(bool value) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        skip_limits_ = value;
-    }
-
-    void set_offline() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        offline_ = true;
-    }
-
-    bool seen_execution(const std::string& id) const {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return execution_ids_.count(id) != 0;
-    }
-
-    bool reserve_history_space() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (executions_.size() < 64) return true;
-        for (auto it = executions_.begin(); it != executions_.end(); ++it) {
-            const std::string state = it.value().value("state", std::string());
-            if (state == "completed" || state == "cancelled" || state == "rejected") {
-                executions_.erase(it);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    void execution(const std::string& id, const std::string& state,
-                   const std::string& error = "", double planned_seconds = 0) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        execution_ids_.insert(id);
-        auto& item = executions_[id];
-        item["job_id"] = id;
-        const auto old = item.value("state", std::string());
-        std::string effective = state;
-        if (state == "running" && (old == "cancelled" || old == "cancelling")) effective = "cancelling";
-        if (state == "completed" && (old == "cancelled" || old == "cancelling")) effective = "cancelled";
-        item["state"] = effective;
-        item[effective + "_at"] = monotonic_seconds();
-        if (!error.empty()) item["error"] = error;
-        if (planned_seconds > 0) item["planned_seconds"] = planned_seconds;
-    }
-
-    void cancel_executions() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        for (auto& item : executions_.items()) {
-            auto& value = item.value();
-            const std::string state = value.value("state", std::string());
-            if (state == "accepted" || state == "running") {
-                value["state"] = state == "accepted" ? "cancelled" : "cancelling";
-                value[value["state"].get<std::string>() + "_at"] = monotonic_seconds();
-            }
-        }
-    }
-
     void set_preview(const std::string& name, const std::string& state,
                      const std::string& error = "", bool limits_verified = true,
                      double planned_seconds = 0.0,
@@ -396,12 +352,7 @@ public:
 
     nlohmann::json get() const {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto value = status_;
-        value["execution_v1"] = true;
-        value["joint_limits_skipped"] = skip_limits_;
-        value["offline_execution_v1"] = offline_;
-        value["executions"] = executions_;
-        return value;
+        return status_;
     }
 
     void update(const motion_interrupt::Player& player) {
@@ -426,10 +377,6 @@ public:
 
 private:
     mutable std::mutex mutex_;
-    bool skip_limits_ = false;
-    bool offline_ = false;
-    std::set<std::string> execution_ids_;
-    nlohmann::json executions_ = nlohmann::json::object();
     std::string ownership_ = "owned";
     nlohmann::json preview_ = nullptr;
     nlohmann::json status_ = {{"state", "idle"}, {"checkpoint", nullptr},
@@ -479,7 +426,7 @@ double preview_core_seconds(const standing_motion::Plan& plan, const Command& co
 }
 
 Command parse_command(const nlohmann::json& input, const motion_catalog::Library& library,
-                      const std::string& limits_path, double initial_yaw, bool skip_limits = false) {
+                      const std::string& limits_path, double initial_yaw) {
     if (!input.is_object()) throw std::runtime_error("command must be a JSON object");
     Command command{};
     if (input.contains("组合试播")) {
@@ -567,8 +514,7 @@ Command parse_command(const nlohmann::json& input, const motion_catalog::Library
         if (input.size() != 1) throw std::runtime_error("sequence command has extra fields");
         command.kind = Kind::Sequence;
         command.sequence = sequence_library::parse(input.at("序列"));
-        command.limits = skip_limits ? sequence_library::JointLimits::unchecked() :
-            sequence_library::JointLimits::load(limits_path);
+        command.limits = sequence_library::JointLimits::load(limits_path);
         for (const auto& step : command.sequence.steps) {
             const auto asset = library.load_asset(step.name, true);
             if (asset.entry.type != step.type || (step.repeat > 1 && !asset.loopable))
@@ -613,32 +559,6 @@ Command parse_command(const nlohmann::json& input, const motion_catalog::Library
         throw std::runtime_error("unknown command");
     }
     return command;
-}
-
-action_sequence::Resolved resolve_execution(const Command& command,
-    const motion_catalog::Library& library, const ArmPose& pose) {
-    const auto& step = command.sequence.steps.front();
-    auto effective = command.sequence;
-    const auto asset = library.load_asset(step.name, true);
-    if (asset.waypoints.size() == 1) {
-        effective.steps.front().duration_ms = step.transition_ms;
-        effective.steps.front().hold_ms = step.duration_ms;
-    }
-    auto action = sequence_library::resolve(effective, library, command.limits, pose);
-    double seconds = 0;
-    for (const auto& point : action.waypoints) seconds += point.requested_duration;
-    if (std::abs(seconds - step.duration_ms / 1000.0) < 0.000001) {
-        const auto first = library.load_asset(step.name, true).waypoints.front().arm;
-        action.waypoints.insert(action.waypoints.begin(), {step.transition_ms / 1000.0, first});
-        for (auto& end : action.sequence_step_end) ++end;
-        action.phase_end.fill(action.waypoints.size());
-        seconds += step.transition_ms / 1000.0;
-    }
-    if (std::abs(seconds - command.expected_ms / 1000.0) > 0.000001)
-        throw std::runtime_error("resolved duration differs from requested timing");
-    if (monotonic_seconds() > command.start_before)
-        throw std::runtime_error("execution start deadline expired");
-    return action;
 }
 
 class SocketServer {
@@ -701,68 +621,7 @@ private:
             if (input.is_object() && input.size() == 1 && input.value("状态", false)) {
                 response = {{"ok", true}, {"status", status_.get()}};
             } else {
-                auto payload = input;
-                if (input.is_object() && input.size() == 1 && input.contains("cancel_execution")) {
-                    const std::string id = input.at("cancel_execution").get<std::string>();
-                    const auto entries = status_.get().at("executions");
-                    if (!entries.contains(id)) throw std::runtime_error("unknown execution id");
-                    const std::string state = entries.at(id).at("state");
-                    if (state != "accepted" && state != "running" && state != "cancelling") {
-                        const std::string line = nlohmann::json({{"ok", true}, {"message", "already terminal"}}).dump() + "\n";
-                        send(client, line.data(), line.size(), MSG_NOSIGNAL);
-                        return;
-                    }
-                    payload = {{"停止", true}};
-                }
-                std::string execution_id;
-                double start_before = 0;
-                int expected_ms = 0;
-                if (input.contains("execution")) {
-                    if (allow_preview_)
-                        throw std::runtime_error("execution protocol requires normal service, not preview");
-                    const auto& execution = input.at("execution");
-                    if (input.size() != 1 || !execution.is_object() || execution.size() != 4)
-                        throw std::runtime_error("invalid execution envelope");
-                    if (!execution.at("job_id").is_string() ||
-                        !execution.at("start_before").is_number() ||
-                        !execution.at("expected_ms").is_number_integer())
-                        throw std::runtime_error("invalid execution field types");
-                    execution_id = execution.at("job_id").get<std::string>();
-                    start_before = execution.at("start_before").get<double>();
-                    expected_ms = execution.at("expected_ms").get<int>();
-                    if (!motion_catalog::valid_name(execution_id) || !std::isfinite(start_before) ||
-                        start_before <= monotonic_seconds() || expected_ms < 1 || expected_ms > 180000)
-                        throw std::runtime_error("invalid execution id, deadline or duration");
-                    const auto current = status_.get();
-                    if (status_.seen_execution(execution_id))
-                        throw std::runtime_error("duplicate execution id");
-                    if (!status_.reserve_history_space())
-                        throw std::runtime_error("execution history has no terminal slot");
-                    for (const auto& item : current.at("executions").items()) {
-                        const std::string state = item.value().at("state");
-                        if (state == "accepted" || state == "running" || state == "cancelling")
-                            throw std::runtime_error("execution busy");
-                    }
-                    if (!queue_.empty() || current.at("state") != "idle")
-                        throw std::runtime_error("execution busy");
-                    payload = {{"序列", execution.at("sequence")}};
-                }
-                Command parsed = parse_command(payload, library_, limits_path_, initial_yaw_.load(),
-                    status_.get().value("joint_limits_skipped", false));
-                if (!execution_id.empty()) {
-                    if (parsed.sequence.steps.size() != 1)
-                        throw std::runtime_error("offline execution requires one motion step");
-                    const auto& step = parsed.sequence.steps.front();
-                    const auto asset = library_.load_asset(step.name, true);
-                    if (step.type != "motion" || step.total_ms || step.repeat != 1 ||
-                        step.transition_ms <= 0 || step.duration_ms <= 0 || step.hold_ms != 0 ||
-                        expected_ms != step.transition_ms + step.duration_ms ||
-                        (asset.timing_profile.enabled && expected_ms < asset.timing_profile.minimum_total_ms))
-                        throw std::runtime_error("execution timing incompatible with motion or minimum duration");
-                    parsed.execution_id = execution_id;
-                    parsed.start_before = start_before;
-                    parsed.expected_ms = expected_ms;
-                }
+                Command parsed = parse_command(input, library_, limits_path_, initial_yaw_.load());
                 const std::string ownership = status_.ownership();
                 if (allow_preview_ && parsed.kind != Kind::Preview &&
                     parsed.kind != Kind::Acquire && parsed.kind != Kind::Release &&
@@ -791,9 +650,7 @@ private:
                 if (kind == Kind::Acquire) status_.set_ownership("acquiring");
                 if (kind == Kind::Preview)
                     status_.set_preview(preview_name, "queued", "", preview_limits_verified);
-                if (!execution_id.empty()) status_.execution(execution_id, "accepted");
                 if (!queue_.push(std::move(parsed))) {
-                    if (!execution_id.empty()) status_.execution(execution_id, "rejected", "queue full");
                     status_.set_ownership(ownership);
                     if (kind == Kind::Preview)
                         status_.set_preview(preview_name, "rejected", "command queue is full");
@@ -807,10 +664,7 @@ private:
                         (preview.at("state") == "queued" || preview.at("state") == "running"))
                         status_.set_preview(preview.at("name").get<std::string>(), "cancelled");
                 }
-                if (kind == Kind::Stop || kind == Kind::Release || kind == Kind::Quit)
-                    status_.cancel_executions();
                 response = {{"ok", true}, {"message", "queued"}};
-                if (!execution_id.empty()) response["execution_id"] = execution_id;
                 if (kind == Kind::Preview && !preview_limits_verified)
                     response["warning"] = "joint limits unverified; preview has no per-joint range check";
             }
@@ -872,7 +726,6 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
     bool pending_resume = false;
     bool pending_quit = false;
     bool pending_release = false;
-    std::string active_execution;
     bool preview_running = false;
     bool play_style_active = false;
     bool reverse_return_active = false;
@@ -897,7 +750,7 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
         const Snapshot measured = snapshot();
         if (!ready(measured)) return false;
         if (owned) {
-            if (!operator_preview && measured.max_leg_speed >= 0.12) {
+            if (!operator_preview && measured.max_leg_speed >= kAcquireLegSpeed) {
                 std::cerr << "[SAFETY] leg motion detected while upper body is owned; releasing control\n";
                 publish(publisher, cmd, session_initial, measured.arm, measured.yaw, 0.0);
                 weight = 0.0;
@@ -916,12 +769,6 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
         player.tick(play_style_active ? std::chrono::duration<double>(kPlayTick).count() :
                     std::chrono::duration<double>(now - previous).count());
         previous = now;
-        if (!active_execution.empty() && player.state() == motion_interrupt::State::Idle) {
-            const auto execution = status.get().at("executions").at(active_execution);
-            status.execution(active_execution,
-                execution.at("state") == "cancelling" ? "cancelled" : "completed");
-            active_execution.clear();
-        }
         if (preview_running && player.state() == motion_interrupt::State::Idle) {
             const auto preview = status.get().at("preview");
             if (preview.at("state") == "running")
@@ -1109,13 +956,11 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
             Command queued = std::move(pending_actions.front());
             pending_actions.pop_front();
             try {
-                if (!queued.execution_id.empty() &&
-                    status.get().at("executions").at(queued.execution_id).at("state") == "cancelled") continue;
                 if (queued.kind == Kind::Sequence || queued.kind == Kind::Preview) {
                     const bool preview = queued.kind == Kind::Preview;
-                    const auto action = queued.execution_id.empty() ? sequence_library::resolve(
+                    const auto action = sequence_library::resolve(
                         queued.sequence, library, queued.limits, player.pose(), measured.arm,
-                        preview) : resolve_execution(queued, library, player.pose());
+                        preview);
                     const auto plan = standing_motion::make_plan(
                         player.pose(), 0.0, 0.0, action.waypoints);
                     double planned_core = 0.0;
@@ -1126,12 +971,6 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
                               << (action.play_style_preview ? "; play-style linear, 2 ms commands" : "")
                               << "\n";
                     player.start(action);
-                    if (!queued.execution_id.empty()) {
-                        active_execution = queued.execution_id;
-                        status.execution(active_execution, "running", "", plan.total_duration);
-                        if (status.get().at("executions").at(active_execution).at("state") == "cancelling")
-                            player.cancel();
-                    }
                     play_style_active = action.play_style_preview;
                     reverse_return_active = action.play_style_preview && !queued.combo_preview;
                     wake = std::chrono::steady_clock::now();
@@ -1157,8 +996,6 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
                     player.start(std::move(queued.action));
                 }
             } catch (const std::exception& error) {
-                if (!queued.execution_id.empty())
-                    status.execution(queued.execution_id, "rejected", error.what());
                 if (queued.kind == Kind::Preview) {
                     status.set_preview(preview_label(queued), "rejected", error.what());
                     pending_release = true;
@@ -1240,10 +1077,10 @@ bool return_home(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
 }
 
 struct Options {
-    std::string directory = "motions";
-    std::string poses = "poses";
+    std::string directory = "assets/motions";
+    std::string poses = "assets/poses";
     std::string catalog = "config/motion_catalog.json";
-    std::string metadata = "metadata";
+    std::string metadata = "assets/metadata";
     std::string limits = "config/arm_joint_limits.json";
     std::string check_request;
     bool check_only = false;
@@ -1253,7 +1090,6 @@ struct Options {
     bool check_preview_only = false;
     std::string check_preview_request;
     bool check_preview_request_only = false;
-    bool skip_joint_limits = false;
     bool offline_server = false;
     bool allow_preview = false;
     bool auto_preview = false;
@@ -1272,7 +1108,7 @@ Options parse_options(int argc, char** argv) {
                       << " [--check-request FILE | --check-sequence JSON | --check-preview NAME"
                       << " | --check-preview-request JSON | --offline-server]"
                       << " [--allow-preview] [--auto-preview] [--socket-name NAME]"
-                      << " [--start-released (default)] [--skip-joint-limits]\n";
+                      << " [--start-released (default)]\n";
             std::exit(0);
         } else if (argument == "--dir" && i + 1 < argc) {
             options.directory = argv[++i];
@@ -1304,8 +1140,6 @@ Options parse_options(int argc, char** argv) {
             options.auto_preview = true;
         } else if (argument == "--socket-name" && i + 1 < argc) {
             options.socket_name = argv[++i];
-        } else if (argument == "--skip-joint-limits") {
-            options.skip_joint_limits = true;
         } else if (argument == "--start-released") {
             options.start_released = true;
         } else {
@@ -1327,8 +1161,6 @@ Options parse_options(int argc, char** argv) {
 int main(int argc, char** argv) {
     try {
         const Options options = parse_options(argc, argv);
-        if (options.skip_joint_limits)
-            std::cerr << "JOINT LIMIT CHECKS SKIPPED by explicit operator option; profile unchanged.\n";
         const motion_catalog::Library library{
             motion_catalog::Catalog::load(options.catalog), options.directory,
             options.metadata, true, options.poses};
@@ -1352,8 +1184,7 @@ int main(int argc, char** argv) {
             std::istream& input = options.check_sequence == "-" ? std::cin : file;
             const auto document = nlohmann::json::parse(input);
             const auto definition = sequence_library::parse(document);
-            const auto limits = options.skip_joint_limits ? sequence_library::JointLimits::unchecked() :
-                sequence_library::JointLimits::load(options.limits);
+            const auto limits = sequence_library::JointLimits::load(options.limits);
             const auto start = library.load_asset(definition.steps.front().name, true)
                                    .waypoints.front().arm;
             const auto action = sequence_library::resolve(definition, library, limits, start);
@@ -1422,13 +1253,10 @@ int main(int argc, char** argv) {
             std::signal(SIGINT, on_signal);
             CommandQueue queue;
             StatusStore status;
-            status.set_skip_limits(options.skip_joint_limits);
-            status.set_offline();
             if (options.start_released) status.set_ownership("released");
             SocketServer server(queue, status, library, options.limits, 0.0,
                                 options.allow_preview, options.socket_name);
             motion_interrupt::Player player(ArmPose{});
-            std::string active_execution;
             bool preview_running = false;
             auto previous = std::chrono::steady_clock::now();
             std::cout << "Offline command server ready. No robot connection was made.\n";
@@ -1436,12 +1264,6 @@ int main(int argc, char** argv) {
                 const auto now = std::chrono::steady_clock::now();
                 player.tick(std::chrono::duration<double>(now - previous).count());
                 previous = now;
-                if (!active_execution.empty() && player.state() == motion_interrupt::State::Idle) {
-                    const auto execution = status.get().at("executions").at(active_execution);
-                    status.execution(active_execution,
-                        execution.at("state") == "cancelling" ? "cancelled" : "completed");
-                    active_execution.clear();
-                }
                 if (preview_running && player.state() == motion_interrupt::State::Idle) {
                     const auto preview = status.get().at("preview");
                     if (preview.at("state") == "running")
@@ -1452,12 +1274,6 @@ int main(int argc, char** argv) {
                 for (Command& command : queue.take_all()) {
                     if (command.kind == Kind::Quit) return 0;
                     try {
-                        if (!command.execution_id.empty()) {
-                            const auto entry = status.get().at("executions").at(command.execution_id);
-                            if (entry.at("state") == "cancelled") continue;
-                            if (monotonic_seconds() > command.start_before)
-                                throw std::runtime_error("execution start deadline expired");
-                        }
                         if (command.kind == Kind::Release) {
                             player.cancel();
                             status.set_ownership("releasing");
@@ -1469,22 +1285,9 @@ int main(int argc, char** argv) {
                         }
                         if (command.kind == Kind::Action) player.start(std::move(command.action));
                         if (command.kind == Kind::Sequence) {
-                            const auto action = command.execution_id.empty() ? sequence_library::resolve(
-                                command.sequence, library, command.limits, player.pose()) :
-                                resolve_execution(command, library, player.pose());
-                            if (!command.execution_id.empty()) {
-                                double seconds = 0;
-                                for (const auto& point : action.waypoints) seconds += point.requested_duration;
-                                if (std::abs(seconds - command.expected_ms / 1000.0) > 0.000001)
-                                    throw std::runtime_error("resolved duration differs from requested timing");
-                                if (monotonic_seconds() > command.start_before)
-                                    throw std::runtime_error("execution start deadline expired");
-                                player.start(action);
-                                active_execution = command.execution_id;
-                                status.execution(active_execution, "running", "", seconds);
-                                if (status.get().at("executions").at(active_execution).at("state") == "cancelling")
-                                    player.cancel();
-                            } else player.start(action);
+                            const auto action = sequence_library::resolve(
+                                command.sequence, library, command.limits, player.pose());
+                            player.start(action);
                         }
                         if (command.kind == Kind::Preview) {
                             const auto action = sequence_library::resolve(
@@ -1504,8 +1307,6 @@ int main(int argc, char** argv) {
                         if (command.kind == Kind::Resume) player.resume();
                         if (command.kind == Kind::Stop) player.cancel();
                     } catch (const std::exception& error) {
-                        if (!command.execution_id.empty())
-                            status.execution(command.execution_id, "rejected", error.what());
                         if (command.kind == Kind::Acquire) status.set_ownership("released");
                         if (command.kind == Kind::Preview)
                             status.set_preview(preview_label(command),
@@ -1566,7 +1367,6 @@ int main(int argc, char** argv) {
             }
             CommandQueue queue;
             StatusStore status;
-            status.set_skip_limits(options.skip_joint_limits);
             if (options.start_released) status.set_ownership("released");
             bool clean_exit = false;
             {

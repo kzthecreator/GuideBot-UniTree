@@ -10,9 +10,9 @@ import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'GuideBot/conversation'))
-from timestamps import ResponseAlignment, StreamingTimestamps, text_units, _worker
-from stepfun import RealtimeSession
-from audio import StreamingSpeaker
+from drivers.timestamps.runtime import ResponseAlignment, StreamingTimestamps, text_units, _worker
+from GuideBot.conversation.stepfun import RealtimeSession
+from GuideBot.conversation.audio import StreamingSpeaker
 
 
 class Backend:
@@ -51,7 +51,7 @@ class TimestampTests(unittest.TestCase):
                 else:
                     send('stop', None)
                 return [], 0.
-        with tempfile.TemporaryDirectory() as directory, patch('timestamps.MonotonicBackend', return_value=Backend()):
+        with tempfile.TemporaryDirectory() as directory, patch('drivers.timestamps.runtime.MonotonicBackend', return_value=Backend()):
             _worker(incoming, outgoing, 'unused', str(Path(directory)/'worker.log'),
                     dict(step=.5, resync_every=0))
         self.assertEqual(seen, [1., 2.5])

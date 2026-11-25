@@ -7,7 +7,7 @@
 | --- | --- | --- |
 | `doubao-demo/` | Mac 上验证过的原始豆包 demo | 当前统一使用 StepFun |
 | `doubao/doubao.py` | 曾接入 G1 的豆包 provider | `GuideBot/conversation/stepfun.py` |
-| `doubao/conversation_legacy.py` | 归档前的多 provider CLI 快照，仅作历史参考 | `GuideBot/conversation/conversation.py` |
+| `doubao/conversation_legacy.py` | 归档前的多 provider CLI 快照，仅作历史参考 | `main.py` |
 | `doubao/tests/` | 豆包事件回归测试 | 手动运行归档测试，不进入正式测试发现 |
 | `unitree-motion-legacy/play.cpp` | 旧手柄单动作播放 | 当前 motion_library_server |
 | `unitree-motion-legacy/play_with_motions.cpp` | 旧拳击状态机 | 当前导览动作库 |
@@ -28,3 +28,16 @@ python -m unittest discover -s archive/doubao/tests -p 'test_*.py'
 
 `conversation_legacy.py` 仅为历史代码快照，旧相对路径和参数不得作为当前使用说明。
 配置与密钥继续留在本机，不将归档 demo 内的本机配置加入 Git。
+
+## ROS2管理迁移前快照
+
+pre-ros2-management保存旧直连会话入口、工具启动器、shell包装和兼容转发。它们不再构成备用运行方案，旧路径没有兼容启动入口。当前统一使用python main.py。
+
+## Docker Humble历史部署
+
+`docker-humble/`保存原`GuideBot/host_bridge/container.py`、Docker构建目录、容器验证工具与`.dockerignore`。
+当前正式部署改为本机Foxy＋GuideBot Python3.8，不再导入此目录；历史镜像未卸载。
+
+2026-11-25核对：正式GuideBot/host_bridge已改名GuideBot/runtime，未保留兼容转发。
+Docker专用container.py、Dockerfile、Compose、entrypoint、容器验证工具和.dockerignore均留在docker-humble。
+archive中的旧导入路径仅作历史记录；这些快照不是可直接运行的正式入口。

@@ -7,7 +7,7 @@ import time
 import numpy as np
 import soundfile as sf
 
-from GuideBot.conversation.timestamps import StreamingTimestamps
+from drivers.timestamps.runtime import StreamingTimestamps
 from GuideBot.gesture.catalog import strict_json, units_for
 from GuideBot.gesture.service import GestureService
 

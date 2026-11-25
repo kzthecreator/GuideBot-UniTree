@@ -1,5 +1,7 @@
 """Explicit, restartable synchronization of local documents to StepFun retrieval."""
 
+from typing import Optional
+
 import argparse
 from dataclasses import asdict, dataclass
 import fcntl
@@ -14,7 +16,7 @@ from urllib.parse import quote, urlencode
 from dotenv import load_dotenv
 import requests
 
-from audio import state_directory
+from GuideBot.conversation.audio import state_directory
 
 AGENT_DIRECTORY = Path(__file__).resolve().parent.parent / "agent"
 EXTENSIONS = {".txt", ".md", ".pdf", ".doc", ".docx", ".xls", ".xlsx",
@@ -169,7 +171,7 @@ def _save(path, state):
 
 @dataclass(frozen=True)
 class SyncResult:
-    vector_store_id: str | None
+    vector_store_id: Optional[str]
     added: tuple
     modified: tuple
     deleted: tuple

@@ -1,13 +1,15 @@
-"""Transport only. Importing never connects or acquires robot control."""
+"""Local socket client for the G1 motion controller."""
 import json
 import socket
 
+
 SOCKET_NAME = "\0g1_arm_motion_library"
 
-def request(socket_name, payload, *, timeout=3.0):
+
+def request(socket_name, payload):
     encoded = (json.dumps(payload, ensure_ascii=False, allow_nan=False) + "\n").encode("utf-8")
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-        client.settimeout(timeout)
+        client.settimeout(3.0)
         client.connect(socket_name)
         client.sendall(encoded)
         client.shutdown(socket.SHUT_WR)

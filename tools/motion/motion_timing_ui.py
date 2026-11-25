@@ -17,14 +17,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import motion_library as library
 
-REPO = Path(__file__).resolve().parents[2]
-ROOT = REPO / "assets/motion"
-TOOLS = REPO / "tools/motion"
-DRIVER = REPO / "drivers/unitree_motion"
-BUILD_DIR = Path(os.environ.get("GUIDEBOT_MOTION_BUILD_DIR",
-                                Path.home() / ".local/share/guidebot/deps/motion/build-reorganized"))
+from drivers.unitree_motion.paths import ASSETS as ROOT, BUILD, LIMITS
 PAGE = Path(__file__).with_suffix(".html")
 
 
@@ -71,10 +68,10 @@ class App:
         offline = payload.get("offline", False)
         if type(offline) is not bool:
             raise ValueError("离线选项无效")
-        binary = BUILD_DIR / "motion_library_server"
+        binary = BUILD / "motion_library_server"
         if not binary.is_file():
             raise ValueError("请先构建 motion_library_server")
-        cmd = [sys.executable, str(TOOLS / "motion_ctl.py"), "preview", name,
+        cmd = [sys.executable, str(Path(__file__).with_name("motion_ctl.py")), "preview", name,
                "--no-confirm", "--json-events", "--total-ms", str(total),
                "--timing-profile-json", json.dumps(profile)]
         if offline:
@@ -116,7 +113,7 @@ class App:
                                              suffix=".json", delete=False) as stream:
                 path = Path(stream.name)
                 json.dump(plan["sequence"], stream, ensure_ascii=False)
-            cmd = [sys.executable, str(TOOLS / "motion_ctl.py"), "preview", "web_combo",
+            cmd = [sys.executable, str(Path(__file__).with_name("motion_ctl.py")), "preview", "web_combo",
                    "--sequence-file", str(path), "--no-confirm", "--json-events"]
             if offline:
                 cmd.append("--offline")
@@ -129,7 +126,7 @@ class App:
 
     def launch(self, cmd, signature, offline, requested_core=None,
                mode="single", steps=None, cleanup_path=None):
-        if not (BUILD_DIR / "motion_library_server").is_file():
+        if not (BUILD / "motion_library_server").is_file():
             raise ValueError("请先构建 motion_library_server")
         with self.lock:
             if self.stopping:

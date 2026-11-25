@@ -6,9 +6,9 @@ import sys
 import numpy as np
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'GuideBot/conversation'))
-from audio import save_wav
-from localvqe import LocalVQEEcho, installation
-from agc import AGC2
+from GuideBot.conversation.audio import save_wav
+from drivers.localvqe.runtime import LocalVQEEcho, installation
+from drivers.agc2.runtime import AGC2
 from compare_frontends import read
 
 parser=argparse.ArgumentParser(description=__doc__)

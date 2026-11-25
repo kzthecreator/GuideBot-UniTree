@@ -1,0 +1,4 @@
+/**:
+  ros__parameters:
+    use_sim_time: false
+# Acoustic frontend is fixed in the host voice worker, not experiment parameters.

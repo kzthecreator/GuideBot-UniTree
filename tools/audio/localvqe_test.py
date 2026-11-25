@@ -11,8 +11,8 @@ import time
 import numpy as np
 
 from aec_test import capture, read_pcm
-from audio import RATE, save_wav
-from localvqe import LocalVQEEcho, Processor
+from GuideBot.conversation.audio import RATE, save_wav
+from drivers.localvqe.runtime import LocalVQEEcho, Processor
 
 
 def compare(directory, delay_ms=0, model=None):

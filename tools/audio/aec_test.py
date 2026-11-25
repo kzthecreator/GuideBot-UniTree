@@ -14,7 +14,7 @@ import wave
 
 import numpy as np
 
-from audio import (AudioDiagnostic, EchoCanceller, StreamingSpeaker, RATE,
+from GuideBot.conversation.audio import (AudioDiagnostic, EchoCanceller, StreamingSpeaker, RATE,
                    microphone_packets, prepare_audio, save_wav, state_directory,
                    wait_for_enter)
 

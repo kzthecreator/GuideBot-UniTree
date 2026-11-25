@@ -1,18 +1,26 @@
-# Gesture 运行状态（2026-11-21 更新）
+> 2026-11-24：正式入口已统一为根main.py，由ROS2管理。节点适配在GuideBot/ros2/nodes，宿主执行适配在GuideBot/runtime/workers。下文历史实验结论仍有参考价值，旧入口不再有效。
 
-`--gestures` 保留模拟模式；新增 `--gesture-backend unitree` 接入真实运动服务。
-真实模式使用 `assets/motion/conversation.json` 中的物理轨迹ID，默认模拟目录仍为旧抽象ID。
-用户已允许现场试验跳过限位，通过两端 `--skip-joint-limits` 明确启用，不改写配置。
-当前启动及验证见 [真机联动说明](../../docs/experiments/conversation-unitree-20261121.md)。
-以下为原模拟链路与历史实验说明，不能覆盖上述新入口。
+# 上肢动作规划与真实动作库适配
 
-# 上肢动作规划与模拟调度
+## 当前集成（2026-11-17）
 
-当前执行器只输出 `gesture.command` 日志，不控制任何机器人、头部或手部。FunASR 沿用 `drivers/timestamps/runtime.py`，新动作逻辑均在本目录。语音不会等待 DeepSeek 或时间戳。
+真机初始联动测试暂用即时调度：`GUIDEBOT_GESTURE_EXECUTION_MODE=robot` 时，规划动作通过校验后直接下发，按当前时刻起 2 秒到位，不等待 FunASR 或语音锚点。动作仍受上下文、已验收资产、机器人 ownership/state 和上半身占用约束；播报结束或打断仍可停止动作。`gesture.jsonl` 的 `timing_mode=immediate` 标记此模式。需要恢复原有语音对齐实验时显式设置 `GUIDEBOT_GESTURE_TIMING_MODE=aligned`；模拟模式默认保留原对齐调度。
+
+底层位于 drivers/unitree_motion/，资产位于 assets/motion/。config/motion_catalog.json 含22项，poses、motions与metadata均在资产目录，通过驱动assets.py校验。10 项录制资产数据有效且已批准；9 项可由 LLM 选择，neutral 留给 Scheduler 管理。当前验证见 docs/experiments/fork-logic-preserved-layout-20261124.md。
+
+assets/motion/actions.json 的每个 ID 等于物理 motion_name，一个物理动作包含多个 interaction_functions；每项说明社交功能、典型表达、上下文条件和禁用场景，semantic_intents 仅作短索引。kind 是规划类型，asset_type 是物理文件类型；单帧物理 motion 按 pose 规划，只有 greet_wave、invite_follow、emphasize_once 是多帧动态动作。neutral 保留在注册表并由调度器显式管理，llm_selectable=false；不会在每段话后自动插入。原 wave、point、hold_object、present_sweep、open_arms、compare_sides、frame_object、emphasis_beat 抽象 ID 均已移除。assets/motion/conversation-few-shots.json 覆盖每个动作的原始、扩展和易混淆场景及负例，并示范顺序组合；tools/gesture/evaluation.json 按 seen、unseen、negative 分类。
+
+调用链：播报文本和交互上下文 → DeepSeek 先判断交互目的，再规划 action 与双文字锚点 → catalog.py 校验真实动作和可信结构化上下文 → Scheduler 发 gesture.command → motion_executor.py 使用 asset_type 定位已验收资产并映射 Sequence → drivers/unitree_motion/client.py 的 UNIX socket 客户端 → motion_library_server → G1。单个回复可按锚点顺序安排多个阶段动作；同一物理 ID 不会因多个功能标签重复触发。GestureService.set_interaction_context() 可传入交互阶段、历史和已知事实，并应由状态机同时传入 navigation/scene/asr/dialogue/task 状态；缺少硬门禁字段时动作会被拒绝。通过 visitor_responded、task_completed、new_valid_input、display_target_changed 等布尔事件字段释放匹配姿态；Scheduler 默认最大保持 30 秒，可在 Scheduler 构造时配置。释放姿态只清除 Scheduler 的保持状态并发出 gesture.released，不自动插入 neutral；是否请求基础姿态由状态机显式决定。多帧动作使用 transition_ms 和 duration_ms；单帧只使用 transition_ms。
+
+默认 GUIDEBOT_GESTURE_EXECUTION_MODE=simulation，仅记录转换结果。`conversation.py` 默认仍纯语音，`--gestures`启用模拟规划，`--gesture-backend unitree`启用真实执行。标准语音保持LocalVQE v1.2→AGC2，gate关闭。显式设置为 robot 后，会话入口在第一次 Enter 后自动启动运动服务、接管上半身，并在会话结束时停止动作、释放控制权和退出服务。已有运动服务时拒绝启动。关节限位已依据宇树官方 G1 29 自由度 URDF 核对名称、顺序及全部录制帧，并记录来源与核验范围；这不是现场标定或碰撞测试。打断时对本适配器已提交动作发送原服务的“停止”，不自动回 neutral。现场仍需验证实际到位误差和资源冲突；模拟测试不代表真机验证。本机配置与步骤见 docs/experiments/fork-logic-preserved-layout-20261124.md。
+
+## 历史模拟方案（2026-11-15）
+
+离线回放只输出模拟命令；正式unitree模式由ROS运动网关调用宿主执行器控制G1上肢。FunASR使用 `drivers/timestamps/runtime.py`，新动作逻辑均在本目录。语音不会等待 DeepSeek 或时间戳。
 
 ## 修改动作与示例
 
-`assets/motion/actions.json` 是动作定义与参数校验的唯一来源。编辑后在新会话或新 CLI 进程中生效，不在运行中热加载。动作含 `id/name/kind/description/parameters/required/enabled`。`kind=motion` 必须有正数范围的 `duration_s`；它从到位时刻开始计算，不包括切换。`kind=pose` 不带时长，维持到后续动作或回复播放结束。注册的动作只是抽象命令，未来执行端需实现相同 ID，注册本身不会生成轨迹。
+`actions.json` 是动作定义与参数校验的唯一来源。编辑后在新会话或新 CLI 进程中生效，不在运行中热加载。动作含 `id/name/kind/description/parameters/required/enabled`。`kind=motion` 必须有正数范围的 `duration_s`；它从到位时刻开始计算，不包括切换。`kind=pose` 不带时长，维持到后续动作或回复播放结束。注册的动作只是抽象命令，未来执行端需实现相同 ID，注册本身不会生成轨迹。
 
 | ID | 意义 | kind | 特有参数 |
 |---|---|---|---|
@@ -36,8 +44,8 @@
 在仓库根目录、GuideBot Conda 环境中执行，无网络与外设：
 
 ```bash
-python -m GuideBot.gesture prompt --text '请注意这里的沙盘。'
-python -m GuideBot.gesture --registry /path/to/actions.json prompt
+python -m tools.gesture prompt --text '请注意这里的沙盘。'
+python -m tools.gesture --registry /path/to/actions.json prompt
 ```
 
 文字单元复用 FunASR 的中文字符/英文词/数字串规则。LLM 引用程序分配的 unit_id；offset 和 response_id 由本地保存，不让模型猜时间。
@@ -48,9 +56,9 @@ python -m GuideBot.gesture --registry /path/to/actions.json prompt
 
 ```bash
 # 已有配置文件时，在同一 shell 执行 source /你的配置文件绝对路径
-python -m GuideBot.gesture evaluate --repeats 2
+python -m tools.gesture evaluate --repeats 2
 # 可配置 DEEPSEEK_MODEL、DEEPSEEK_BASE_URL；默认 deepseek-chat 与官方地址
-python -m GuideBot.gesture evaluate --model deepseek-chat --case hold_model
+python -m tools.gesture evaluate --model deepseek-chat --case hold_model
 ```
 
 该命令只发送 `evaluation.json` 中的人工合成文字和示例目标，不上传录音或知识库。默认 21 个用例：每个动作两个正例，加五个负例。注册动作改变后应同步调整评估用例。结果默认在 `~/.local/state/guidebot/gesture-evaluation/`，包括逐条计划、耗时、错误和汇总；汇总记录注册表/Prompt/示例摘要。网络/格式错误计入失败，不从分母删除。
@@ -74,7 +82,7 @@ python -m GuideBot.gesture evaluate --model deepseek-chat --case hold_model
 其中 ID 只是格式示意，必须按对应录音文本检查。先验证 response_id、锚点范围和参数，再进行墙钟 PCM 回放：
 
 ```bash
-python -m GuideBot.gesture replay --data recordings/live-session \
+python -m tools.gesture replay --data recordings/live-session \
   --response-id a9525bae-4a90-4a84-acbb-6a707578492c \
   --plans /path/to/cached-plans.json --output /tmp/gesture-replay
 ```
@@ -90,16 +98,15 @@ python -m GuideBot.gesture replay --data recordings/live-session \
 未来在有设备的环境中，保留手动 Enter 启停：
 
 ```bash
-python GuideBot/conversation/conversation.py --gestures \
-  --gesture-targets /path/to/scene-targets.json
+python main.py --gestures
 ```
 
-本服务器不要运行该硬件入口。`--gestures` 默认关闭。2026-11-15 起，开启时使用 `timing.py` 中综合测量最好的尽力同步配置：单线程、动态 INT8、同窗口 predictor 复用、完整前缀、0.5s 更新、0.1s 尾部保留、关闭周期重同步、完成后修复。`window=120` 是已有回复长度上限内始终从零计算，不是等待 120 秒。327 单元墙钟对照为 314/327 同时满足一字容差和提前发布，仍非严格保证；过程和边界见 `docs/experiments/realtime-optimization.md`。原有单独 `--timestamps` 参数仍保持 6/2/1。API Key 缺失或初始化失败时报告并关闭动作规划，语音继续。
+本服务器不要运行该硬件入口。`--gestures` 默认关闭。2026-11-15 起，开启时使用 `timing.py` 中综合测量最好的尽力同步配置：单线程、动态 INT8、同窗口 predictor 复用、完整前缀、0.5s 更新、0.1s 尾部保留、关闭周期重同步、完成后修复。`window=120` 是已有回复长度上限内始终从零计算，不是等待 120 秒。327 单元墙钟对照为 314/327 同时满足一字容差和提前发布，仍非严格保证；过程和边界见 `docs/experiments/realtime-optimization.md`。原有单独 `--timestamps` 参数仍保持 6/2/1。正式ROS入口在缺少动作Key或初始化失败时终止本次启动，不静默降级。
 
 回放入口的默认 4s/0.5s/0.25s 保留为历史对照；复现新的动作配置需显式给出：
 
 ```bash
-python -m GuideBot.gesture replay --data recordings/live-session \
+python -m tools.gesture replay --data recordings/live-session \
   --response-id a9525bae-4a90-4a84-acbb-6a707578492c \
   --plans /path/to/cached-plans.json --output /tmp/gesture-best-replay \
   --window 120 --step .5 --tail .1 --resync-every 0 \
@@ -123,7 +130,3 @@ python -m GuideBot.gesture replay --data recordings/live-session \
 本轮完成注册/解析/调度/取消与会话事件接线测试，以及真实 PCM + FunASR + 缓存计划回放。真实模型检测结果与首次动作输出延迟只有 evaluate 实际成功调用 API 后才成立。最新服务器回放观测及 Key 状态见 `docs/experiments/gesture-integration.md`。
 
 DeepSeek JSON 模式一手文档：https://api-docs.deepseek.com/guides/json_mode 。客户端显式设置 `response_format={"type":"json_object"}`，Prompt 包含 JSON 约定，仍在本地验证结构与语义参数。
-
-## 2026-11-21 离线执行实验
-
-可选执行接口已通过C++离线服务验证，正常conversation仍为模拟。用 `python -m tools.motion.offline_gesture_experiment` 复现；实验无需Enter，因为不录放音、不连接机器人。真实音频入口继续要求Enter。关联回执、期限拒绝及取消边界见 [实验报告](../../docs/experiments/offline-gesture-execution-20261121.md)。

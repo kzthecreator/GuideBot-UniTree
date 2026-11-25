@@ -1,1 +1,1 @@
-"""Optional G1 motion tools; importing this package never starts robot control."""
+"""G1 upper-body motion assets and controller interface."""

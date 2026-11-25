@@ -1,19 +1,26 @@
 from pathlib import Path
 import sys
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'GuideBot/conversation'))
-from stepfun import RealtimeSession
+from GuideBot.conversation.stepfun import RealtimeSession
+from GuideBot.gesture.service import GestureService
 
 
 class GestureIntegrationTests(unittest.TestCase):
+    def test_robot_immediate_mode_does_not_start_aligner(self):
+        with patch.dict('os.environ', {'GUIDEBOT_GESTURE_EXECUTION_MODE': 'robot'}, clear=False):
+            session = RealtimeSession('dummy', Path('/tmp/unused-gesture-session'), gestures=True, gesture_service_factory=GestureService)
+        self.assertIsNone(session.timestamps)
+        self.assertTrue(session.gestures.scheduler.immediate)
+
     def session(self):
-        value = RealtimeSession('dummy', Path('/tmp/unused-gesture-session'), gestures=True)
+        value = RealtimeSession('dummy', Path('/tmp/unused-gesture-session'), gestures=True, gesture_service_factory=GestureService)
         self.assertEqual(value.timestamps.alignment_options,
                          dict(window=120., step=.5, tail=.1, resync_every=0., final_repair=True))
         self.assertEqual(value.timestamps.backend_options,
-                         dict(threads=1, reuse_predictor=True, quantized=True, count_offset=-1))
+                         dict(threads=1, reuse_predictor=True, quantized=False, count_offset=-1))
         value.timestamps = Mock()
         value.gestures = Mock()
         value.speaker = Mock()

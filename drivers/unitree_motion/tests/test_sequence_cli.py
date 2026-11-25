@@ -1,6 +1,6 @@
+from drivers.unitree_motion.paths import BUILD
 import importlib.util
 import json
-import os
 import signal
 import socket
 import subprocess
@@ -13,12 +13,9 @@ from types import SimpleNamespace
 
 import yaml
 
-REPO = Path(__file__).resolve().parents[3]
-ROOT = REPO / "assets/motion"
-BUILD_DIR = Path(os.environ.get("GUIDEBOT_MOTION_BUILD_DIR",
-                                Path.home() / ".local/share/guidebot/deps/motion/build-reorganized"))
-TOOL = REPO / "tools/motion" / "motion_ctl.py"
-spec = importlib.util.spec_from_file_location("motion_library", REPO / "tools/motion" / "motion_library.py")
+ROOT = Path(__file__).resolve().parents[3] / "assets/motion"
+TOOL = Path(__file__).resolve().parents[3] / "tools/motion/motion_ctl.py"
+spec = importlib.util.spec_from_file_location("motion_library", TOOL.with_name("motion_library.py"))
 motion_library = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(motion_library)
 ctl_spec = importlib.util.spec_from_file_location("motion_ctl", TOOL)
@@ -82,7 +79,7 @@ class SequenceCliTest(unittest.TestCase):
 
     def check_preview(self, name="neutral"):
         return subprocess.run([
-            str(BUILD_DIR / "motion_library_server"), "--check-preview", name,
+            str(BUILD / "motion_library_server"), "--check-preview", name,
             "--limits", str(self.limits), "--catalog", str(self.catalog),
             "--dir", str(self.motions), "--poses", str(self.poses),
             "--metadata", str(self.metadata),
@@ -412,7 +409,7 @@ class SequenceCliTest(unittest.TestCase):
 
     def test_offline_socket_sequence_interrupt_resume(self):
         process = subprocess.Popen([
-            str(BUILD_DIR / "motion_library_server"), "--offline-server",
+            str(BUILD / "motion_library_server"), "--offline-server",
             "--limits", str(self.limits), "--catalog", str(self.catalog),
             "--dir", str(self.motions), "--poses", str(self.poses),
             "--metadata", str(self.metadata),
@@ -491,7 +488,7 @@ class SequenceCliTest(unittest.TestCase):
         profile["verified"] = False
         self.limits.write_text(json.dumps(profile))
         process = subprocess.Popen([
-            str(BUILD_DIR / "motion_library_server"), "--offline-server",
+            str(BUILD / "motion_library_server"), "--offline-server",
             "--allow-preview", "--limits", str(self.limits),
             "--catalog", str(self.catalog), "--dir", str(self.motions),
             "--poses", str(self.poses), "--metadata", str(self.metadata),

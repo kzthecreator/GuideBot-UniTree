@@ -1,30 +1,179 @@
 {
   "version": 1,
-  "hardware": "只有上肢肩部和肘部参与动作，没有可控头部、手腕或手指。所有动作由下层封装并平滑切换。",
+  "hardware": "Unitree G1 EDU+，已录制并完成真机验收的上肢动作库。一个物理动作可以表达多种语义；机器人不具备手指精确指向或抓握能力。",
   "actions": [
-    {"id": "wave", "name": "挥手", "kind": "motion", "enabled": true,
-     "description": "用前臂摆动向听众问候或告别，不需要手腕摆动。适合大家好、欢迎参观、再见。",
-     "parameters": {"duration_s": {"type": "number", "minimum": 1.0, "maximum": 3.0}}, "required": ["duration_s"]},
-    {"id": "point", "name": "指向", "kind": "pose", "enabled": true,
-     "description": "伸出一侧手臂指向已知场景目标，以整条手臂表达方向，不伸手指。适合请看这里、注意某个场景目标。必须有 targets 中的目标，不能猜坐标。",
-     "parameters": {"target_id": {"type": "target"}}, "required": ["target_id"]},
-    {"id": "hold_object", "name": "托抱物体", "kind": "pose", "enabled": true,
-     "description": "双肘弯曲、前臂在身体前方形成托抱一个物体的姿态，强调正在描述具体物体的结构、材料或特点。是假装承托，不实际抓握，不需要手指或手腕。",
-     "parameters": {}, "required": []},
-    {"id": "present_sweep", "name": "横向介绍扫臂", "kind": "motion", "enabled": true,
-     "description": "一侧手臂平缓横向扫过，以肩肘带动整条手臂，概括介绍一整片展区、整排设施或连续空间。不用于锁定单个目标，不指示精确方向坐标。",
-     "parameters": {"duration_s": {"type": "number", "minimum": 1.0, "maximum": 3.0}}, "required": ["duration_s"]},
-    {"id": "open_arms", "name": "展开双臂", "kind": "pose", "enabled": true,
-     "description": "双臂向身体两侧舒展，表达空间开阔、范围广阔或包容开放的整体概念；与单臂扫过一排目标不同。动作不依赖掌心朝向。",
-     "parameters": {}, "required": []},
-    {"id": "compare_sides", "name": "左右对比", "kind": "motion", "enabled": true,
-     "description": "左右前臂依次抬起，在身体两侧交替呈现两个方案或两类事物的差别。不需要实际场景目标，不表达真实左右方位，不依赖头部或手部运动。",
-     "parameters": {"duration_s": {"type": "number", "minimum": 1.5, "maximum": 4.0}}, "required": ["duration_s"]},
-    {"id": "frame_object", "name": "双臂框示尺寸", "kind": "pose", "enabled": true,
-     "description": "双前臂在身体前方间隔一定距离，示意具体物体的宽度或大小；重点是尺寸而不是承托重量。不依赖手指描边，不将文字尺寸换算成精确关节角度。size 表示相对示意尺度。",
-     "parameters": {"size": {"type": "string", "enum": ["small", "medium", "large"]}}, "required": ["size"]},
-    {"id": "emphasis_beat", "name": "节奏性强调", "kind": "motion", "enabled": true,
-     "description": "前臂在身体前方做小幅上下强调动作，用于最重要的一点、关键结论或明确的重点提醒，不指向具体对象，也不要求每句话都强调。",
-     "parameters": {"duration_s": {"type": "number", "minimum": 0.6, "maximum": 2.0}}, "required": ["duration_s"]}
+    {
+      "id": "neutral", "motion_name": "neutral", "asset_type": "pose", "kind": "pose",
+      "name": "调度器基础姿态", "description": "已录制的双臂自然待机单帧姿态，由 Scheduler 生命周期管理，不是 LLM 语义动作。",
+      "semantic_intents": [], "interaction_functions": [], "example_phrases": [],
+      "when_to_use": "仅由调度器或显式生命周期控制逻辑管理姿态时",
+      "avoid_when": "作为普通对话动作规划输出；每段语音结束后自动插入",
+      "parameters": {}, "required": [], "trigger_source": "scheduler_state_machine",
+      "llm_selectable": false, "context_requirements": ["调度器确认需要恢复基础姿态"],
+      "hold_policy": "until_next_state_change", "post_action_policy": "remain_in_base_pose",
+      "verified": true, "enabled": true
+    },
+    {
+      "id": "greet_open", "motion_name": "greet_open", "asset_type": "motion", "kind": "pose",
+      "name": "开放式双臂姿态", "description": "双臂舒展至一个静态目标姿态。表达开放、友好或邀请参与；不产生往复挥动，不指向具体对象。",
+      "semantic_intents": ["欢迎", "问候", "邀请提问", "邀请互动", "邀请反馈", "开放回应"],
+      "interaction_functions": [
+        {"function":"welcome_reception","description":"以开放姿态迎接访客或开始接待。","example_phrases":["欢迎来到我们的展厅。","各位来宾下午好，很高兴见到大家。"],"context_requirements":["访客刚到场或导览刚开始","当前交互处于接待阶段"],"avoid_when":"同一轮已经完成欢迎，或只是在陈述普通信息。"},
+        {"function":"invite_question","description":"在讲解告一段落时开放交流，邀请访客提出问题。","example_phrases":["大家还有什么问题吗？","如果有疑问，现在可以提出来。"],"context_requirements":["讲解或一个主题已经结束","当前轮到访客发言"],"avoid_when":"讲解尚未完成、需要继续引导移动，或只是引用提问句。"},
+        {"function":"invite_participation","description":"邀请访客加入当前互动、体验或共同讨论。","example_phrases":["欢迎大家一起参与这个互动。","谁愿意来体验一下？"],"context_requirements":["确有可参与的活动或体验","参与方式在场景中明确"],"avoid_when":"没有实际互动环节，或参与动作需要机器人无法完成的身体能力。"},
+        {"function":"invite_feedback","description":"邀请访客发表看法、选择或分享体验。","example_phrases":["大家怎么看这个设计？","欢迎说说你们的感受。"],"context_requirements":["对话已呈现可供评价的对象或观点","当前需要等待访客回应"],"avoid_when":"访客已经回答、当前只需给出事实，或语义是单向告别。"},
+        {"function":"open_social_response","description":"以友好开放姿态回应访客的参与、感谢或积极意见。","example_phrases":["谢谢你的分享，欢迎大家继续交流。","很高兴听到你的想法。"],"context_requirements":["前文包含访客参与或积极反馈","回应发生在交流阶段"],"avoid_when":"对方表达不满、悲伤或需要严肃安抚，开放姿态可能显得轻率。"}
+      ],
+      "example_phrases": ["欢迎来到我们的展厅。","大家还有什么问题吗？","欢迎说说你们的看法。"],
+      "when_to_use": "接待、交流开放、明确邀请提问/参与/反馈的阶段；结合整轮交互判断",
+      "avoid_when": "精确指路、握手、拍手、抓取、挥手告别，或每句话重复展开",
+      "parameters": {}, "required": [], "trigger_source": "llm_interaction_context",
+      "llm_selectable": true, "context_requirements": ["符合所选 interaction_function 的阶段要求"],
+      "hold_policy": "until_next_action_or_state_change",
+      "release_conditions": ["visitor_responded", "interaction_changed", "maximum_hold_time"],
+      "post_action_policy": "scheduler_decides_no_automatic_neutral", "verified": true, "enabled": true
+    },
+    {
+      "id": "greet_wave", "motion_name": "greet_wave", "asset_type": "motion", "kind": "motion",
+      "name": "单臂挥动", "description": "一侧上臂和前臂沿三帧轨迹摆动，另一侧相对稳定；不是双臂开放姿态。",
+      "semantic_intents": ["远距离问候", "远距离回应", "友好告别"],
+      "interaction_functions": [
+        {"function":"distant_greeting","description":"用可见的挥动向远处访客打招呼。","example_phrases":["远处的朋友你们好！","欢迎大家，我在这里。"],"context_requirements":["访客与机器人有一定距离","挥动对象在当前场景中明确"],"avoid_when":"面对面近距离接待或需要握手。"},
+        {"function":"distant_acknowledgement","description":"回应远处访客的招呼或确认，让对方知道机器人已注意到。","example_phrases":["你好，我看到你了。","欢迎过来一起参观。"],"context_requirements":["访客刚刚向机器人招手或呼唤","上下文确认是远距离互动"],"avoid_when":"没有访客招呼依据，或对方正提出需要口头回答的问题。"},
+        {"function":"friendly_farewell","description":"在离别语境中挥手表达友好告别。","example_phrases":["再见，祝您参观愉快。","谢谢来访，我们下次见。"],"context_requirements":["访客正在离开或接待明确结束","告别对象在场景中明确"],"avoid_when":"只是结束一段讲解但访客仍在场，或需要机器人持续保持姿态。"}
+      ],
+      "example_phrases": ["远处的朋友你们好！","你好，我看到你了。","再见，祝您参观愉快。"],
+      "when_to_use": "有明确远距离招呼、回应或真实离场告别时",
+      "avoid_when": "普通欢迎、近距离握手、无对象的事实播报",
+      "parameters": {"duration_s":{"type":"number","minimum":1.0,"maximum":4.0}}, "required":["duration_s"],
+      "trigger_source": "llm_explicit_intent", "llm_selectable": true,
+      "context_requirements": ["存在明确挥手意图或已确认的远距离招呼/告别"],
+      "hold_policy": "trajectory_duration_then_scheduler_decides",
+      "post_action_policy": "scheduler_decides_no_automatic_neutral", "verified": true, "enabled": true
+    },
+    {
+      "id": "invite_follow", "motion_name": "invite_follow", "asset_type": "motion", "kind": "motion",
+      "name": "侧前方引导", "description": "右臂沿四帧轨迹向侧前方引导，左臂相对稳定；不提供精确方位或导航。",
+      "semantic_intents": ["邀请跟随", "前往下一展区", "前往体验区"],
+      "interaction_functions": [
+        {"function":"invite_follow","description":"邀请访客跟随讲解员继续移动。","example_phrases":["请跟我继续参观。","我们一起去下一站。"],"context_requirements":["行进路线或下一站已明确","访客可以跟随机器人移动"],"avoid_when":"机器人不会移动、路线未知或访客应留在原地。"},
+        {"function":"transition_to_next_area","description":"在当前讲解结束后发出转场邀请，前往已确定的下一展区。","example_phrases":["接下来我们前往下一展区。","下一部分请随我到体验区看看。"],"context_requirements":["当前段落已结束","下一展区已由场景或行程信息确认"],"avoid_when":"只提到某个区域但没有移动安排。"},
+        {"function":"invite_experience","description":"引导访客一起前往已知的互动体验区域。","example_phrases":["欢迎跟我到体验区试一试。","我们去前面的互动装置体验一下。"],"context_requirements":["体验区域及可参与活动已确认","访客被邀请移动"],"avoid_when":"体验位置未知或活动不可用。"}
+      ],
+      "example_phrases": ["请跟我继续参观。","接下来我们前往下一展区。","欢迎跟我到体验区试一试。"],
+      "when_to_use": "明确邀请访客沿已知路线移动",
+      "avoid_when": "精确指向任意目标、没有移动意图或路线不明确",
+      "parameters": {"duration_s":{"type":"number","minimum":1.0,"maximum":5.0}}, "required":["duration_s"],
+      "trigger_source": "llm_navigation_context", "llm_selectable": true,
+      "context_requirements": ["目的地和路线已确认", "导航允许移动", "动作与行走控制不冲突"],
+      "hold_policy": "trajectory_duration_then_scheduler_decides",
+      "post_action_policy": "scheduler_decides_no_automatic_neutral", "verified": true, "enabled": true
+    },
+    {
+      "id": "present_center", "motion_name": "present_center", "asset_type": "motion", "kind": "pose",
+      "name": "中央展示姿态", "description": "右臂在身体前方形成单帧展示姿态；不能精确指点对象。动作已录制并验收。",
+      "semantic_intents": ["展示正前方对象", "突出中央内容", "邀请观察"],
+      "interaction_functions": [
+        {"function":"present_center_object","description":"展示机器人正前方已确认的展品或内容。","example_phrases":["请看正前方的展品。","这里是本区的核心展项。"],"context_requirements":["目标位于机器人正前方且场景已确认","正在讲解该目标"],"avoid_when":"目标方位不明或需要精确定位小物件。"},
+        {"function":"focus_center_content","description":"用展示姿态突出正前方内容，邀请访客观察其特征。","example_phrases":["请留意中央区域的结构。","大家可以观察它的外形特点。"],"context_requirements":["中央展示内容是当前讲解焦点","该姿态对访客视线引导自然"],"avoid_when":"目标不在中央、画面内容过多或仅作普通事实陈述。"}
+      ],
+      "example_phrases": ["请看正前方的展品。","大家可以观察中央区域的结构。"],
+      "when_to_use": "中央/正前方目标已被场景确认，且需要展示或引导观察",
+      "avoid_when": "未知方位、左/右侧目标或精确指向要求",
+      "parameters": {}, "required": [], "trigger_source": "llm_scene_context",
+      "llm_selectable": true, "context_requirements": ["场景信息确认目标位于机器人正前方"],
+      "hold_policy": "until_next_action_or_state_change",
+      "release_conditions": ["display_target_changed", "explanation_ended", "action_switch_needed"],
+      "post_action_policy": "scheduler_decides_no_automatic_neutral", "verified": true, "enabled": true
+    },
+    {
+      "id": "present_left", "motion_name": "present_left", "asset_type": "motion", "kind": "pose",
+      "name": "左侧展示姿态", "description": "左臂抬向机器人左侧的单帧展示姿态，不是手指精确指向。",
+      "semantic_intents": ["展示左侧对象", "引导关注左区", "邀请观察左侧"],
+      "interaction_functions": [
+        {"function":"present_left_object","description":"展示位于机器人左侧的已知展品或设施。","example_phrases":["请看左侧的展柜。","左边这台设备是本区重点。"],"context_requirements":["场景明确目标在机器人左侧","目标与当前讲解相关"],"avoid_when":"左右方位未确认或目标实际在右侧。"},
+        {"function":"focus_left_area","description":"将访客注意力引向左侧展示区域并邀请观察。","example_phrases":["大家可以看看左边这一片展区。","请留意左侧区域的布局。"],"context_requirements":["左侧区域是当前主题的一部分","存在明确的视觉关注理由"],"avoid_when":"只是出现“左”字，或需要指向左侧某个精确坐标。"}
+      ],
+      "example_phrases": ["请看左侧的展柜。","大家可以看看左边这一片展区。"],
+      "when_to_use": "场景信息确认目标位于机器人左侧",
+      "avoid_when": "方位未知、目标位于其他方向或精确点指",
+      "parameters": {}, "required": [], "trigger_source": "llm_scene_context",
+      "llm_selectable": true, "context_requirements": ["场景信息确认目标位于机器人左侧"],
+      "hold_policy": "until_next_action_or_state_change",
+      "release_conditions": ["display_target_changed", "explanation_ended", "action_switch_needed"],
+      "post_action_policy": "scheduler_decides_no_automatic_neutral", "verified": true, "enabled": true
+    },
+    {
+      "id": "present_right", "motion_name": "present_right", "asset_type": "motion", "kind": "pose",
+      "name": "右侧展示姿态", "description": "右臂抬向机器人右侧的单帧展示姿态，不是手指精确指向。",
+      "semantic_intents": ["展示右侧对象", "引导关注右区", "邀请观察右侧"],
+      "interaction_functions": [
+        {"function":"present_right_object","description":"展示位于机器人右侧的已知展品或设施。","example_phrases":["请看右侧的展品。","右边这台设备是本区重点。"],"context_requirements":["场景明确目标在机器人右侧","目标与当前讲解相关"],"avoid_when":"左右方位未确认或目标实际在左侧。"},
+        {"function":"focus_right_area","description":"将访客注意力引向右侧展示区域并邀请观察。","example_phrases":["大家可以看看右边这一片展区。","请留意右侧区域的结构。"],"context_requirements":["右侧区域是当前主题的一部分","存在明确的视觉关注理由"],"avoid_when":"只是出现“右”字，或需要指向右侧某个精确坐标。"}
+      ],
+      "example_phrases": ["请看右侧的展品。","大家可以看看右边这一片展区。"],
+      "when_to_use": "场景信息确认目标位于机器人右侧",
+      "avoid_when": "方位未知、目标位于其他方向或精确点指",
+      "parameters": {}, "required": [], "trigger_source": "llm_scene_context",
+      "llm_selectable": true, "context_requirements": ["场景信息确认目标位于机器人右侧"],
+      "hold_policy": "until_next_action_or_state_change",
+      "release_conditions": ["display_target_changed", "explanation_ended", "action_switch_needed"],
+      "post_action_policy": "scheduler_decides_no_automatic_neutral", "verified": true, "enabled": true
+    },
+    {
+      "id": "please_wait", "motion_name": "please_wait", "asset_type": "motion", "kind": "pose",
+      "name": "等待提示姿态", "description": "一侧前臂抬起形成单帧等待姿态，不表达具体处理进度。",
+      "semantic_intents": ["请求稍候", "暂停讲解", "正在处理"],
+      "interaction_functions": [
+        {"function":"request_wait","description":"礼貌请求访客短暂等待。","example_phrases":["请稍等片刻。","麻烦您等我一下。"],"context_requirements":["当前确有短暂等待需求","预计很快能继续回应"],"avoid_when":"无法给出回应或没有等待必要。"},
+        {"function":"pause_explanation","description":"在讲解暂时中断时提示访客稍候。","example_phrases":["讲解暂停一下，我们马上继续。","请稍候，我先处理一个问题。"],"context_requirements":["当前讲解确实需要暂停","访客需要知道暂停是暂时的"],"avoid_when":"讲解正常继续或已经结束。"},
+        {"function":"processing_notice","description":"告知正在核实或处理访客请求。","example_phrases":["我正在查询这项信息，请稍候。","我来确认一下开放时间。"],"context_requirements":["系统或工作人员实际正在处理请求","回应不会虚构后台进度"],"avoid_when":"并未开始处理或无法确认请求状态。"}
+      ],
+      "example_phrases": ["请稍等片刻。","讲解暂停一下，我们马上继续。","我正在查询这项信息，请稍候。"],
+      "when_to_use": "真实短暂等待、处理请求或暂停讲解",
+      "avoid_when": "没有处理行为、普通时间事实或无限期等待",
+      "parameters": {}, "required": [], "trigger_source": "llm_task_state",
+      "llm_selectable": true, "context_requirements": ["确有访客等待或需要告知的真实处理过程"],
+      "hold_policy": "until_next_action_or_state_change",
+      "release_conditions": ["task_completed", "task_cancelled", "maximum_hold_time"],
+      "post_action_policy": "scheduler_decides_no_automatic_neutral", "verified": true, "enabled": true
+    },
+    {
+      "id": "request_repeat", "motion_name": "request_repeat", "asset_type": "motion", "kind": "pose",
+      "name": "澄清请求姿态", "description": "右臂抬起，右手位于头部上方或附近，形成单帧询问姿态；头部没有主动运动。",
+      "semantic_intents": ["请求重复", "请求澄清", "请求补充", "没有听清"],
+      "interaction_functions": [
+        {"function":"ask_repeat","description":"表达没有听清，并礼貌请求重复刚才内容。","example_phrases":["抱歉，我没听清，能再说一遍吗？","请您重复一下最后一句。"],"context_requirements":["访客刚刚说过内容","系统确实未能可靠识别"],"avoid_when":"机器人已经正确理解或只是复述他人请求。"},
+        {"function":"ask_clarification","description":"对含义不明确的表达请求澄清。","example_phrases":["您说的这个地点是指哪一处？","我想确认一下您问的是开放时间吗？"],"context_requirements":["问题存在具体歧义","可指出需要澄清的部分"],"avoid_when":"信息已经明确或问题无法通过澄清解决。"},
+        {"function":"ask_more_information","description":"请求补充完成回答所必需的信息。","example_phrases":["请问您想了解哪一类展品？","方便告诉我具体是哪一天吗？"],"context_requirements":["缺失信息会影响回答","所需补充内容明确且适度"],"avoid_when":"不需要额外信息，或涉及不必要的隐私。"}
+      ],
+      "example_phrases": ["抱歉，我没听清，能再说一遍吗？","您说的地点是指哪一处？","方便告诉我具体是哪一天吗？"],
+      "when_to_use": "确有识别不确定、语义歧义或回答所需信息缺失",
+      "avoid_when": "引用、假设、历史描述或已清楚理解",
+      "parameters": {}, "required": [], "trigger_source": "asr_dialogue_state",
+      "llm_selectable": true, "context_requirements": ["ASR/对话状态确认需要重复、补充或澄清"],
+      "hold_policy": "until_next_action_or_state_change",
+      "release_conditions": ["new_valid_input", "clarification_completed", "interaction_cancelled", "maximum_hold_time"],
+      "post_action_policy": "scheduler_decides_no_automatic_neutral", "verified": true, "enabled": true
+    },
+    {
+      "id": "emphasize_once", "motion_name": "emphasize_once", "asset_type": "motion", "kind": "motion",
+      "name": "一次性重点强调", "description": "左手保持相对固定，右手位于左手上方，右手沿预设轨迹进行小幅上下及前后摆动，形成一次连续的重点强调动作。",
+      "semantic_intents": ["强调重点", "突出结论", "安全提醒", "强调技术特点"],
+      "interaction_functions": [
+        {"function":"emphasize_key_point","description":"为单个重要信息提供一次身体强调。","example_phrases":["最重要的是先完成安全检查。","请特别留意这一点。"],"context_requirements":["本段只有一个清晰重点","强调与语音内容同步"],"avoid_when":"连续每句都强调或没有明确重点。"},
+        {"function":"highlight_conclusion","description":"突出当前讲解的总结结论。","example_phrases":["因此，稳定性是这套系统的核心优势。","最终结论是维护前必须断电。"],"context_requirements":["内容确为总结或结论","此前已经提供必要论据"],"avoid_when":"尚未完成论证或只是普通过渡句。"},
+        {"function":"safety_reminder","description":"在重要安全提醒处加强注意信号。","example_phrases":["操作前务必切断电源。","请记住，设备运行时不要打开防护罩。"],"context_requirements":["提醒内容属于真实且适用的安全要求","表述与现场规程一致"],"avoid_when":"安全规程未知、内容未经核实或频繁制造警报感。"},
+        {"function":"highlight_technical_feature","description":"强调一个对理解展品有帮助的技术特征。","example_phrases":["它最特别的地方是采用了双层散热结构。","这项设计的关键在于低功耗控制。"],"context_requirements":["技术特征有资料依据","该特征是当前讲解重点"],"avoid_when":"规格未经核实或细节并不重要。"}
+      ],
+      "example_phrases": ["最重要的是先完成安全检查。","因此，稳定性是这套系统的核心优势。","它最特别的地方是采用双层结构。"],
+      "when_to_use": "有单一、已核实的重要结论、安全提醒或技术特征",
+      "avoid_when": "例行陈述、多个重点连发或重复强调",
+      "parameters": {"duration_s":{"type":"number","minimum":1.0,"maximum":4.0}}, "required":["duration_s"],
+      "trigger_source": "llm_salience", "llm_selectable": true,
+      "context_requirements": ["存在明确且经核实的重要结论、安全提醒或技术特征"],
+      "hold_policy": "trajectory_duration_then_scheduler_decides",
+      "post_action_policy": "scheduler_decides_no_automatic_neutral", "verified": true, "enabled": true
+    }
   ]
 }

@@ -6,9 +6,9 @@ import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'GuideBot/conversation'))
-import knowledge as kb
-import conversation
-from stepfun import RealtimeSession
+from GuideBot.conversation import knowledge as kb
+from GuideBot.conversation import session as conversation
+from GuideBot.conversation.stepfun import RealtimeSession
 
 
 class FakeAPI:
@@ -57,7 +57,7 @@ class SyncTests(unittest.TestCase):
         (self.docs/'a.md').write_text('alpha')
         (self.docs/'b.txt').write_text('beta')
         self.api = FakeAPI()
-        self.mock = patch('knowledge.KnowledgeAPI',return_value=self.api)
+        self.mock = patch('GuideBot.conversation.knowledge.KnowledgeAPI',return_value=self.api)
         self.factory = self.mock.start()
         self.addCleanup(self.mock.stop)
         self.addCleanup(self.temp.cleanup)
@@ -204,31 +204,29 @@ class SessionTests(unittest.TestCase):
     def test_confirmed_retrieval_starts_audio(self):
         s = self.session()
         tools = [{'type':'retrieval','function':{'options':{'vector_store_id':'kb-test'}}}]
-        with patch('stepfun.threading.Thread'):
+        with patch('GuideBot.conversation.stepfun.threading.Thread'):
             s.on_event({'type':'session.updated','session':{
                 'turn_detection':{'type':'server_vad'},'tools':tools}})
         self.assertTrue(s.ready.is_set())
 
     def test_sync_failure_never_constructs_audio_session(self):
-        with patch('conversation.read_soul',return_value='soul'), \
-             patch('conversation.load_secret',return_value='dummy'), \
-             patch('conversation.sync_knowledge',side_effect=RuntimeError('sync failed')), \
-             patch('conversation.RealtimeSession') as session:
+        with patch('GuideBot.conversation.session.read_soul',return_value='soul'), \
+             patch('GuideBot.conversation.session.load_secret',return_value='dummy'), \
+             patch('GuideBot.conversation.session.sync_knowledge',side_effect=RuntimeError('sync failed')), \
+             patch('GuideBot.conversation.session.RealtimeSession') as session:
             with self.assertRaisesRegex(RuntimeError,'sync failed'):
-                conversation.start_conversation(sync_knowledge_before_start=True)
+                conversation.prepare({'sync_knowledge_before_start': True})
         session.assert_not_called()
 
     def test_optional_sync_precedes_manual_audio_start(self):
         for enabled in (False,True):
             with self.subTest(enabled=enabled), \
-                 patch('conversation.read_soul',return_value='soul'), \
-                 patch('conversation.load_secret',return_value='dummy'), \
-                 patch('conversation.sync_knowledge',return_value=kb.SyncResult('kb-test',(),(),())) as sync, \
-                 patch('conversation.load_knowledge',return_value='kb-test') as load, \
-                 patch('conversation.wait_for_enter',side_effect=RuntimeError('cancel')), \
-                 patch('conversation.RealtimeSession') as session:
-                with self.assertRaisesRegex(RuntimeError,'cancel'):
-                    conversation.start_conversation(sync_knowledge_before_start=enabled)
+                 patch('GuideBot.conversation.session.read_soul',return_value='soul'), \
+                 patch('GuideBot.conversation.session.load_secret',return_value='dummy'), \
+                 patch('GuideBot.conversation.session.sync_knowledge',return_value=kb.SyncResult('kb-test',(),(),())) as sync, \
+                 patch('GuideBot.conversation.session.load_knowledge',return_value='kb-test') as load, \
+                 patch('GuideBot.conversation.session.RealtimeSession') as session:
+                conversation.prepare({'sync_knowledge_before_start': enabled})
                 self.assertEqual(sync.call_count,int(enabled))
                 self.assertEqual(load.call_count,int(not enabled))
                 session.return_value.start.assert_not_called()
@@ -254,7 +252,7 @@ class TransportTests(unittest.TestCase):
         response = Mock(ok=False,status_code=403,text='dummy invalid')
         response.__enter__ = Mock(return_value=response)
         response.__exit__ = Mock(return_value=False)
-        with patch('knowledge.requests.request',return_value=response):
+        with patch('GuideBot.conversation.knowledge.requests.request',return_value=response):
             with self.assertRaises(kb.KnowledgeAPIError) as error:
                 kb.KnowledgeAPI('dummy').request('GET','/files/file-1')
         self.assertNotIn('dummy',str(error.exception))

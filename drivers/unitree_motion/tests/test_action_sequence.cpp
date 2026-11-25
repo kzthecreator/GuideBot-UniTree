@@ -1,4 +1,4 @@
-#include "../action_sequence.hpp"
+#include "action_sequence.hpp"
 
 #include <cmath>
 #include <fstream>

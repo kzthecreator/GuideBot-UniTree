@@ -8,7 +8,7 @@ import sys
 import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from GuideBot.conversation.timestamps import MonotonicBackend, text_units
+from drivers.timestamps.runtime import MonotonicBackend, text_units
 
 
 def main():

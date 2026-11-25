@@ -1,5 +1,5 @@
-#include "../sequence_library.hpp"
-#include "../motion_interrupt.hpp"
+#include "sequence_library.hpp"
+#include "motion_interrupt.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -223,9 +223,8 @@ int main() {
 
     const std::string source = __FILE__;
     const std::string project = source.substr(0, source.rfind("/tests/"));
-    rejected = false;
-    try { sequence_library::JointLimits::load(project + "/config/arm_joint_limits.json"); }
-    catch (const std::runtime_error&) { rejected = true; }
-    require(rejected);
+    const auto saved_limits = sequence_library::JointLimits::load(
+        project + "/config/arm_joint_limits.json");
+    require(saved_limits.verified);
     return 0;
 }

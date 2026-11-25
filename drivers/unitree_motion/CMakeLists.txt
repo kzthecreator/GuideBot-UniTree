@@ -9,6 +9,7 @@ if(NOT DEFINED UNITREE_SDK2_PATH)
 endif()
 
 include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${UNITREE_SDK2_PATH}/include
     ${UNITREE_SDK2_PATH}/include/ddscxx
     ${UNITREE_SDK2_PATH}/thirdparty/include
@@ -49,3 +50,6 @@ add_test(NAME sequence_library COMMAND test_sequence_library)
 
 add_executable(motion_library_server motion_library_server.cpp)
 target_link_libraries(motion_library_server ${UNITREE_LIBS} crypto)
+
+add_executable(record_motion teach_with_name.cpp)
+target_link_libraries(record_motion ${UNITREE_LIBS} crypto)

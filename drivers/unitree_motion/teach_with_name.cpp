@@ -418,7 +418,7 @@ int main() {
             return 1;
         }
         std::cout << "[SAVED] " << waypoints.size() << " waypoints -> " << path
-                  << "\n下一步运行: python3 tools/motion_ctl.py preview " << name << "\n";
+                  << "\n下一步运行: python3 ../../tools/motion/motion_ctl.py preview " << name << "\n";
         break;
     }
     return 0;

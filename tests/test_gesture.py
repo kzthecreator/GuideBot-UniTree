@@ -6,7 +6,7 @@ import time
 import unittest
 from unittest.mock import Mock
 
-from GuideBot.gesture.catalog import Catalog, DIRECTORY, make_input, messages, units_for
+from GuideBot.gesture.catalog import Catalog, DIRECTORY, REGISTRY, EXAMPLES, make_input, messages, units_for
 from GuideBot.gesture.planner import ActionStream, Planner
 from GuideBot.gesture.scheduler import Scheduler
 from GuideBot.gesture.service import GestureService
@@ -18,34 +18,37 @@ class GestureTests(unittest.TestCase):
         self.text = '请注意这里的沙盘'
         self.units = units_for(self.text)
         self.targets = [{'id': 'sand_table'}]
-        self.row = dict(action='point', target_id='sand_table', start_unit=0, arrival_unit=3)
+        self.row = dict(action='present_right', start_unit=0, arrival_unit=3)
 
     def plan(self, **changes):
-        return self.catalog.validate({**self.row, **changes}, range(len(self.units)), self.targets)
+        return self.catalog.validate({**self.row, **changes}, range(len(self.units)), self.targets,
+                                     {'scene': {'confirmed': True, 'direction': 'right',
+                                                'target_id': 'sand_table'}})
 
     def test_registry_drives_new_actions_without_prompt_code_changes(self):
-        self.assertEqual(len(self.catalog.actions), 8)
-        examples = json.loads((DIRECTORY/'few_shots.json').read_text())
+        self.assertEqual(len(self.catalog.actions), 9)
+        self.assertNotIn('neutral', self.catalog.actions)
+        examples = json.loads(EXAMPLES.read_text())
         shown = {a['action'] for e in examples for a in e['actions']}
-        self.assertEqual(shown, {'wave', 'point'})
+        self.assertEqual(shown, set(self.catalog.actions))
         with tempfile.TemporaryDirectory() as tmp:
-            document = json.loads((DIRECTORY.parents[1]/'assets/motion/actions.json').read_text())
-            document['actions'].append(dict(id='custom_pose', name='测试姿态', kind='pose',
-                                            description='新增动作', parameters={}, required=[]))
+            document = json.loads(REGISTRY.read_text())
+            document['actions'][1]['description'] = '自定义欢迎描述'
             document['actions'][0]['enabled'] = False
             path = Path(tmp)/'actions.json'
             path.write_text(json.dumps(document))
             catalog = Catalog(path)
             prompt = messages(catalog, make_input('r', self.text))
-            self.assertIn('custom_pose', prompt[0]['content'])
-            self.assertNotIn('"action": "wave"', ''.join(m['content'] for m in prompt))
-            plan = catalog.validate(dict(action='custom_pose', start_unit=0, arrival_unit=1), range(8), [])
-            self.assertEqual(plan.action, 'custom_pose')
+            self.assertIn('自定义欢迎描述', prompt[0]['content'])
+            self.assertNotIn('"action": "neutral"', ''.join(m['content'] for m in prompt))
+            plan = catalog.validate(dict(action='greet_open', start_unit=0, arrival_unit=1), range(8), [],
+                                    {'stage': 'welcome'})
+            self.assertEqual(plan.action, 'greet_open')
 
     def test_registry_rejects_duplicate_ids_and_pose_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)/'bad.json'
-            document = json.loads((DIRECTORY.parents[1]/'assets/motion/actions.json').read_text())
+            document = json.loads(REGISTRY.read_text())
             document['actions'].append(document['actions'][0])
             path.write_text(json.dumps(document))
             with self.assertRaises(ValueError):
@@ -56,6 +59,50 @@ class GestureTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 Catalog(path)
 
+    def test_structured_trigger_gates_are_enforced(self):
+        eligible = range(len(self.units))
+        with self.assertRaisesRegex(ValueError, 'Trusted interaction context'):
+            self.catalog.validate(dict(action='invite_follow', start_unit=0, arrival_unit=1,
+                                       duration_s=2), eligible, [])
+        with self.assertRaisesRegex(ValueError, 'Trusted interaction context'):
+            self.catalog.validate(dict(action='present_left', start_unit=0, arrival_unit=1), eligible, [],
+                                  {'scene': {'confirmed': True, 'direction': 'right', 'target_id': 'x'}})
+        with self.assertRaisesRegex(ValueError, 'Trusted interaction context'):
+            self.catalog.validate(dict(action='request_repeat', start_unit=0, arrival_unit=1), eligible, [],
+                                  {'dialogue': {'state': 'clarification_needed'}})
+        allowed = {'navigation': {'status': 'ready', 'destination': 'next',
+                                  'route_confirmed': True, 'movement_allowed': True}}
+        follow = self.catalog.validate(dict(action='invite_follow', start_unit=0,
+                                            arrival_unit=1, duration_s=2), eligible, [], allowed)
+        self.assertEqual(follow.action, 'invite_follow')
+
+    def test_pose_release_events_and_scheduler_max_hold(self):
+        self.now = 100.
+        events = []
+        scheduler = Scheduler(self.catalog, lambda kind, **d: events.append((kind, d)),
+                              clock=lambda: self.now, pose_max_hold_s=4)
+        text = '大家还有什么问题吗？'
+        units = units_for(text)
+        plan = self.catalog.validate(dict(action='greet_open', start_unit=0, arrival_unit=1),
+                                     range(len(units)), [], {'stage': 'qa_invitation'})
+        scheduler.text('release', text)
+        scheduler.add('release', plan, units)
+        scheduler.playback('release', 100)
+        scheduler.alignment('release', {'version': 1, 'anchors': [
+            {'index': i, 'text': units[i]['text'], 'text_offset': units[i]['text_offset'],
+             'start': start} for i, start in ((0, 1), (1, 2))]})
+        self.now = 100.98
+        scheduler.tick()
+        self.assertEqual(scheduler.active['job'].plan.action, 'greet_open')
+        self.assertTrue(scheduler.release_active('visitor_responded'))
+        self.assertIsNone(scheduler.active)
+
+        scheduler.active = {'rid': 'release', 'job': scheduler.replies['release'].jobs[0],
+                            'end': None, 'release_deadline': 104., 'busy_until': 102.}
+        self.now = 104.
+        scheduler.tick()
+        released = [d for k, d in events if k == 'gesture.released']
+        self.assertEqual(released[-1]['condition'], 'maximum_hold_time')
     def test_all_examples_follow_the_registry(self):
         messages(self.catalog, make_input('r', self.text, self.targets))
         for bad in [dict(action='nod'), dict(target_id='invented'), dict(start_unit=True),
@@ -64,7 +111,7 @@ class GestureTests(unittest.TestCase):
                 self.plan(**bad)
         for value in [True, float('nan'), float('inf'), -1, 10]:
             with self.subTest(value=value), self.assertRaises(ValueError):
-                self.catalog.validate(dict(action='wave', start_unit=0, arrival_unit=1, duration_s=value), range(8), [])
+                self.catalog.validate(dict(action='greet_wave', start_unit=0, arrival_unit=1, duration_s=value), range(8), [])
 
     def test_stream_decoder_handles_arbitrary_chunks_and_quoted_braces(self):
         value = {'actions': [self.row, dict(action='test', note='逗号, 括号{}与引号"') ]}
@@ -177,7 +224,7 @@ class GestureTests(unittest.TestCase):
 
     def test_motion_conflict_is_skipped_and_pose_can_be_superseded(self):
         scheduler = self.scheduler()
-        wave = self.catalog.validate(dict(action='wave', start_unit=0, arrival_unit=1, duration_s=2), range(8), [])
+        wave = self.catalog.validate(dict(action='greet_wave', start_unit=0, arrival_unit=1, duration_s=2), range(8), [])
         scheduler.replies['r'].jobs.clear()
         scheduler.add('r', wave, self.units)
         scheduler.add('r', self.plan(), self.units)
@@ -194,7 +241,8 @@ class GestureTests(unittest.TestCase):
         self.alignment(scheduler)
         self.now = 100.98
         scheduler.tick()
-        other = self.catalog.validate(dict(action='hold_object',start_unit=1,arrival_unit=2), range(8), [])
+        other = self.catalog.validate(dict(action='please_wait',start_unit=1,arrival_unit=2), range(8), [],
+                                      {'task': {'status': 'running'}})
         scheduler.add('r', other, self.units)
         scheduler.alignment('r', dict(version=2, anchors=[
             dict(index=i,text=u['text'],text_offset=u['text_offset'],start=t)
@@ -209,7 +257,8 @@ class GestureTests(unittest.TestCase):
         self.alignment(scheduler)
         self.now = 100.98
         scheduler.tick()
-        other = self.catalog.validate(dict(action='hold_object',start_unit=4,arrival_unit=5), range(8), [])
+        other = self.catalog.validate(dict(action='please_wait',start_unit=4,arrival_unit=5), range(8), [],
+                                      {'task': {'status': 'running'}})
         scheduler.add('r', other, self.units)
         rows = [dict(index=i,text=u['text'],text_offset=u['text_offset'],start=t)
                 for i,u,t in [(0,self.units[0],1.),(3,self.units[3],2.),
@@ -233,13 +282,14 @@ class GestureTests(unittest.TestCase):
         http.post.return_value = response
         planner = Planner(self.catalog, api_key='not-a-real-key', session=http)
         plans = []
-        stats = planner.plan(make_input('r',self.text,self.targets), plans.append)
-        self.assertEqual([p.action for p in plans], ['point'])
+        context = {'scene': {'confirmed': True, 'direction': 'right', 'target_id': 'sand_table'}}
+        stats = planner.plan(make_input('r',self.text,self.targets,interaction_context=context), plans.append)
+        self.assertEqual([p.action for p in plans], ['present_right'])
         self.assertEqual(stats['invalid_actions'], 1)
         response.status_code = 401
         response.text = 'private-server-response'
         with self.assertRaisesRegex(RuntimeError, '^DeepSeek HTTP 401$'):
-            planner.plan(make_input('r',self.text), plans.append)
+                planner.plan(make_input('r',self.text,interaction_context=context), plans.append)
 
     @staticmethod
     def wait_for(predicate, timeout=2):
@@ -262,7 +312,9 @@ class GestureTests(unittest.TestCase):
         events = []
         with tempfile.TemporaryDirectory() as tmp:
             service = GestureService(tmp, lambda kind, **d: events.append(dict(kind=kind, **d)),
-                                     planner=BlockingPlanner(), catalog=self.catalog, targets=self.targets)
+                                     planner=BlockingPlanner(), catalog=self.catalog, targets=self.targets,
+                                     interaction_context={'scene': {'confirmed': True, 'direction': 'right',
+                                                                   'target_id': 'sand_table'}})
             try:
                 service.start()
                 service.submit('text','r',text=self.text)

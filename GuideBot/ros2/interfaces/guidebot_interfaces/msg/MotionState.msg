@@ -1,0 +1,9 @@
+string session_id
+uint64 generation
+string job_id
+string ownership
+string state
+bool simulated
+bool estimated
+float64 observed_monotonic
+string error

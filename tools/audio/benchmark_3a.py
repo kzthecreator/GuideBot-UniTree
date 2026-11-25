@@ -7,8 +7,8 @@ import time
 import numpy as np
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'GuideBot/conversation'))
-from localvqe import Processor
-from agc import AGC2
+from drivers.localvqe.runtime import Processor
+from drivers.agc2.runtime import AGC2
 from compare_frontends import read
 
 parser=argparse.ArgumentParser(description=__doc__)

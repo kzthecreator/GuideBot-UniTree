@@ -6,9 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-REPO = Path(__file__).resolve().parents[3]
-ROOT = REPO / "assets/motion"
-sys.path.insert(0, str(REPO / "tools/motion"))
+ROOT = Path(__file__).resolve().parents[3] / "assets/motion"
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools/motion"))
 import motion_library as library
 import motion_timing_ui as timing_ui
 

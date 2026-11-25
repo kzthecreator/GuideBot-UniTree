@@ -3,6 +3,7 @@
 import audioop
 import base64
 import json
+import os
 from pathlib import Path
 import queue
 import sys
@@ -13,11 +14,11 @@ import uuid
 
 import websocket
 
-from audio import AudioDiagnostic, CLOUD_RATE, RATE, LevelGate, StreamingSpeaker, microphone_packets
-from agc import AGC2
-from knowledge import read_soul
-from localvqe import LocalVQEEcho
-from timestamps import StreamingTimestamps
+from GuideBot.conversation.audio import AudioDiagnostic, CLOUD_RATE, RATE, LevelGate, StreamingSpeaker, SpeakerBacklogExceeded, microphone_packets
+from drivers.agc2.runtime import AGC2
+from GuideBot.conversation.knowledge import read_soul
+from drivers.localvqe.runtime import LocalVQEEcho
+from drivers.timestamps.runtime import StreamingTimestamps
 
 MODEL = "stepaudio-3-realtime-preview"
 DEFAULT_DIAGNOSE_AUDIO = True
@@ -37,8 +38,7 @@ class RealtimeSession:
                  aec=DEFAULT_AEC, aec_delay_ms=DEFAULT_AEC_DELAY_MS,
                  mic_gate_dbfs=DEFAULT_MIC_GATE_DBFS, instructions=None, vector_store_id=None,
                  timestamps=False, gestures=False, gesture_registry=None, gesture_targets=None,
-                 agc=False, aec_model=None, gesture_backend="simulated", motion_manifest=None,
-                 motion_socket="g1_arm_motion_library", skip_joint_limits=False):
+                 agc=False, aec_model=None, gesture_backend=None, gesture_service_factory=None):
         if not 0 <= vad_energy <= 5000:
             raise ValueError("VAD energy threshold must be 0..5000")
         self.secret, self.directory = secret, directory
@@ -85,41 +85,43 @@ class RealtimeSession:
         self.timestamp_stats = {"ready": False, "updates": 0, "finals": 0, "revisions": 0,
                                 "start_updates": 0, "start_revisions": 0, "errors": []}
         self.playback_starts = {}
+        execution_mode = ('robot' if gesture_backend == 'unitree' else
+                          'simulation' if gesture_backend == 'simulated' else
+                          os.environ.get('GUIDEBOT_GESTURE_EXECUTION_MODE', 'simulation'))
+        if execution_mode not in {'robot', 'simulation'}:
+            raise ValueError('Invalid gesture execution mode')
+        self.gesture_backend = 'unitree' if execution_mode == 'robot' else 'simulated'
+        self.skip_joint_limits = False
+        self.gesture_enabled = bool(gestures)
+        self.gesture_startup_status = 'pending' if gestures else 'not_requested'
+        timing_mode = os.environ.get('GUIDEBOT_GESTURE_TIMING_MODE',
+                                     'immediate' if execution_mode == 'robot' else 'aligned')
+        gesture_alignment = gestures and timing_mode == 'aligned'
         options = backend_options = None
         if gestures:
             sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+        if gesture_alignment:
             from GuideBot.gesture.timing import ALIGNMENT_OPTIONS, BACKEND_OPTIONS
             options, backend_options = dict(ALIGNMENT_OPTIONS), dict(BACKEND_OPTIONS)
         self.timestamps = (StreamingTimestamps(directory, self._alignment_event,
                                                alignment_options=options, backend_options=backend_options)
-                           if timestamps or gestures else None)
-        self.gesture_backend = gesture_backend
-        self.skip_joint_limits = skip_joint_limits
-        self.gesture_startup_status = 'pending' if gestures else 'not_requested'
+                           if timestamps or gesture_alignment else None)
         self.gestures = None
-        if gestures:
+        self.managed_transport = gesture_service_factory is not None
+        if gestures and gesture_service_factory is None:
+            raise ValueError('Gesture execution requires the ROS-managed application')
+        if gesture_service_factory is not None:
             from GuideBot.gesture.catalog import Catalog
-            from GuideBot.gesture.service import GestureService, load_targets
-            executor_factory = None
-            if gesture_backend == 'unitree':
-                from drivers.unitree_motion.assets import conversation_assets, DEFAULT_MANIFEST, ROOT
-                from GuideBot.gesture.execution import UnitreeExecutor
-                document, bindings = conversation_assets(motion_manifest or DEFAULT_MANIFEST)
-                catalog = (Catalog(gesture_registry) if gesture_registry else
-                           Catalog(document=document, examples_path=ROOT/'conversation-few-shots.json'))
-                if set(catalog.actions) - set(bindings):
-                    raise ValueError('Hardware registry includes unbound actions; use physical motion IDs')
-                executor_factory = lambda emit: UnitreeExecutor(
-                    '\0'+motion_socket, bindings, emit, skip_joint_limits=skip_joint_limits)
-            elif gesture_backend == 'simulated':
-                catalog = Catalog(gesture_registry) if gesture_registry else Catalog()
-            else:
-                raise ValueError('Unknown gesture backend')
-            self.gestures = GestureService(directory, self._gesture_event, catalog=catalog,
-                                           targets=load_targets(gesture_targets), executor_factory=executor_factory)
+            from GuideBot.gesture.service import load_targets
+            catalog = Catalog(gesture_registry) if gesture_registry else Catalog()
+            self.gestures = gesture_service_factory(directory, self._gesture_event, catalog=catalog,
+                            targets=load_targets(gesture_targets), execution_mode=execution_mode)
 
     def _gesture_event(self, kind, **details):
-        label = '真实上肢动作：' if self.gesture_backend == 'unitree' else '模拟上肢动作：'
+        if kind == 'gesture.transport_lost':
+            self.fail(RuntimeError('ROS2 communication lost; real gesture session stopped'))
+        label = ('ROS通信：' if not self.gesture_enabled else
+                 '真实上肢动作：' if self.gesture_backend == 'unitree' else '模拟上肢动作：')
         summary = label + kind
         if details.get('action'):
             summary += ' action=' + details['action']
@@ -254,11 +256,11 @@ class RealtimeSession:
         if self.gestures is not None:
             try:
                 self.gestures.start()
-                self.gesture_startup_status = 'ready'
+                self.gesture_startup_status = 'ready' if self.gesture_enabled else 'not_requested'
             except Exception as error:
                 self.gesture_startup_status = 'failed'
                 message = f'Gesture startup failed: {error}'
-                if self.gesture_backend != 'unitree':
+                if not self.managed_transport and self.gesture_backend != 'unitree':
                     message += '; audio continues'
                 self._gesture_event('gesture.error', message=message)
                 try:
@@ -267,9 +269,9 @@ class RealtimeSession:
                     self.errors.append('Gesture cleanup: ' + str(cleanup_error))
                 finally:
                     self.gestures = None
-                if self.gesture_backend == 'unitree':
+                if self.managed_transport or self.gesture_backend == 'unitree':
                     self.errors.append(message)
-                    raise RuntimeError(message + '; real gesture mode aborted before voice connection') from error
+                    raise RuntimeError(message + '; ROS-managed session aborted before voice connection') from error
         websocket.setdefaulttimeout(5)
         self.ws = websocket.WebSocketApp(
             "wss://api.stepfun.com/v1/realtime?" + urlencode({"model": MODEL}),
@@ -471,6 +473,9 @@ class RealtimeSession:
                 self.committed_turn = self.user_turns.get(event.get("item_id"), self.current_turn)
             elif kind == "conversation.item.input_audio_transcription.completed":
                 self.report("ASR-final", "User: " + event.get("transcript", ""), turn=self.user_turns.get(event.get("item_id")))
+                if self.gestures is not None and hasattr(self.gestures, 'transcript'):
+                    self.gestures.transcript(event.get('transcript', ''),
+                                             self.user_turns.get(event.get('item_id'), ''), final=True)
             elif kind == "response.created":
                 rid = event["response"]["id"]
                 self.active.add(rid)
@@ -504,7 +509,18 @@ class RealtimeSession:
                 if rid not in self.active or rid in self.discarded:
                     return
                 if kind == "response.audio.delta":
-                    converted = self.speaker.feed(rid, raw_audio)
+                    try:
+                        converted = self.speaker.feed(rid, raw_audio)
+                    except SpeakerBacklogExceeded:
+                        self.discarded.add(rid)
+                        self.speaker.cancel(rid, 'reply_storage_limit')
+                        if self.gestures is not None:
+                            self.gestures.submit('cancel', rid, reason='reply_storage_limit')
+                        if self.timestamps is not None:
+                            self.timestamps.send('cancel', rid)
+                        self.report('reply.discarded', '单条回复超过临时缓存上限，已丢弃；会话继续',
+                                    response_id=rid, reason='reply_storage_limit')
+                        return
                     if self.timestamps is not None:
                         self.timestamps.send("audio", rid, converted)
                 elif kind == "response.audio.done":
@@ -545,8 +561,6 @@ class RealtimeSession:
         if self.gestures is not None:
             try:
                 self.gestures.close()
-                if self.gestures.executor and self.gestures.executor.failed:
-                    self.errors.append('Motion execution failed; inspect gesture log and motion server')
             except Exception as error:
                 self.errors.append('Gesture shutdown: ' + str(error))
         if self.timestamp_log is not None:
@@ -575,7 +589,7 @@ class RealtimeSession:
                 "mic_gate_stats": dict(self.gate.stats) if self.gate else None,
                 "diagnose_audio": self.diagnose_audio,
                 "timestamps_enabled": self.timestamps is not None,
-                "gestures_simulated": self.gestures is not None and self.gesture_backend == "simulated",
+                "gestures_simulated": self.gesture_enabled and self.gestures is not None and self.gesture_backend == "simulated",
                 "gesture_backend": self.gesture_backend, "joint_limits_skipped": self.skip_joint_limits,
                 "gesture_startup_status": self.gesture_startup_status,
                 "timestamp_stats": self.timestamp_stats,

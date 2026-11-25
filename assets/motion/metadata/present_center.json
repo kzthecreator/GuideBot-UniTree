@@ -76,10 +76,10 @@
   "schema_version": 3,
   "sha256": "ef9faeac3b099e88ef47f3606b7767609c6060733ac18ead7eba44d369795fea",
   "source": "teach_with_name",
-  "status": "draft",
+  "status": "approved",
   "type": "motion",
-  "verified_at": "",
-  "verified_by": "",
+  "verified_at": "2026-11-17T20:19:46+08:00",
+  "verified_by": "kwx",
   "version": 2,
   "timing_profile": {
     "phase_weights": {

@@ -7,8 +7,8 @@ from unittest.mock import patch
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'GuideBot/conversation'))
-from localvqe import LocalVQEEcho, Processor
-from stepfun import RealtimeSession
+from drivers.localvqe.runtime import LocalVQEEcho, Processor
+from GuideBot.conversation.stepfun import RealtimeSession
 
 
 class FakeProcessor:
@@ -24,7 +24,7 @@ class FakeProcessor:
 
 class AdapterTests(unittest.TestCase):
     def setUp(self):
-        self.mock = patch('localvqe.Processor', FakeProcessor)
+        self.mock = patch('drivers.localvqe.runtime.Processor', FakeProcessor)
         self.mock.start()
         self.addCleanup(self.mock.stop)
 
@@ -77,7 +77,7 @@ class NativeTests(unittest.TestCase):
             processor.process(zero, zero, streaming=True)
 
     def test_realtime_start_selects_localvqe_before_connect(self):
-        with patch('stepfun.LocalVQEEcho') as factory, patch('stepfun.websocket.WebSocketApp') as socket:
+        with patch('GuideBot.conversation.stepfun.LocalVQEEcho') as factory, patch('GuideBot.conversation.stepfun.websocket.WebSocketApp') as socket:
             socket.side_effect = RuntimeError('stop before network')
             import tempfile
             with tempfile.TemporaryDirectory() as directory:

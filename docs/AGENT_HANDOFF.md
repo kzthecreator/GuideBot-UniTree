@@ -1,5 +1,148 @@
 # GuideBot 维护续接文档
 
+## 2026-11-25 正式FP32与runtime改名已完成，全链路离线复核通过
+
+用户批准FP32并将host_bridge改名runtime。唯一入口仍main.py，现导入GuideBot.runtime.launcher；全部当前代码/测试/工具引用及worker子进程路径已更新，无旧host_bridge兼容目录。ROS/SDK独立环境、本地IPC、Enter授权和资源worker保留，不属于Docker专属逻辑。Docker专属代码均已在archive/docker-humble，核对正式路径无Docker命令/容器路径；未删镜像、Docker程序或GuideBot-py310-backup。标准StepFun、LocalVQE v1.2→AGC2、gate关闭、ref0和运动规则保留。
+
+正式gesture/timing.py的quantized=False；threads1、reuse_predictor及完整前缀策略保持。已知FP32两环境一致性与性能见前轮复测；不宣称FP32与旧INT8相同。当前及旧3.10备份运行当前代码各138主测试通过，38运动Python通过；音频零参考版本回归PCM一致。旧Docker历史八项通信契约与本次原生离线相同，P99 4.478→4.751ms（非同负载统计结论）。新增tools/ros2/aligned_acceptance.py --real-aligner，真实StreamingTimestamps FP32后台进程→锚点→ROS调度→模拟执行通过。四组生命周期、ABI/pip检查、正式入口EOF无激活清理通过，无残留节点。
+
+本轮日志~/.local/state/guidebot/experiments/runtime-fp32-20261125，完整运行证据索引见docs/experiments/runtime-fp32-chain-20261125.md。未启动真实云/音频/机器人DDS；现场语音、打断和关节仍待用户Enter验收。旧展臂腿速撤权问题未改。启动conda activate GuideBot后python main.py --gesture-backend unitree，先开运控，不另起serve。未提交推送，下方旧路径与INT8标准描述均历史。
+
+
+## 2026-11-25 时间戳复测：主要瓶颈收敛到INT8，FP32实验恢复速度，尚未改正式配置
+
+用户要求再次测试；离线9进程96次调用，工具tools/timestamps/retest_runtime.py，报告docs/experiments/timestamp-runtime-retest-20261125.md；原始证据~/.local/state/guidebot/experiments/timestamp-retest-20261125。相同录音与模型、threads1、reuse_predictor、固定随机种子，INT8旧→新→新→旧交替，补首次6s和FP32控制，未启动ROS/云/设备。正式依赖、代码和标准配置未变。
+
+增长前缀1/4/6s与6s final热运行中位数：旧INT8 .223/1.266/1.923/1.874s；新INT8 1.232/2.284/3.433/3.415s；旧FP32 .240/.529/.694/.657s；新FP32两独立进程 .246/.504/.686/.648s，逐次边界与count完全复现。FP32新旧对应边界一致，仅count有浮点微量差。说明当前INT8路径是主要瓶颈，不能归因Python3.8本身；尚未定位到PyTorch/oneDNN具体算子或缺陷。推荐FP32作为下一步正式切换候选，未擅自关闭正式INT8。
+
+重要修正：直接从6s开始旧INT8 final .514、新3.368s（6.55倍），但先1/4s再6s旧1.874、新3.415（1.82倍）；旧INT8估计count随调用历史从25.033变44.119，新约25.045不变。4s增长前缀旧/新INT821/14单元、共有索引最大边界差1.265s，6s最大.5s。以前20ms仅适用于直接6s控制，不能外推流式。新INT8/FP32的4s边界也差.28s。旧INT8不应作为正确性真值。标签为长度控制，并非真实逐字标注，尚未人工准确性验证；没有声称FP32已全部验收。
+
+
+## 2026-11-24 本机Foxy迁移已实现，正式GuideBot为Python3.8.20
+
+用户已批准并完成本机Foxy迁移：唯一正式入口conda activate GuideBot后python main.py，不再运行Docker。标准StepFun、LocalVQE v1.2→AGC2、gate关闭、ref0、播放增益/参考与运动逻辑保留；所有真实音频/云/运动仍需Enter。Docker专用代码归archive/docker-humble，未卸载Docker/镜像。host_bridge改本机环境与进程管理；ros2仍管理六节点，ROS与SDK的DDS库分进程隔离，不恢复旧直连入口。
+
+正式环境/home/fk/.conda/envs/GuideBot现为Python3.8.20；原3.10.22备份GuideBot-py310-backup。临时GuideBot-foxy-py38候选已完成使命并清理。依赖与迁移日志在~/.local/state/guidebot/migrations/foxy-py38，不增加requirements。NumPy1.24.4、SciPy1.10.1、Torch/torchaudio2.4.1、FunASR1.4.26、Transformers4.46.3；CycloneDDS Python0.10.2重编译为cp38。pip check通过。Foxy接口与launch包用tools/ros2/build.py构建到~/.local/share/guidebot/ros2/foxy/install。主程序自动加载环境，无需用户运行sh脚本或手动source。
+
+候选138项主测试＋38项运动测试通过；正式路径138项主测试、环境导入与原生离线ROS复验通过（foxy-vitd2v49/acceptance.json）。对齐模式和四组生命周期离线验收通过，具体路径见docs/experiments/foxy-local-migration-20261124.md。正式入口stdin EOF待命取消foxy-9f4hjq5g：六节点均正式GuideBot Python3.8.20，无WAV/语音事件、无激活、临时planner.env清除、无遗留节点。新日志~/.local/state/guidebot/ros2/foxy-*/session，旁边ros.log和session.json。未自动采音/播放/云或机器人DDS。
+
+音频12秒750帧零参考版本回归PCM哈希完全相同；空闲新P99 7.79ms、最大8.34ms、无超16ms。并行ROS启动争用轮有3帧超时（最大108ms），不承诺调度硬实时。重要限制：Torch降版后时间戳明显变慢，6秒片段三次调用旧1.228/0.481/0.477秒，新3.593/3.361/3.375秒，边界最大差20ms；功能保留，未关闭或重新优化。默认immediate动作不等待对齐。展臂腿速保护直接撤权问题仍独立未改，迁移不修复它。
+
+下一步用户真机验收：重新激活GuideBot后python main.py --gesture-backend unitree，先开启运控并关闭旧服务，按Enter启动/结束，不另起serve。纯语音用python main.py。真实语音与动作尚未验收；未提交推送。下方“仅规划”及Docker命令均为历史。
+
+
+## 2026-11-24 下一步方向改变：本机Foxy＋GuideBot Python3.8，不再采用Docker（当前仅规划）
+
+用户已决定采用本机Foxy、Conda GuideBot改Python3.8、取消Docker。本轮只检查并编写docs/plans/foxy-local-runtime-migration.md，未改变环境或正式代码；当前GuideBot仍3.10.22，main.py仍走Docker，不能误记已迁移完成。
+
+系统Ubuntu20.04/aarch64/Python3.8.10；source /opt/ros/foxy后系统Python导入rclpy/action/executors/launch成功，未rclpy.init/SDK/云/设备。当前NumPy2.2.6、SciPy1.15.3、Requests2.34.2、Transformers5.20.2、hub2.4.0、Numba0.68.1、CFFI2.1.1需降为支持3.8版本。PyPI核实Torch2.4.1与torchaudio2.4.1有cp38/aarch64轮子；Torch2.5.1未找到。FunASR1.4.26声明支持，但完整依赖和实际INT8模型仍待候选环境验证。SDK声明>=3.8，但现有CycloneDDS Python扩展为cp310必须重装。BooleanOptionalAction、str|None和shutdown(cancel_futures)明确不兼容3.8。
+
+Foxy使用libddsc0.7，未source时ldd会选到SDK库，source后选Foxy库。故保留ROS/SDK分进程与独立LD_LIBRARY_PATH，取消Docker不等于合并进程。Foxy ros2/colcon shebang为系统Python，启动必须明确指定GuideBot解释器；接口需Foxy重新编译。建议先候选3.8环境验证，再最终切换GuideBot，不原地破坏已验证3.10。六节点、标准语音与Enter授权保留，host_bridge改本机引导，Docker专用代码归档。展臂突降的C++保护问题独立未修复，换运行环境不会自动解决。
+
+
+## 2026-11-24 现场展臂保持后突降：明确发现腿速保护直接撤权
+
+最新现场run-k8tzntyz/session：+15.210s greet_open下发、+17.743s末姿态保持成功，+20.064s播完reset只停止；无neutral命令。motion-native.log明确[SAFETY] leg motion detected while upper body is owned; releasing control。native控制循环max_leg_speed>=0.18rad/s时直接发weight0、标released、return false，退出因weight已零跳过ramp_down，解释突然交还原生控制。不是Scheduler30秒自动回位。日志还有arm has not settled拒绝，缺关节误差轨迹不能断言硬件故障。
+
+没有逐行原生时间戳或腿速采样，不能确认站立微调/测速尖峰/实际运动哪种触发，也未测物理回落速度。原生释放后语音仍继续，建议先增加精确释放诊断与ownership故障上报，再分离正常neutral策略与紧急撤权；未取消保护、未改阈值、未启动真机复现。本轮仅回答原因。详见docs/experiments/pose-drop-safety-release-20261124.md；原会话pose-drop-diagnosis.json已核实无neutral、无ROS transport_lost。
+
+
+## 2026-11-24 用户确认的ROS2结构重构已实现：唯一入口main.py
+
+正式入口改为conda activate GuideBot后python main.py；--gestures或--gesture-backend simulated启用模拟，--gesture-backend unitree启用真实动作。全部模式经Docker ROS2 launch和session_manager；旧直连、工具启动器、shell包装及兼容转发归archive/pre-ros2-management，无正式回退入口。用户要求的Docker/宿主资源代码在GuideBot/host_bridge；节点、launch、config、interfaces均在GuideBot/ros2。顶层bringup/deploy/interfaces已归并。业务仍conversation/gesture，低层SDK采集drivers/unitree_audio，播放队列conversation/playback.py，可选音轨diagnostics/audio.py；制作/注册仍tools。
+
+六个独立节点进程由guidebot_ros2启动包编排，跨节点Shared已移除；每个节点经显式ROS服务配置本地会话副本。session_manager统一激活/停止；宿主worker未获终端Enter授权会拒绝activate，且没有独立对话入口。语音使用注入的ROS事件适配，不再按GUIDEBOT_COMMUNICATION选择直连。标准StepFun、LocalVQE v1.2→AGC2、gate关闭、ref0、音量/增益/重采样/参考及spool保留；真实动作规则未改。采用自定义SessionControl生命周期，不是rclpy LifecycleNode标准管理接口。
+
+验证136主Python、38运动Python通过；最终原生离线ROS证据run-jm6_dwxl/acceptance.json，对齐run-v51ea8yv/aligned-acceptance.json，统一生命周期run-raxzm7qm（voice）/run-wd492eg4（simulation）/run-l_hw2rf8（激活失败）/run-hcc5dzda（节点退出），均在~/.local/state/guidebot/ros2下。根main.py stdin EOF待命取消run-_xyn14cy验证无WAV、无会话事件、未激活硬件/云、临时planner.env清除。所有测试容器已清理。Docker runtime镜像sha256:038161d17b9da2a407561400ecdb9a025fa1760a13d4a8db2b3a1ae92a54f79c。
+
+下一步用户手动现场验收：先开运控、关闭旧运动服务，用python main.py --gesture-backend unitree，按Enter后由ROS激活并接管，再按Enter关闭。不另起serve。新日志~/.local/state/guidebot/ros2/run-*/session（旁边container.log与session.json）；旧日志和模型/密钥未搬。尚未验证真实云连接、声学或关节效果，不得把离线通过当现场验收。详见docs/experiments/ros2-structure-migration-20261124.md、docs/repository-layout.md。未提交推送，保留本轮前已有未提交改动。此前讨论稿与旧运行命令以本节为准。
+
+
+## 2026-11-24 结构讨论补充：host_bridge与ros2平级
+
+用户指定Docker相关逻辑放GuideBot/host_bridge，节点规划放GuideBot/ros2。已更新docs/plans/repository-structure-redesign.md目标：host_bridge包含Docker构建/启动/挂载/清理、宿主worker与内部IPC；ros2包含节点、launch和节点配置。取消独立bringup/deploy目标目录，interfaces及tests保留。根main.py只转发host_bridge启动接口；ROS会话管理权不变。仅修改方案和交接文档，实际目录尚未迁移。
+
+
+## 2026-11-24 仓库重设计方向纠正：完全转向ROS2管理
+
+用户否定“旧直连临时回退”及两套正式启动方式，明确要求完全转向ROS2管理。本轮只修订设计，未改运行代码。目标为根Python薄部署入口→Docker ROS2 launch；launch负责节点编排，ROS会话管理器负责Enter开始请求、激活顺序、错误与退出协调；宿主SDK/音频/模型暂留GuideBot环境，以受管worker和内部IPC接入，不再拥有独立会话入口。旧完整运行路径归档，不保留兼容转发/直连备用；离线业务测试仍允许。保留标准语音和动作规则，未自动硬件。
+
+最新讨论稿docs/plans/repository-structure-redesign.md已取代上一版Application统一管理＋回退方案。bringup拟成为真实launch包，目前仍只有README；现有tools/ros2/conversation.py尚未迁移，不能把目标命令当已实现。用户正在讨论结构，尚未授权本轮结构实现。
+
+
+## 2026-11-24 回复中自停已定位并修复：旧30秒播放缓存保护
+
+用户会话1795524379155030464/sidecar run-75twkym4，+39.531s Speaker buffer exceeds 30s导致session.fail；当时约44s云音频只提交14s，待播超过30s。不是ROS心跳丢失或接管失败；native接管成功且正常释放。
+
+StreamingSpeaker现在用PCM spool：2秒内存、较大则匿名临时文件，不阻塞云端接收；中断/取消/播完/关闭删除。保留SDK分块、播放节奏、增益与AEC参考。300秒总待播/单回复上限改为只丢弃该回复和动作/对齐，保留会话。录音关闭也可能使用短期匿名播放存储，不是持久录音。
+
+45秒突发测试先精确复现旧异常再通过；真实日志286包大小/提交量回放峰值30.164s也通过，证据原会话speaker-queue-replay.json。新增顺序、临时文件释放、异常回复非致命测试，132主Python通过。详见docs/experiments/speaker-backlog-20261124.md。宿主代码变更，无需重建ROS镜像；用户同一Python命令按Enter复测。未自动录放音、云调用或运动；未提交推送。
+
+
+## 2026-11-24 用户Python ROS入口：接管ramp拒绝，待诊断复测
+
+用户会话1795524112118357056/sidecar run-10xf553a在MotionRuntime.start的acquire ramp拒绝，尚未session.start，无语音/ROS规划会话。旧信息合并stale/exit/movement，无法确认实际触发条件。当前ramp腿0.25、gyro0.15，arm不参与；初始稳定腿0.18/arm0.12与ramp不同。没有归因于Docker或猜测具体关节。
+
+已增加[ACQUIRE-GUARD]含step、received、age、signal/remote_exit、finite_pose、速度/阈值及reasons，原门限不变。MotionRuntime新增stdout/stderr tee到会话motion-native.log，失败时session.fail保存result.json；此前接管失败目录未创建，无持久采样。宿主motion_library_server已重建，无需更换ROS镜像。129主Python、4CTest通过，新增拒绝路径日志持久化测试；未复现真机拒绝或声明根因修好，未自动硬件。
+
+下一步用户仍运行python tools/ros2/conversation.py --gesture-backend unitree，按Enter取得guard行。详见docs/experiments/ros2-acquire-rejection-20261124.md。原生fork现因新增诊断不再字节一致，但控制/阈值未变。未提交推送。
+
+
+## 2026-11-24 用户要求Python直接启动
+
+正式推荐ROS验收命令改为：conda activate GuideBot 后，python tools/ros2/conversation.py --gesture-backend unitree（或simulated）。入口现已自行为宿主语音子进程配置UNITREE_SDK_PATH、PYTHONPATH、CYCLONEDDS_HOME及LD_LIBRARY_PATH，不再依赖sh脚本；保留现有显式DDS路径覆盖。Enter授权和容器生命周期不变。更新当前README/验收文档，旧sh入口仅兼容保留。未启动真实音频/运动。
+
+
+## 2026-11-24 ROS2通信候选实现：已到人工验收阶段
+
+用户授权持续执行到需人工验收。已完成Docker Humble候选链路：五个节点voice_gateway/interaction_manager/gesture_planner/gesture_scheduler/motion_gateway；10msg、SessionControl srv、PlanGestures/ExecuteGesture Actions。DeepSeek规划在容器，宿主保留StepFun、LocalVQE v1.2→AGC2、FunASR、SDK音频及原生Player。核心业务复用，现有语音和动作策略未改。容器/宿主私有IPC及原生socket仍作运行时边界，未宣称消灭全部socket。
+
+入口：bash tools/guidebot.sh ros-conversation --gesture-backend simulated（真实语音＋模拟动作）；真机改unitree，先开运控，不另起serve，仍须Enter。ROS入口默认immediate；原普通入口不变，验收前不切换默认。当前仅标准registry/default targets，传自定义会报错。细节docs/experiments/ros2-acceptance-20261124.md。
+
+验证128主Python、38运动Python、4CTest通过；原生C++ --offline-server贯穿ROS链路完成/取消通过；世代/重复/超时/缺上下文拒绝、上下文到期、容器pause心跳丢失、正常关闭通过。另aligned锚点与旧revision过滤通过。核心消息转换会修改输入列表的问题已修复（deepcopy），避免stale_text误判。ROS目标除schema/上下文还会重复检查，native成功要求观察运行后idle。心跳3秒失联会禁止新执行、请求停止；真实语音会话走现有退出释放流程。没有改自动neutral/六动作上下文门禁，没有伪造导航/任务状态。
+
+最终镜像guidebot-ros2:runtime，sha256:6040ac9ec5245d7ca42e1ec06c1d3ef7287caffc0adfa5dcccf11aee61cf6bf5。最终native离线证据~/.local/state/guidebot/ros2/run-3oyxtyeb/acceptance.json；aligned证据run-ltvth5bc/aligned-acceptance.json。较早100条顺序输入测量P99=5.092ms（仅submit入队→ROS订阅，非DAC/关节延迟）。所有测试容器及本轮失败构建残留均已清理；日志仓库外保留，planner临时密钥文件正常删除。未自动录放音、云模型调用或机器人DDS/运动；未提交推送。
+
+下一步只需用户手动语音/真机验收。之后再决定默认切换与旧公开工具通信归档。不要把原本静态保持、不自动neutral误记为本次ROS回归。Compose文件提供但插件未装，已验证路径为原生Docker+宿主supervisor。宿主旧会话用sg docker访问组权限。
+
+
+## 2026-11-24 ROS2 Docker阶段1环境验证通过
+
+用户已手动pull官方Humble基础镜像；派生guidebot-ros2:humble-stage1构建成功。GuideBot环境运行tools/ros2/verify_container.py --docker-group：容器内两个独立ROS进程通信、容器↔宿主挂载Unix socket随机token往返均通过，退出码0。domain42、localhost、CycloneDDS，未接机器人DDS；临时容器已删除。基础digest与派生镜像ID及版本见docs/experiments/ros2-docker-stage1-20261124.md，复现见deploy/ros2/README.md。此前镜像拉取阻塞已解除。
+
+尚未实现正式接口包、业务节点迁移或worker协议；未验证跨容器/局域网、业务时延或真机。现有conversation/LocalVQE+AGC2/动作策略未改。下一步类型化契约与模拟通信；真实运行仍须Enter。无Compose插件，当前原生Docker即可复现。未提交推送。
+
+
+## 2026-11-24 ROS2 Docker规划与阶段1准备
+
+用户同意ROS2通信重构并指定Docker Sidecar路线。详见docs/plans/ros2-communication-refactor.md：宿主保留音频/模型/宇树控制，容器Ubuntu22.04＋Humble ARM64；不使用宿主Foxy作为新业务运行时，Enter授权不变。尚未迁移业务通信。
+
+用户已将fk加入docker组；当前进程组列表未刷新，但sg docker -c可连接daemon26.1.3/arm64。无Compose插件。官方镜像直连connection reset；docker.m.daocloud.io代理下载部分层成功，两层长时间未完成，已中断本次拉取，无镜像/容器就绪。未修改daemon配置或重启服务。
+
+新增deploy/ros2/Dockerfile、smoke_test.py、README.md和.dockerignore。脚本语法编译通过，容器构建与运行尚未验证；测试仅单进程双ROS节点，不代表跨进程、宿主IPC或延迟已通过。下一步恢复镜像下载，构建后完成容器环境测试，再推进接口和宿主IPC。未触发音频、云模型或运动，未提交推送。
+
+
+## 2026-11-24 开场动作后保持姿态：已诊断
+
+用户现场会话realtime-1795506408388506560：3轮回复、7次动作规划，1次greet_open下发、2个动作被可信上下文门禁拒绝、4次空列表，未下发neutral。+12.58s开场播完reset只发送停止，并非回位。greet_open单帧静态姿态，原生Player停后维持末姿态；真实资产离线复现cancel后tick60s仍保持目标，与neutral最大差0.655932rad（仅指令目标，非真机测量）。conversation未接入set_interaction_context或request_base_pose，用户回应未触发聆听/回位状态；不能靠解除门禁或仅释放调度记录解决。
+
+独立修复：stepfun.stop残留旧executor.failed访问造成退出AttributeError。新增失败复现后删除该过期检查，121主Python通过。未改动作策略、前端或目录，未自动真机/云模型调用。下一项建议为真实交互状态机及显式neutral策略，尚未实现。详见docs/experiments/pose-hold-diagnosis-20261124.md，证据~/.local/state/guidebot/motion/pose-hold-diagnosis-20261124。
+
+
+## 2026-11-24 最新澄清：保留原结构与LocalVQE＋AGC2，只采用fork动作逻辑
+
+用户明确纠正：原`drivers/assets/tools`目录和标准语音必须保留。此前整树替换fork的操作已撤回，不采用hardware目录和fork的AEC+gate前端。现以codex/pre-fork-20261124（5816421）恢复本地结构与语音，再迁入GuideBot fork b84ff1f的动作语义、上下文门禁、Scheduler、Sequence执行器和服务接管生命周期。此前“完整替换”页面和记录不再有效。
+
+- 当前语音仍LocalVQE v1.2→AGC2，gate关闭、ref0；9个原音频/增强/知识底层文件逐字节保留。没有恢复豆包、没有改变模型位置。
+- 底层drivers/unitree_motion，资源assets/motion，制作tools/motion，评估tools/gesture。录入/注册/审批/编辑写入逻辑保留tools，drivers/assets.py只读解析校验。GuideBot/hardware和tools/motions不作为运行目录。
+- native server与fork b84ff1f逐字节一致，腿速阈值0.18/0.25，返回部分0.12；URDF限位采用fork审计配置。不再用旧execution_v1协议、skip限位参数或8动作旧manifest。旧执行器/实验及测试归档到archive/previous-motion-execution。
+- 保留无参数纯语音、--gestures模拟、--gesture-backend unitree真实。真实模式按Enter后MotionRuntime自动启动子进程、写RUN并接管，退出释放。缺动作Key和启动失败明确报错；不要额外启动运动服务。robot默认immediate，aligned仍可显式选择。
+- 现场先开运控、关闭旧运动服务，再`conda activate GuideBot`和`python GuideBot/conversation/conversation.py --gesture-backend unitree`，按Enter。语音固定AGC，无需额外参数。
+- 构建在~/.local/share/guidebot/deps/motion/build-guidebot-fork-layout；路径统一drivers/unitree_motion/paths.py，不在业务代码建build目录。
+- 验证120主Python、38运动Python、4CTest、网页JS、LocalVQE/AGC2 preflight、neutral离线check、CLI/prompt通过。未自动录放音、DDS接管、云模型或真机运动，实际效果待用户实验。
+- 本轮未提交或推送。原版本备份分支和本机迁移资料保留。最新细节见docs/experiments/fork-logic-preserved-layout-20261124.md；证据~/.local/state/guidebot/migrations/fork-logic-preserved-layout-20261124。
+
+
 更新日期：2026-11-21，Asia/Shanghai。请先读本节，再按任务查阅后文。
 
 ## 接手速读：当前项目状态
