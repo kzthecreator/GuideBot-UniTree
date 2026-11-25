@@ -18,6 +18,11 @@ class MotionNode(Node):
             if not math.isfinite(goal.start_monotonic) or goal.start_monotonic > goal.arrival_monotonic:
                 raise ValueError('Invalid motion time')
             row = dict(action=goal.action, start_unit=0, arrival_unit=0)
+            if goal.end_monotonic:
+                if (not math.isfinite(goal.end_monotonic) or
+                    goal.end_monotonic <= max(time.monotonic(), goal.start_monotonic)):
+                    raise ValueError('Action end deadline passed')
+                row.update(start_s=0., end_s=goal.end_monotonic-goal.start_monotonic)
             if goal.has_duration:
                 row['duration_s'] = goal.duration_s
             self.catalog.validate(row, [0], [], enforce_context=False)
@@ -46,13 +51,24 @@ class MotionNode(Node):
                          start_monotonic=goal.start_monotonic,
                          arrival_monotonic=goal.arrival_monotonic,
                          scheduler_managed=goal.scheduler_managed)
+            if goal.end_monotonic:
+                event['end_monotonic'] = goal.end_monotonic
             if goal.has_duration:
                 event['duration_s'] = goal.duration_s
-            self.session_state.host({'op':'execute', 'event':event})
+            execution = self.session_state.host({'op':'execute', 'event':event})
+            if execution.get('accepted') is False:
+                result.reason = execution['reason']
+                result.outcome = 'timing_rejected'
+                self.session_state.notify('gesture.timing_rejected', dict(
+                    job_id=goal.job_id, action=goal.action, response_id=goal.response_id,
+                    **{key:execution[key] for key in ('reason', 'remaining_s', 'minimum_required_s')}))
+                handle.abort()
+                return result
             feedback = ExecuteGesture.Feedback(phase='accepted_by_native', estimated=True)
             handle.publish_feedback(feedback)
-            minimum = goal.arrival_monotonic + (goal.duration_s if goal.has_duration else 0)
-            deadline = minimum + 10
+            minimum = (0. if goal.end_monotonic else
+                       goal.arrival_monotonic + (goal.duration_s if goal.has_duration else 0))
+            deadline = goal.end_monotonic + 1 if goal.end_monotonic else minimum + 10
             saw_busy = False
             while time.monotonic() < deadline:
                 cancelled = (handle.is_cancel_requested or self.session_state.fence.session != goal.session_id
@@ -74,6 +90,14 @@ class MotionNode(Node):
                     observed_monotonic=time.monotonic())))
                 if ownership != 'owned':
                     raise ValueError('Ownership lost')
+                execution = status.get('execution') or {}
+                if execution.get('job_id') == goal.job_id:
+                    if execution.get('state') == 'rejected':
+                        result.reason = execution.get('reason', 'native_rejected')
+                        result.outcome = 'native_rejected'
+                        handle.abort()
+                        return result
+                    saw_busy |= execution.get('state') in {'running', 'completed'}
                 if state != 'idle' and not saw_busy:
                     handle.publish_feedback(ExecuteGesture.Feedback(phase='native_running', estimated=True))
                 saw_busy |= state != 'idle'
@@ -82,6 +106,8 @@ class MotionNode(Node):
                     result.outcome = 'native_idle_end_pose_held'
                     handle.succeed()
                     return result
+                if goal.end_monotonic and time.monotonic() >= goal.end_monotonic and state != 'idle':
+                    raise TimeoutError('Action end deadline exceeded')
                 time.sleep(.05)
             raise TimeoutError('Motion completion timed out')
         except Exception as error:

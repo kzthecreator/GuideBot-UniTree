@@ -177,6 +177,8 @@ class GestureService:
                         value.get('reason', 'interaction_state_change'))
                 elif kind == 'release_pose':
                     self.scheduler.release_active(value['condition'])
+                elif kind == 'execution_result':
+                    self.scheduler.execution_result(value['job_id'], value['success'], value.get('reason', ''))
                 elif rid in self.scheduler.closed:
                     continue
                 elif kind in {'text', 'text_delta', 'done'}:
@@ -253,12 +255,17 @@ class GestureService:
             reply = self.scheduler.reply(rid)
             if reply is None:
                 continue
-            existing = [j.plan.as_dict() for j in reply.jobs if j.status != 'cancelled']
+            existing = self.scheduler.planning_history(rid)
             # Keep a short overlap for a lead-in whose object arrived later.
             first = max(0, len(units_for(state.submitted_text or '')) - 16)
             payload = make_input(rid, state.text, self.targets, existing,
                                  range(first, len(reply.units)), state.complete,
                                  self.interaction_context)
+            payload['timing_contract'] = 'fixed_deadline'
+            payload['playback_elapsed_s'] = (max(0., now-reply.playback_origin)
+                                             if reply.playback_origin is not None else 0.)
+            payload['playback_started'] = reply.playback_origin is not None
+            payload['suggested_planning_lead_s'] = 2.
             state.in_flight = True
             state.submitted_text, state.submitted_complete = state.text, state.complete
             state.changed_at = 0

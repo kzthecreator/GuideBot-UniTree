@@ -14,7 +14,8 @@ REGISTRY = MOTION_ROOT / 'actions.json'
 EXAMPLES = MOTION_ROOT / 'conversation-few-shots.json'
 COMMAND_FIELDS = {'action', 'start_unit', 'arrival_unit', 'response_id', 'job_id', 'request_id',
                   'monotonic', 'kind', 'simulated', 'start_audio_s', 'arrival_audio_s',
-                  'start_monotonic', 'arrival_monotonic', 'compressed', 'alignment_version'}
+                  'start_monotonic', 'arrival_monotonic', 'compressed', 'alignment_version',
+                  'start_s', 'end_s', 'end_monotonic'}
 
 
 def units_for(text):
@@ -40,10 +41,15 @@ class Plan:
     start_unit: int
     arrival_unit: int
     parameters: dict
+    start_s: float = None
+    end_s: float = None
 
     def as_dict(self):
-        return dict(action=self.action, start_unit=self.start_unit,
-                    arrival_unit=self.arrival_unit, **self.parameters)
+        result = dict(action=self.action, start_unit=self.start_unit,
+                      arrival_unit=self.arrival_unit, **self.parameters)
+        if self.start_s is not None:
+            result.update(start_s=self.start_s, end_s=self.end_s)
+        return result
 
 class Catalog:
     def __init__(self, path=REGISTRY, motion_root=MOTION_ROOT, limits_path=LIMITS):
@@ -151,6 +157,19 @@ class Catalog:
     def prompt_document(self):
         return {**self.document, 'actions': list(self.actions.values())}
 
+    def execution_timing(self, action):
+        asset = self.assets[action]
+        meta = asset['metadata']
+        core = meta['nominal_duration_ms']/1000. if asset['frames'] > 1 else 0.
+        transition = .5
+        profile = meta.get('timing_profile')
+        if profile:
+            weights = profile['phase_weights']
+            transition = max(transition, profile['minimum_total_ms']/1000. *
+                             weights['transition']/sum(weights.values()))
+        return dict(recorded_core_s=core, minimum_transition_s=transition,
+                    reserved_overhead_s=.65, minimum_remaining_s=core+transition+.65)
+
     @staticmethod
     def context_allows(item, context):
         """Context is advisory; all registered actions may be selected without it."""
@@ -163,7 +182,16 @@ class Catalog:
         if enforce_context and not self.context_allows(item, interaction_context):
             raise ValueError('Trusted interaction context does not satisfy action trigger source')
         base = {'action', 'start_unit', 'arrival_unit'}
-        if not (base | set(item['required'])) <= set(row) or set(row) - base - set(item['parameters']):
+        deadline = 'start_s' in row or 'end_s' in row
+        required = set(item['required'])
+        if deadline:
+            base |= {'start_s', 'end_s'}
+            required -= {'duration_s'}
+            start_s, end_s = row.get('start_s'), row.get('end_s')
+            if (any(type(t) not in (int, float) or not math.isfinite(t) for t in (start_s, end_s))
+                    or not 0 <= start_s < end_s <= 300):
+                raise ValueError('Invalid fixed playback window')
+        if not (base | required) <= set(row) or set(row) - base - set(item['parameters']):
             raise ValueError('Missing or unknown action fields')
         start, arrival = row['start_unit'], row['arrival_unit']
         if any(type(i) is not int or i not in eligible for i in (start, arrival)) or start > arrival:
@@ -183,7 +211,8 @@ class Catalog:
                 raise ValueError('Unknown parameter choice')
             if spec['type'] == 'target' and value not in target_ids:
                 raise ValueError('Unknown scene target')
-        return Plan(row['action'], start, arrival, parameters)
+        return Plan(row['action'], start, arrival, parameters,
+                    row.get('start_s'), row.get('end_s'))
 
 
 def make_input(response_id, text, targets=(), existing=(), eligible=None, complete=False,
@@ -196,10 +225,20 @@ def make_input(response_id, text, targets=(), existing=(), eligible=None, comple
 
 
 def messages(catalog, payload, examples_path=EXAMPLES):
+    document = catalog.prompt_document()
+    if payload.get('timing_contract') == 'fixed_deadline':
+        document = dict(document, actions=[dict(item,
+            parameters={k:v for k,v in item['parameters'].items() if k != 'duration_s'},
+            required=[k for k in item['required'] if k != 'duration_s'],
+            **catalog.execution_timing(item['id']))
+            for item in document['actions']])
     system = (DIRECTORY / 'prompt.md').read_text(encoding='utf-8').replace(
-        '{{REGISTRY}}', json.dumps(catalog.prompt_document(), ensure_ascii=False))
+        '{{REGISTRY}}', json.dumps(document, ensure_ascii=False))
     result = [dict(role='system', content=system)]
     for example in strict_json(Path(examples_path).read_text(encoding='utf-8')):
+        if payload.get('timing_contract') == 'fixed_deadline':
+            # Historical examples use arrival+duration, not fixed end windows.
+            continue
         # Disabled or removed actions must not survive via historical examples.
         if any(a['action'] not in catalog.actions for a in example['actions']):
             continue

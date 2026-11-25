@@ -5,6 +5,7 @@ string job_id
 string action
 float64 start_monotonic
 float64 arrival_monotonic
+float64 end_monotonic
 bool has_duration
 float64 duration_s
 bool scheduler_managed

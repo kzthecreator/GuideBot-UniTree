@@ -1,3 +1,33 @@
+# 2026-11-25 main发布范围
+
+用户要求将当前代码推送main。本次发布包含0.3rad起步偏差阈值、WebSocket心跳诊断、固定动作截止期限与制动抢占、最低时间预算及执行失败反馈。验证为166项主Python、38项运动Python、4项C++及真实ROS→原生offline截止/抢占/结构化拒绝验收（foxy-r3f4lmip/deadline-acceptance.json），旧对齐与四组生命周期亦通过。未运行真机或云端，真实模型与关节效果仍待用户Enter验收。录音、密钥和运行产物不在提交范围。下方“未提交推送”是各实现轮次当时的历史状态；发布提交与远端状态以Git记录为准。
+
+# 2026-11-25 长回复无动作：最低预算与失败反馈已补齐
+
+现场foxy-sv1jkoxf的20.92秒长回复b699766f只规划1个please_wait（0.5～2.5秒），下发剩余1.294592秒，小于当前1.4秒最低预算；本地原样重放确定不能通过。原生未启动该动作，执行结果仅RuntimeError（IPC隐藏细节），后续两次规划为空。不能把整轮会话说成无动作：其他短回复有greet_open。errors为空，Pong RTT约38.34ms，本轮非心跳超时。
+
+修复给模型提供与Runtime共用的execution_timing/minimum_remaining_s，提示提前2秒规划未来语义窗口并另留0.3秒抖动余量；existing_actions带status/reason，失败不冒充表达成功。Runtime以固定原因码和数字预算结构化返回MotionTimingRejected，Motion发布timing_rejected及具体日志，通用异常仍脱敏。166项主测试通过；新离线ROS验收覆盖不足窗口原因码经IPC完整返回。截止/最低切换/录制核心/0.3rad均未放宽。未启动真机DDS、音频或云端，真实模型效果待用户Enter；未提交推送。证据与复算见docs/experiments/long-reply-no-motion-20261125.md。
+
+# 2026-11-25 固定动作截止期限与制动抢占已实现
+
+用户已明确接受固定截止时间、制动后切换、来不及就丢弃，不要求实测关节严格准时到位或运动中无缝接续。正式LLM契约改为播放起点相对start_s/end_s，start_unit/arrival_unit仅绑定语义；请求含playback_elapsed_s。动态核心使用录制时长，不再追加模型duration_s。过期、剩余时间不足、被新窗口取代的旧计划均丢弃；抢占取消旧动作、等待回执和原生idle，再按B原截止时间复核，旧动作不恢复。pose期限指到位轨迹完成，可静态保持至后续动作或倾听复位。
+
+ExecuteGesture新增end_monotonic，ROS接口及原生服务已重建；Runtime预留500ms协调与150msIPC余量，原生启动前按完整轨迹再预留50ms复核。固定期限原生拒绝带job_id及时返回Motion；Scheduler由对应执行结果释放槽位，迟到旧回执不影响新动作。既有制动/保护优先于强制跳变，等待idle超过3秒放弃新动作；不是端到端硬实时或实测到位保证。0.3rad、资产/关节限位、Enter授权保持。旧immediate/aligned只保留维护/离线测试兼容，生产Planner强制固定窗口。
+
+164主Python、38运动Python、4C++通过；固定期限10项回归覆盖SSE契约、晚到/过期、制动后重检、录制核心、积压/旧窗口/旧回执。真实ROS→原生offline抢占验收foxy-1zxrrrt4/deadline-acceptance.json通过：A运行中取消，确认idle后B按原期限完成，原生最终拒绝无法按期完成请求；常规foxy-twdhnttr、旧对齐foxy-dxmy7e2o通过，四组生命周期one4qisq/fjovv1us/exrxya6_/szq1lma8通过。详见docs/experiments/fixed-action-deadlines-20261125.md。未启动真机DDS、音频或云端；现场仍需用户重启main.py --gesture-backend unitree并手动Enter。未提交推送。下方旧“动作回执问题未改”为历史记录。
+
+# 2026-11-25 WebSocket 心跳观测补充
+
+用户要求优先检查接收阻塞，不调整10秒超时。核对websocket-client1.8.0：库独立线程发Ping，接收线程处理Pong及音频回调；音频事件不会更新Pong时间。原现场foxy-3f6f9eft在50.865869秒超时后关闭会话、停止播放；最后约11秒77个音频事件最大间隔923.41ms，不支持连续10秒回调阻塞，真实根因仍未确定。
+
+新增有界内存WebSocketDiagnostics，记录用户要求的六项字段、Ping写入耗时及各同步阶段最大耗时；event_loop_lag_ms明确为接收回调占用代理指标。错误/关闭/stop落events.jsonl，result.json含快照；热路径不打印或写盘。20秒Ping/10秒超时及原退出策略保持，未自动重连。154项主测试通过，最终8项定向测试通过。真实WebSocket库+本地socketpair复现对端Pong已发但回调阻塞仍超时，对照及时处理成功；详情docs/experiments/websocket-heartbeat-diagnostics-20261125.md。未调用云、音频或真机DDS；下次用户Enter复现后读新字段。动作完成回执不同步问题尚未修改，未提交推送。
+
+# 2026-11-25 序列起步偏差阈值放宽至 0.3 rad
+
+按用户明确要求，将sequence_library.hpp中14个手臂关节最大实测／指令差拒绝阈值从0.03改为0.3 rad；等于0.3允许，大于0.3拒绝，日志limit_rad同步更新。此前现场0.035737rad偏差现可通过此检查。其余门禁不变；原生异步拒绝后ROS等待超时的问题仍未修复，不能据此宣称真机动作问题全部解决。
+
+边界回归先红后绿，覆盖0.035737、0.04、0.299999、0.3允许及0.300001拒绝与诊断字段；4项C++测试通过。原生motion_library_server重新构建。未启动真机DDS、音频或云；现场效果待用户重启程序并手动Enter验收。本轮未提交推送。下方0.03阈值记载为历史证据。
+
 # 2026-11-25 本机多账户部署与依赖发布
 
 用户已要求推送当前仓库并准备新环境requirements。当前提供environment.yml（GuideBot / Python3.8.20）、requirements.txt（79项固定Python依赖）及requirement.txt兼容引用；完整步骤docs/setup.md。tools/deployment/setup.py install从本机公共/var/tmp/guidebot-runtime校验并复制14个资源文件，构建各账户自己的ROS与运动程序。包仅含模型/音频原生库/许可证，无密钥、录音、日志或知识库ID；/var/tmp可能被清理，维护者可按文档重新导出。

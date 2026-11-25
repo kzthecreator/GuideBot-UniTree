@@ -43,16 +43,17 @@ python main.py --gesture-backend unitree
 不要同时手动运行运动服务。原 `--skip-joint-limits` 参数已移除，使用 fork 的 URDF 范围审计配置。
 需配置 `STEP_SECRET` 和 `DEEPSEEK_API_KEY`；默认录音保留。
 动作采用 fork b84ff1f 的物理资产、Sequence 下发和生命周期；上下文只作建议。
-真实模式默认 `immediate`，播放开始后执行已到达的计划，不等待文字对齐；
-可显式设置 `GUIDEBOT_GESTURE_TIMING_MODE=aligned` 使用 fork 的对齐模式。
+LLM 使用相对于本条回复播放起点的固定 `start_s/end_s`，不因规划延迟重新计时。
+过期或剩余时间不足则丢弃；新动作先制动取消旧动作，再检查能否在原期限内完成。
+动态核心保持录制时长，不按模型 duration_s 续时或强行压缩；固定期限不依赖文字对齐。
 10个有效资产均可供LLM选择，包括neutral。
 本地状态分为倾听和说话：倾听请求neutral，播放开始后才执行LLM队列。
 确认打断或预计播完时取消当前队列并回neutral；云端response.done不结束说话。
 文本可提前规划，但播放前不执行；过期回复和迟到结果不能恢复动作。
 播完沿用播放时长估计，SDK没有设备结束回执。
 
-当前真机已知限制：实测与指令关节偏差超过0.03rad会拒绝包括neutral在内的新动作。
-现场已出现左肩约0.0357rad偏差，导致greeting后无法回neutral；本次部署整理未修复该问题。
+序列起步时，14个手臂关节最大实测／指令偏差超过0.3rad才拒绝，包括neutral。
+此前现场约0.0357rad偏差现可通过此检查；实际动作效果仍待真机验收。
 
 不加参数仍是原来的纯语音，`--gestures` 为模拟动作。
 原有目录与 LocalVQE v1.2 → AGC2 语音完整保留。

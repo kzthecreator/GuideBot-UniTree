@@ -135,6 +135,8 @@ class Planner:
                             try:
                                 plan = self.catalog.validate(row, payload['eligible_anchor_ids'], payload['targets'],
                                                              payload.get('interaction_context'))
+                                if payload.get('timing_contract') == 'fixed_deadline' and plan.end_s is None:
+                                    raise ValueError('Fixed playback start_s/end_s required')
                             except ValueError as error:
                                 stats['invalid_actions'] += 1
                                 stats['invalid_reasons'].append(str(error))

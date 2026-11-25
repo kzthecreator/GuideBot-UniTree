@@ -1,10 +1,19 @@
 """Translate scheduled gestures to the existing motion library socket protocol."""
 import json
+import math
 import os
 from pathlib import Path
 import time
 
 from drivers.unitree_motion.client import request as socket_request, SOCKET_NAME
+
+
+class MotionTimingRejected(ValueError):
+    """Only these fixed codes/numbers may cross IPC; no exception text."""
+    def __init__(self, code, remaining_s, minimum_required_s):
+        super().__init__('Insufficient remaining time before end deadline: '+code)
+        self.diagnostic = dict(reason=code, remaining_s=remaining_s,
+                               minimum_required_s=minimum_required_s)
 
 
 class MotionExecutor:
@@ -33,6 +42,29 @@ class MotionExecutor:
         now = self.clock()
         start = event['start_monotonic']
         arrival = event['arrival_monotonic']
+        end = event.get('end_monotonic', 0.)
+        if end:
+            if not math.isfinite(end) or not math.isfinite(start):
+                raise ValueError('Action end deadline passed or invalid')
+            timing = self.catalog.execution_timing(action)
+            remaining = end-max(now, start)
+            if remaining <= 0:
+                raise MotionTimingRejected('end_deadline_passed', remaining, timing['minimum_remaining_s'])
+            # Never accelerate the recorded core. Reserve worst-case existing
+            # measured/commanded reconciliation (500ms) and IPC/tick margin.
+            core_ms = round(timing['recorded_core_s']*1000)
+            minimum_entry = timing['minimum_transition_s']*1000
+            available_ms = math.floor((end-max(now, start))*1000) - core_ms - 650
+            transition_ms = min(2000, available_ms)
+            if transition_ms < minimum_entry:
+                raise MotionTimingRejected('insufficient_remaining_time', remaining,
+                                           timing['minimum_remaining_s'])
+            step = dict(type=item['asset_type'], name=item['motion_name'],
+                        transition_ms=transition_ms)
+            if core_ms:
+                step['duration_ms'] = core_ms
+            return {'序列': dict(sequence_name='guidebot_'+action, steps=[step]),
+                    'end_monotonic': end, 'job_id': event['job_id']}
         if now >= arrival:
             raise ValueError('Action arrival deadline passed')
         available_ms = round((arrival - max(now, start)) * 1000)
@@ -59,9 +91,8 @@ class MotionExecutor:
         if kind == 'gesture.command':
             if self.mode == 'robot' and self.clock() < event['start_monotonic']:
                 time.sleep(event['start_monotonic'] - self.clock())
-            payload = self.sequence(event)
             if self.mode == 'simulation':
-                return {'mode': 'simulation', 'sequence': payload}
+                return {'mode': 'simulation', 'sequence': self.sequence(event)}
             limits = json.loads((self.catalog.limits_path).read_text())
             if limits.get('verified') is not True or not limits.get('verified_by') or not limits.get('verified_at'):
                 raise ValueError('Joint limits are not verified')
@@ -70,6 +101,8 @@ class MotionExecutor:
                 raise ValueError('Motion service ownership is not owned')
             if status.get('state') != 'idle':
                 raise ValueError('Motion service is busy')
+            # Status IPC can consume the remaining window. Recompute last.
+            payload = self.sequence(event)
             result = self.request(payload)
             self.active = event.get('job_id')
             return {'mode': 'robot', 'response': result}

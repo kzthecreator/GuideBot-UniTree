@@ -1,5 +1,6 @@
 #include "sequence_library.hpp"
 #include "motion_interrupt.hpp"
+#include "motion_deadline.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -18,6 +19,14 @@ void write_frame(std::ofstream& output, double duration, double first_joint) {
 }
 
 int main() {
+    motion_deadline::check(103., .9, 102.);
+    motion_deadline::check(0., 100., 102.);  // Explicit manual legacy command.
+    for (double deadline : {102., 102.94, std::nan("")}) {
+        bool rejected = false;
+        try { motion_deadline::check(deadline, .9, 102.); }
+        catch (const std::runtime_error&) { rejected = true; }
+        require(rejected);
+    }
     char temporary[] = "/tmp/g1-sequence-test-XXXXXX";
     const char* created = mkdtemp(temporary);
     require(created != nullptr);
@@ -169,16 +178,22 @@ int main() {
     require(std::abs(reconciled.waypoints.front().arm[0] - measured[0]) < 1e-9);
     const auto reconciled_plan = standing_motion::make_plan(actual, 0, 0, reconciled.waypoints);
     require(std::abs(standing_motion::sample(reconciled_plan, 0).arm[0]) < 1e-9);
-    measured[0] = 0.04;
+    for (double allowed_gap : {0.035737, 0.04, 0.299999, 0.3}) {
+        measured[0] = allowed_gap;
+        const auto allowed = sequence_library::resolve(definition, library, limits, actual, measured);
+        require(!allowed.waypoints.empty());
+    }
+    measured[0] = 0.300001;
     bool gap_rejected = false;
     try { sequence_library::resolve(definition, library, limits, actual, measured); }
     catch (const std::runtime_error& error) {
         gap_rejected = true;
         const std::string message = error.what();
         require(message.find("joint=left_shoulder_pitch") != std::string::npos);
-        require(message.find("gap_rad=0.040000") != std::string::npos);
-        require(message.find("actual_rad=0.040000") != std::string::npos);
+        require(message.find("gap_rad=0.300001") != std::string::npos);
+        require(message.find("actual_rad=0.300001") != std::string::npos);
         require(message.find("commanded_rad=0.000000") != std::string::npos);
+        require(message.find("limit_rad=0.300000") != std::string::npos);
     }
     require(gap_rejected);
 

@@ -1,5 +1,6 @@
 #include "motion_interrupt.hpp"
 #include "sequence_library.hpp"
+#include "motion_deadline.hpp"
 
 #include <array>
 #include <atomic>
@@ -272,6 +273,8 @@ void ramp_down(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
 enum class Kind { Action, Sequence, Preview, Answer, Waist, Interrupt, Resume, Stop, Release, Acquire, Quit };
 
 struct Command {
+    double end_monotonic = 0.0;
+    std::string job_id;
     bool combo_preview = false;
     Kind kind;
     action_sequence::Resolved action;
@@ -321,6 +324,14 @@ private:
 
 class StatusStore {
 public:
+    void execution(const Command& command, const std::string& state,
+                   const std::string& reason = "") {
+        if (command.job_id.empty()) return;
+        std::lock_guard<std::mutex> lock(mutex_);
+        execution_ = {{"job_id", command.job_id}, {"state", state}, {"reason", reason},
+                      {"end_monotonic", command.end_monotonic}};
+        status_["execution"] = execution_;
+    }
     void set_preview(const std::string& name, const std::string& state,
                      const std::string& error = "", bool limits_verified = true,
                      double planned_seconds = 0.0,
@@ -368,7 +379,11 @@ public:
                           {"step_name", point.step_name}};
         }
         std::lock_guard<std::mutex> lock(mutex_);
+        if (execution_.is_object() && execution_.value("state", std::string()) == "running" &&
+            player.state() == motion_interrupt::State::Idle)
+            execution_["state"] = "completed";
         status_ = {{"state", names[static_cast<int>(player.state())]},
+                   {"execution", execution_},
                    {"checkpoint", checkpoint}, {"ownership", ownership_},
                    {"active_step_index", player.state() == motion_interrupt::State::Running ?
                         nlohmann::json(player.active_step_index()) : nlohmann::json(nullptr)},
@@ -376,6 +391,7 @@ public:
     }
 
 private:
+    nlohmann::json execution_ = nullptr;
     mutable std::mutex mutex_;
     std::string ownership_ = "owned";
     nlohmann::json preview_ = nullptr;
@@ -511,7 +527,17 @@ Command parse_command(const nlohmann::json& input, const motion_catalog::Library
         return command;
     }
     if (input.contains("序列")) {
-        if (input.size() != 1) throw std::runtime_error("sequence command has extra fields");
+        for (auto it = input.begin(); it != input.end(); ++it)
+            if (it.key() != "序列" && it.key() != "end_monotonic" && it.key() != "job_id")
+                throw std::runtime_error("sequence command has extra fields");
+        if (input.contains("end_monotonic")) {
+            command.end_monotonic = input.at("end_monotonic").get<double>();
+            if (!std::isfinite(command.end_monotonic) || command.end_monotonic <= 0)
+                throw std::runtime_error("invalid fixed action end deadline");
+            command.job_id = input.at("job_id").get<std::string>();
+            if (command.job_id.empty() || command.job_id.size() > 256)
+                throw std::runtime_error("invalid deadline action job_id");
+        }
         command.kind = Kind::Sequence;
         command.sequence = sequence_library::parse(input.at("序列"));
         command.limits = sequence_library::JointLimits::load(limits_path);
@@ -929,7 +955,12 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
                               << plan.total_duration << " s planned"
                               << (action.play_style_preview ? "; play-style linear, 2 ms commands" : "")
                               << "\n";
+                    // Log/asset work may have consumed time; validate immediately
+                    // before starting, never just at socket receipt.
+                    motion_deadline::check(queued.end_monotonic, plan.total_duration,
+                        std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count());
                     player.start(action);
+                    status.execution(queued, "running");
                     play_style_active = action.play_style_preview;
                     reverse_return_active = action.play_style_preview && !queued.combo_preview;
                     wake = std::chrono::steady_clock::now();
@@ -955,6 +986,7 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
                     player.start(std::move(queued.action));
                 }
             } catch (const std::exception& error) {
+                status.execution(queued, "rejected", error.what());
                 if (queued.kind == Kind::Preview) {
                     status.set_preview(preview_label(queued), "rejected", error.what());
                     pending_release = true;
@@ -1246,7 +1278,12 @@ int main(int argc, char** argv) {
                         if (command.kind == Kind::Sequence) {
                             const auto action = sequence_library::resolve(
                                 command.sequence, library, command.limits, player.pose());
+                            const auto plan = standing_motion::make_plan(
+                                player.pose(), 0.0, 0.0, action.waypoints);
+                            motion_deadline::check(command.end_monotonic, plan.total_duration,
+                                std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count());
                             player.start(action);
+                            status.execution(command, "running");
                         }
                         if (command.kind == Kind::Preview) {
                             const auto action = sequence_library::resolve(
@@ -1266,6 +1303,7 @@ int main(int argc, char** argv) {
                         if (command.kind == Kind::Resume) player.resume();
                         if (command.kind == Kind::Stop) player.cancel();
                     } catch (const std::exception& error) {
+                        status.execution(command, "rejected", error.what());
                         if (command.kind == Kind::Acquire) status.set_ownership("released");
                         if (command.kind == Kind::Preview)
                             status.set_preview(preview_label(command),

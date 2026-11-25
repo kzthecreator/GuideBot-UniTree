@@ -19,6 +19,7 @@ from drivers.agc2.runtime import AGC2
 from GuideBot.conversation.knowledge import read_soul
 from drivers.localvqe.runtime import LocalVQEEcho
 from drivers.timestamps.runtime import StreamingTimestamps
+from GuideBot.conversation.websocket_diagnostics import WebSocketDiagnostics
 
 MODEL = "stepaudio-3-realtime-preview"
 DEFAULT_DIAGNOSE_AUDIO = True
@@ -80,6 +81,7 @@ class RealtimeSession:
                       "speech_starts": 0, "speech_stops": 0, "responses": [], "playback_events": []}
         self.session = None
         self.ws = self.thread = None
+        self.websocket_diagnostics = WebSocketDiagnostics()
         self.log = None
         self.timestamp_log = None
         self.timestamp_stats = {"ready": False, "updates": 0, "finals": 0, "revisions": 0,
@@ -190,17 +192,18 @@ class RealtimeSession:
             self.log.flush()
 
     def report(self, stage, message, turn=None, response_id=None, **details):
-        with self.log_lock:
-            label = ""
-            if response_id:
-                label = f"R{self.response_numbers.get(response_id, '?')}"
-                turn = self.response_turns.get(response_id, turn)
-            if turn:
-                label += ("/" if label else "") + f"U{turn}"
-            elapsed = time.monotonic() - self.started_at
-            print(f"[+{elapsed:07.3f}s][{label or 'session'}][{stage}] {message}", flush=True)
-            self._write_log("client." + stage, message=message, turn=turn,
-                            response_id=response_id, **details)
+        with self.websocket_diagnostics.stage('report'):
+            with self.log_lock:
+                label = ""
+                if response_id:
+                    label = f"R{self.response_numbers.get(response_id, '?')}"
+                    turn = self.response_turns.get(response_id, turn)
+                if turn:
+                    label += ("/" if label else "") + f"U{turn}"
+                elapsed = time.monotonic() - self.started_at
+                print(f"[+{elapsed:07.3f}s][{label or 'session'}][{stage}] {message}", flush=True)
+                self._write_log("client." + stage, message=message, turn=turn,
+                                response_id=response_id, **details)
 
     def _playback_event(self, kind, **details):
         if kind == 'playback.ready' and self.gestures is not None:
@@ -278,17 +281,42 @@ class RealtimeSession:
         self.ws = websocket.WebSocketApp(
             "wss://api.stepfun.com/v1/realtime?" + urlencode({"model": MODEL}),
             header=[f"Authorization: Bearer {self.secret}"],
-            on_open=lambda ws: self._close_socket() if self.stopping.is_set() else None,
-            on_message=lambda ws, message: self.on_event(json.loads(message)),
+            on_open=self._socket_open,
+            on_message=self._socket_message,
+            on_pong=lambda ws, data: self.websocket_diagnostics.pong_received(data),
             on_error=lambda ws, error: self._socket_error(error),
             on_close=self._on_close,
         )
         self.thread = threading.Thread(target=self._run_socket, name="stepfun-realtime", daemon=True)
         self.thread.start()
 
+    def _socket_open(self, ws):
+        self.websocket_diagnostics.attach(ws.sock)
+        if self.stopping.is_set():
+            self._close_socket()
+
+    def _socket_message(self, ws, message):
+        with self.websocket_diagnostics.callback():
+            with self.websocket_diagnostics.stage('json.decode'):
+                event = json.loads(message)
+            if event.get('type') == 'response.audio.delta':
+                self.websocket_diagnostics.audio_received()
+            with self.websocket_diagnostics.stage('event.dispatch'):
+                self.on_event(event)
+
+    def _flush_websocket_diagnostics(self):
+        events = self.websocket_diagnostics.drain()
+        state = self.websocket_diagnostics.snapshot()
+        with self.log_lock:
+            for event in events:
+                kind = event.pop('kind')
+                self._write_log(kind, **event)
+            self._write_log('websocket.diagnostics', **state)
+
     def _send(self, kind, **fields):
         if not self.stopping.is_set():
-            self.ws.send(json.dumps(make_event(kind, **fields), ensure_ascii=False))
+            with self.websocket_diagnostics.stage('socket.send'):
+                self.ws.send(json.dumps(make_event(kind, **fields), ensure_ascii=False))
             return True
         return False
 
@@ -318,11 +346,16 @@ class RealtimeSession:
             self.stopping.set()
 
     def _on_close(self, ws, code, reason):
+        reason = str(reason).replace(self.secret, '[redacted]') if reason else None
+        self.websocket_diagnostics.closed(reason or 'peer_closed', code)
+        self._flush_websocket_diagnostics()
         if not self.stopping.is_set():
             self.fail(RuntimeError(f"Realtime connection closed (code={code})"))
 
     def fail(self, error):
         message = str(error).replace(self.secret, "[redacted]") if self.secret else str(error)
+        self.websocket_diagnostics.closed(message)
+        self._flush_websocket_diagnostics()
         with self.error_lock:
             if message not in self.errors:
                 self.errors.append(message)
@@ -389,10 +422,12 @@ class RealtimeSession:
                 record["status"] = event["response"].get("status")
             raw_audio = None
             if kind == "response.audio.delta":
-                raw_audio = base64.b64decode(event["delta"], validate=True)
+                with self.websocket_diagnostics.stage('audio.decode'):
+                    raw_audio = base64.b64decode(event["delta"], validate=True)
                 record["audio_bytes"] = len(raw_audio)
-            with self.log_lock:
-                self._write_log(kind, **record)
+            with self.websocket_diagnostics.stage('event_log'):
+                with self.log_lock:
+                    self._write_log(kind, **record)
             if kind == "session.created":
                 settings = {
                     "modalities": ["text", "audio"], "instructions": self.instructions,
@@ -512,7 +547,8 @@ class RealtimeSession:
                     return
                 if kind == "response.audio.delta":
                     try:
-                        converted = self.speaker.feed(rid, raw_audio)
+                        with self.websocket_diagnostics.stage('speaker.feed'):
+                            converted = self.speaker.feed(rid, raw_audio)
                     except SpeakerBacklogExceeded:
                         self.discarded.add(rid)
                         self.speaker.cancel(rid, 'reply_storage_limit')
@@ -545,6 +581,7 @@ class RealtimeSession:
             self.fail(error)
 
     def stop(self):
+        self.websocket_diagnostics.closed('session_stop_requested')
         self.stopping.set()
         self._close_socket()
         with self.lifecycle:
@@ -577,6 +614,7 @@ class RealtimeSession:
         if self.echo is not None:
             self.echo.close()
             echo_stats = dict(self.echo.stats)
+        self._flush_websocket_diagnostics()
         if self.log is not None and (self.thread is None or not self.thread.is_alive()):
             self.log.close()
             self.log = None
@@ -595,5 +633,6 @@ class RealtimeSession:
                 "gesture_backend": self.gesture_backend, "joint_limits_skipped": self.skip_joint_limits,
                 "gesture_startup_status": self.gesture_startup_status,
                 "timestamp_stats": self.timestamp_stats,
+                "websocket_diagnostics": self.websocket_diagnostics.snapshot(),
                 "session": self.session, **self.stats,
                 "speaker_submitted_bytes": self.speaker.submitted_bytes, "errors": list(self.errors)}

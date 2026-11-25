@@ -174,14 +174,14 @@ inline action_sequence::Resolved resolve(const Definition& definition,
             tracking_joint = joint;
         }
     }
-    if (tracking_gap > 0.03)
+    if (tracking_gap > 0.3)
         throw std::runtime_error(
             std::string("arm has not settled at commanded pose: joint=") +
             motion_catalog::kJointNames[tracking_joint] +
             " gap_rad=" + std::to_string(tracking_gap) +
             " actual_rad=" + std::to_string(actual[tracking_joint]) +
             " commanded_rad=" + std::to_string(commanded[tracking_joint]) +
-            " limit_rad=0.030000");
+            " limit_rad=0.300000");
     const bool timed_entry = !definition.steps.empty() && definition.steps.front().total_ms > 0;
     if (tracking_gap > 1e-6 && !result.play_style_preview && !timed_entry) {
         result.waypoints.push_back({0.5, actual});

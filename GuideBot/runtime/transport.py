@@ -9,7 +9,7 @@ import time
 import uuid
 
 from GuideBot.runtime.ipc import Server, call
-from GuideBot.runtime.workers.motion_executor import MotionExecutor
+from GuideBot.runtime.workers.motion_executor import MotionExecutor, MotionTimingRejected
 from GuideBot.ros2.protocol import context_to_wire, INPUTS
 
 
@@ -98,8 +98,11 @@ class ROSGestureService:
             raise ValueError('Host execution not authorized')
         if op == 'execute':
             event = request['event']
-            result = self.executor.handle('gesture.command', event)
-            self.virtual_end = event['arrival_monotonic'] + event.get('duration_s', 0)
+            try:
+                result = self.executor.handle('gesture.command', event)
+            except MotionTimingRejected as error:
+                return dict(mode=self.mode, accepted=False, **error.diagnostic)
+            self.virtual_end = event.get('end_monotonic') or event['arrival_monotonic'] + event.get('duration_s', 0)
             return result
         if op == 'motion_status':
             if self.mode == 'robot' or self.native_test_request is not None:

@@ -11,8 +11,12 @@ class OfflinePlanner:
     def plan(self, payload, on_action, cancelled):
         if cancelled.is_set():
             return {'cancelled': True}
-        plan = self.catalog.validate(
-            {'action':'greet_open', 'start_unit':0, 'arrival_unit':len(payload['units'])-1},
+        row = {'action':'greet_open', 'start_unit':0, 'arrival_unit':len(payload['units'])-1}
+        # The explicit offline alignment harness still exercises legacy anchors.
+        if os.environ.get('GUIDEBOT_GESTURE_TIMING_MODE') != 'aligned':
+            row.update(start_s=payload.get('playback_elapsed_s', 0.),
+                       end_s=payload.get('playback_elapsed_s', 0.)+6.)
+        plan = self.catalog.validate(row,
             payload['eligible_anchor_ids'], payload['targets'], payload['interaction_context'])
         if not payload['existing_actions'] and not cancelled.is_set():
             on_action(plan)
@@ -20,16 +24,17 @@ class OfflinePlanner:
 
 
 class ROSMotionExecutor:
-    def __init__(self, node, shared):
+    def __init__(self, node, shared, on_result=None):
         self.session_state = shared
         self.mode = shared.mode
         self.active = None
         self.client = ActionClient(node, ExecuteGesture, '/guidebot/motion/execute_gesture',
                                    callback_group=ReentrantCallbackGroup())
         self.lock = threading.Lock()
+        self.on_result = on_result
 
     def handle(self, kind, event):
-        if kind == 'gesture.reset':
+        if kind == 'gesture.reset' or (kind == 'gesture.command' and event.get('end_monotonic')):
             with self.lock:
                 goal, self.active = self.active, None
             if goal is not None:
@@ -44,16 +49,20 @@ class ROSMotionExecutor:
                 if time.monotonic() >= deadline:
                     raise ValueError('Motion did not become idle after cancellation')
                 time.sleep(.01)
-            return {'mode': self.mode, 'cancel_requested': True}
+            if kind == 'gesture.reset':
+                return {'mode': self.mode, 'cancel_requested': True}
         if kind != 'gesture.command':
             return None
         if not self.client.wait_for_server(timeout_sec=3):
             raise ValueError('ROS motion unavailable')
+        if event.get('end_monotonic') and time.monotonic() >= event['end_monotonic']:
+            raise ValueError('Action end deadline passed after braking')
         request = ExecuteGesture.Goal()
         fields = dict(session_id=self.session_state.fence.session, generation=self.session_state.fence.generation,
                       response_id=str(event.get('response_id', '')), job_id=event['job_id'],
                       action=event['action'], start_monotonic=event['start_monotonic'],
                       arrival_monotonic=event['arrival_monotonic'],
+                      end_monotonic=event.get('end_monotonic', 0.),
                       has_duration='duration_s' in event, duration_s=float(event.get('duration_s', 0)),
                       scheduler_managed=event.get('scheduler_managed', False))
         request = message(ExecuteGesture.Goal, fields)
@@ -65,6 +74,9 @@ class ROSMotionExecutor:
         future = goal.get_result_async()
         def completed(value):
             result = value.result().result
+            if self.on_result is not None:
+                self.on_result('execution_result',
+                    job_id=event['job_id'], success=result.success, reason=result.reason)
             self.session_state.notify('gesture.execution_result', dict(job_id=event['job_id'],
                                action=event['action'], response_id=event.get('response_id'),
                                success=result.success, outcome=result.outcome, reason=result.reason,
@@ -112,8 +124,8 @@ class GestureNode(Node):
                            else Planner(catalog))
                 self.service = GestureService(Path(os.environ['GUIDEBOT_SESSION_DIR']), self.emit,
                             catalog=catalog, planner=planner, execution_mode=request.mode)
-                # Keep timing profiles and policy unchanged; only transport differs.
-                self.service.executor = ROSMotionExecutor(self, self.session_state)
+                self.service.executor = ROSMotionExecutor(self, self.session_state,
+                                                          on_result=self.service.submit)
                 self.service.start()
             elif request.command == 'stop':
                 self.session_state.fence.check(request.session_id, request.generation)

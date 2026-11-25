@@ -27,3 +27,21 @@ kind=motion 的 duration_s 表示到位之后动态动作持续的秒数，不�
 顶层只允许 actions 数组。每个动作只允许 action、start_unit、arrival_unit 以及该注册动作声明的参数。JSON 必须完整，不输出额外字段。下面只是格式示意，具体动作以注册表为准：
 
 {"actions": []}
+
+
+## 固定结束期限（timing_contract=fixed_deadline 时优先于以上旧锚点时序规则）
+
+start_unit、arrival_unit 仅用于绑定语义，不能作为动作的结束时间。
+每个动作必须另含 start_s、end_s：相对于本条回复第一次 playback.started 的秒数，0 <= start_s < end_s <= 300。
+playback_elapsed_s 是请求发出时的已播放时间；模型生成和传输还会消耗时间，不得把响应到达时刻当成时间零点。
+end_s 表示整个动作指令轨迹应已完成的固定期限，包含切换和动态核心；后续请求不得重置已有动作的时间窗口。
+开始播放前按本条回复的播放零点规划；已经播放时针对尚未讲到的内容选择未来窗口，不要给已讲完内容补动作。
+kind=motion 在此模式不输出 duration_s，由执行端使用录制核心时长。预留切换、传输和制动余量，动态窗口建议至少3秒；窗口不足时返回空动作列表。
+kind=pose 同样必须给 end_s，表示到位轨迹完成期限；静态末姿态可保持至下一动作或倾听复位，不会持续运动。
+截止已过或剩余时间不足时动作会被丢弃，不得要求加速或顺延期限。新动作可制动取消旧动作，旧动作不再恢复。
+固定期限示例（只示意格式，不是必须触发的动作）：
+{"actions":[{"action":"greet_open","start_unit":0,"arrival_unit":1,"start_s":1,"end_s":4}]}
+
+固定期限规划时，每个注册项含 minimum_remaining_s：这是执行端在收到请求时至少还需要的时间，已经包含录制核心、最低切换与固定余量，不要再次重复相加。
+建议 start_s 至少为 playback_elapsed_s + suggested_planning_lead_s，并且 end_s >= start_s + minimum_remaining_s + 0.3（另留调度抖动余量）。lead是给规划和传输预留的建议，不是延迟上限保证；窗口应绑定尚未讲到的后续内容，不要顺延已有动作的截止时间。
+existing_actions 中的 status/reason 表示执行状态。skipped 不代表动作已经表达成功；后续内容仍有自然表达机会时，可选新的未来窗口或其他动作。不要补执行已过期窗口，不要仅因失败强行安排无关动作。

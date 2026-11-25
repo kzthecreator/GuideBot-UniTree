@@ -14,6 +14,7 @@ class Job:
     request_id: int
     status: str = 'waiting'
     timing: tuple = None
+    reason: str = ''
 
 
 @dataclass
@@ -25,6 +26,7 @@ class Reply:
     version: int = -1
     playback_origin: float = None
     jobs: list = field(default_factory=list)
+    last_started_s: float = -1.
 
 
 class Scheduler:
@@ -177,12 +179,15 @@ class Scheduler:
             self.event('gesture.completed', self.active['rid'], job_id=self.active['job'].id)
             self.active['job'].status = 'completed'
             self.active = None
+        self._tick_deadlines()
         if self.immediate:
             self._tick_immediate(now)
             return
         ready = []
         for rid, reply in self.replies.items():
             for job in reply.jobs:
+                if job.plan.end_s is not None:
+                    continue
                 if job.status not in {'waiting', 'scheduled'}:
                     continue
                 plan = job.plan
@@ -244,6 +249,8 @@ class Scheduler:
             if reply.playback_origin is None:
                 continue
             for job in reply.jobs:
+                if job.plan.end_s is not None:
+                    continue
                 if job.status != 'waiting':
                     continue
                 if self.active:
@@ -268,6 +275,75 @@ class Scheduler:
                     self.event('gesture.skipped', rid, job_id=job.id,
                                reason='execution_rejected', detail=result['execution_error'])
                 return
+
+    def _tick_deadlines(self):
+        ready = []
+        for rid, reply in self.replies.items():
+            if reply.playback_origin is None:
+                continue
+            for job in reply.jobs:
+                if job.plan.end_s is None or job.status != 'waiting':
+                    continue
+                start = reply.playback_origin + job.plan.start_s
+                end = reply.playback_origin + job.plan.end_s
+                if self.clock() >= start:
+                    ready.append((start, rid, job, end))
+        ordered = sorted(ready, key=lambda row: (row[0], row[2].id))
+        live = [row for row in ordered if self.clock() < row[3]]
+        newest = live[-1][2] if live else None
+        for start, rid, job, end in ordered:
+            if self.clock() >= end:
+                job.status = 'skipped'
+                self.event('gesture.skipped', rid, job_id=job.id, reason='end_deadline_passed')
+                continue
+            if job is not newest:
+                job.status = 'skipped'
+                self.event('gesture.skipped', rid, job_id=job.id, reason='newer_action_due')
+                continue
+            if job.plan.start_s < self.replies[rid].last_started_s:
+                job.status = 'skipped'
+                self.event('gesture.skipped', rid, job_id=job.id, reason='older_window_superseded')
+                continue
+            # Cancel, wait for the execution result and native idle in the
+            # executor, then re-check the ORIGINAL deadline. Never rebase it.
+            if self.active:
+                previous = self.active
+                result = self.event('gesture.reset', previous['rid'],
+                                    job_id=previous['job'].id, reason='new_action_preempts')
+                if isinstance(result, dict) and result.get('execution_error'):
+                    job.status = 'skipped'
+                    self.event('gesture.skipped', rid, job_id=job.id, reason='preemption_failed')
+                    continue
+                previous['job'].status = 'cancelled'
+                self.active = None
+            if self.clock() >= end:
+                job.status = 'skipped'
+                self.event('gesture.skipped', rid, job_id=job.id, reason='end_deadline_passed')
+                continue
+            job.status = 'committed'
+            self.replies[rid].last_started_s = job.plan.start_s
+            self.active = dict(rid=rid, job=job, end=None, busy_until=end, deadline=True)
+            result = self.event('gesture.command', rid, job_id=job.id, **job.plan.as_dict(),
+                                start_monotonic=start, arrival_monotonic=end,
+                                end_monotonic=end, timing_mode='fixed_deadline', simulated=True)
+            if isinstance(result, dict) and result.get('execution_error'):
+                job.status = 'skipped'
+                self.active = None
+                self.event('gesture.skipped', rid, job_id=job.id, reason='execution_rejected',
+                           detail=result['execution_error'])
+
+    def planning_history(self, rid):
+        reply = self.replies.get(rid)
+        return [dict(j.plan.as_dict(), status=j.status, reason=j.reason)
+                for j in reply.jobs if j.status != 'cancelled'] if reply else []
+
+    def execution_result(self, job_id, success, reason=''):
+        if self.active and self.active['job'].id == job_id and self.active.get('deadline'):
+            active, self.active = self.active, None
+            active['job'].status = 'completed' if success else 'skipped'
+            active['job'].reason = reason
+            self.event('gesture.completed' if success else 'gesture.skipped', active['rid'],
+                       job_id=job_id, reason=reason or 'execution_result')
 
     def cancel(self, rid, reason='interrupted'):
         self.closed.add(rid)

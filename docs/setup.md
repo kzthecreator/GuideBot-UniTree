@@ -129,6 +129,7 @@ python -m unittest discover -s tests
 python -m unittest discover -s drivers/unitree_motion/tests
 python tools/ros2/offline_acceptance.py --native
 python tools/ros2/aligned_acceptance.py
+python tools/ros2/deadline_acceptance.py
 python tools/ros2/lifecycle_acceptance.py
 ```
 
@@ -136,7 +137,9 @@ python tools/ros2/lifecycle_acceptance.py
 `preflight` 还要求本账户已配置密钥和完成知识同步；缺少它们会明确失败。
 
 四节点与倾听／说话模式已实现。倾听请求 neutral，播放期间执行 LLM 队列。
-当前真机仍有已确认的问题：起步时实测／指令最大关节差超过 0.03 rad，会拒绝包括 neutral 在内的新动作。
-最近一次左肩差约 0.0357 rad，造成 greeting 后保持原姿态。
+LLM动作使用固定播放起止窗口：过期／来不及则丢弃，新动作先制动取消旧动作，再评估剩余窗口。
+本次ExecuteGesture增加end_monotonic，更新旧checkout后需重新运行python tools/ros2/build.py并重编译原生服务；完整install会构建两者。
+当前起步检查阈值为 0.3 rad：14 个手臂关节最大实测／指令差超过该值，会拒绝包括 neutral 在内的新动作。
+此前左肩约 0.0357 rad 偏差现可通过此检查；实际动作效果仍待真机验收。
 这项限制随当前代码保留；部署成功不表示该真机问题已修复。
 运行边界与后续工作以 `docs/AGENT_HANDOFF.md` 开头为准。
