@@ -26,8 +26,8 @@ RATE = 16000
 CLOUD_RATE = 24000
 
 
-from drivers.unitree_audio.runtime import load_audio_sdk, microphone_packets
-from GuideBot.diagnostics.audio import AudioDiagnostic
+from GuideBot.robot.audio.runtime import load_audio_sdk, microphone_packets
+from runtime.telemetry.audio_sink import AudioDiagnostic
 from GuideBot.conversation.playback import (StreamingSpeaker, SpeakerBacklogExceeded, _PCMSpool, _ResponseAudio)
 
 def state_directory():

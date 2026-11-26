@@ -18,7 +18,9 @@ import requests
 
 from GuideBot.conversation.audio import state_directory
 
-AGENT_DIRECTORY = Path(__file__).resolve().parent.parent / "agent"
+from GuideBot.configuration import USER_CONFIG_DIRECTORY, read_prompt
+
+LEGACY_KNOWLEDGE_DIRECTORY = Path(__file__).resolve().parent.parent / "agent" / "knowledge"
 EXTENSIONS = {".txt", ".md", ".pdf", ".doc", ".docx", ".xls", ".xlsx",
               ".ppt", ".pptx", ".csv", ".html", ".htm", ".xml"}
 
@@ -33,12 +35,8 @@ def load_secret():
     return secret
 
 
-def read_soul(agent_directory=AGENT_DIRECTORY):
-    path = Path(agent_directory) / "soul.md"
-    text = path.read_text(encoding="utf-8").strip()
-    if not text:
-        raise ValueError(f"Instructions file is empty: {path}")
-    return text
+def read_conversation_prompt(directory=USER_CONFIG_DIRECTORY):
+    return read_prompt('conversation/prompt.md', directory)
 
 
 class KnowledgeAPIError(RuntimeError):
@@ -148,6 +146,17 @@ def _manifest_path(directory, state_dir):
 
 def _read_manifest(path, directory):
     if not path.exists():
+        if directory == (USER_CONFIG_DIRECTORY / 'conversation' / 'knowledge').resolve():
+            # Prefer the most recent flat layout, then the original agent layout.
+            for legacy in ((USER_CONFIG_DIRECTORY.parent / 'user_config' / 'conversation' / 'knowledge').resolve(),
+                           (USER_CONFIG_DIRECTORY.parent / 'user_config' / 'knowledge').resolve(),
+                           (USER_CONFIG_DIRECTORY / 'knowledge').resolve(),
+                           LEGACY_KNOWLEDGE_DIRECTORY.resolve()):
+                legacy_path = _manifest_path(legacy, path.parents[2])
+                if legacy_path.exists():
+                    state = _read_manifest(legacy_path, legacy)
+                    state['directory'] = str(directory)
+                    return state
         return {"schema": 1, "directory": str(directory), "vector_store_id": None,
                 "files": {}, "pending": {}, "retired": [], "ready": False}
     state = json.loads(path.read_text(encoding="utf-8"))
@@ -179,7 +188,7 @@ class SyncResult:
     dry_run: bool = False
 
 
-def load_knowledge(directory=AGENT_DIRECTORY / "knowledge", *, state_dir=None):
+def load_knowledge(directory=USER_CONFIG_DIRECTORY / "conversation" / "knowledge", *, state_dir=None):
     directory = Path(directory).resolve()
     state = _read_manifest(_manifest_path(directory, state_dir), directory)
     if not state.get("ready") or not state.get("vector_store_id") or not state.get("files"):
@@ -188,7 +197,7 @@ def load_knowledge(directory=AGENT_DIRECTORY / "knowledge", *, state_dir=None):
     return state["vector_store_id"]
 
 
-def sync_knowledge(directory=AGENT_DIRECTORY / "knowledge", *, dry_run=False,
+def sync_knowledge(directory=USER_CONFIG_DIRECTORY / "conversation" / "knowledge", *, dry_run=False,
                    secret=None, state_dir=None):
     """Synchronize this component's documents; no-change runs never upload again."""
     directory = Path(directory).resolve()
@@ -293,7 +302,7 @@ def sync_knowledge(directory=AGENT_DIRECTORY / "knowledge", *, dry_run=False,
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--directory", type=Path, default=AGENT_DIRECTORY / "knowledge")
+    parser.add_argument("--directory", type=Path, default=USER_CONFIG_DIRECTORY / "conversation" / "knowledge")
     parser.add_argument("--dry-run", action="store_true", help="List local changes without cloud requests")
     args = parser.parse_args()
     result = sync_knowledge(args.directory, dry_run=args.dry_run)

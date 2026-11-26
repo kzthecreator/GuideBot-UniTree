@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import math
 import time
 
-from .catalog import Plan, units_for
+from GuideBot.gesture.catalog import Plan, units_for
 
 
 @dataclass
@@ -15,6 +15,7 @@ class Job:
     status: str = 'waiting'
     timing: tuple = None
     reason: str = ''
+    anchor_pair: tuple = None
 
 
 @dataclass
@@ -102,6 +103,7 @@ class Scheduler:
             return
         reply.jobs.append(job)
         self.event('gesture.planned', rid, job_id=job.id, request_id=request_id, **plan.as_dict())
+        return job
 
     def alignment(self, rid, details):
         reply = self.reply(rid)

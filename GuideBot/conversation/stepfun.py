@@ -15,11 +15,11 @@ import uuid
 import websocket
 
 from GuideBot.conversation.audio import AudioDiagnostic, CLOUD_RATE, RATE, LevelGate, StreamingSpeaker, SpeakerBacklogExceeded, microphone_packets
-from drivers.agc2.runtime import AGC2
-from GuideBot.conversation.knowledge import read_soul
-from drivers.localvqe.runtime import LocalVQEEcho
-from drivers.timestamps.runtime import StreamingTimestamps
-from GuideBot.conversation.websocket_diagnostics import WebSocketDiagnostics
+from GuideBot.conversation.processing.agc2 import AGC2
+from GuideBot.conversation.knowledge import read_conversation_prompt
+from GuideBot.conversation.processing.localvqe import LocalVQEEcho
+from GuideBot.conversation.alignment.timestamps import StreamingTimestamps
+from runtime.telemetry.events import WebSocketDiagnostics
 
 MODEL = "stepaudio-3-realtime-preview"
 DEFAULT_DIAGNOSE_AUDIO = True
@@ -34,6 +34,8 @@ def make_event(kind, **fields):
 
 
 class RealtimeSession:
+    requires_knowledge = True
+
     def __init__(self, secret, directory, voice=None, chunk_ms=1000, gain=1.5,
                  diagnose_audio=DEFAULT_DIAGNOSE_AUDIO, vad_energy=DEFAULT_VAD_ENERGY,
                  aec=DEFAULT_AEC, aec_delay_ms=DEFAULT_AEC_DELAY_MS,
@@ -43,7 +45,7 @@ class RealtimeSession:
         if not 0 <= vad_energy <= 5000:
             raise ValueError("VAD energy threshold must be 0..5000")
         self.secret, self.directory = secret, directory
-        self.instructions = read_soul() if instructions is None else instructions.strip()
+        self.instructions = read_conversation_prompt() if instructions is None else instructions.strip()
         if not self.instructions:
             raise ValueError("Instructions must not be empty")
         self.vector_store_id = vector_store_id
@@ -96,9 +98,9 @@ class RealtimeSession:
         self.skip_joint_limits = False
         self.gesture_enabled = bool(gestures)
         self.gesture_startup_status = 'pending' if gestures else 'not_requested'
-        timing_mode = os.environ.get('GUIDEBOT_GESTURE_TIMING_MODE',
-                                     'immediate' if execution_mode == 'robot' else 'aligned')
-        gesture_alignment = gestures and timing_mode == 'aligned'
+        # Semantic action quotes require local timestamps in both robot and
+        # simulation modes. Never silently route them through immediate timing.
+        gesture_alignment = bool(gestures)
         options = backend_options = None
         if gestures:
             sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -147,7 +149,8 @@ class RealtimeSession:
         if kind in {"alignment.update", "alignment.final"}:
             self.timestamp_stats["finals" if kind == "alignment.final" else "updates"] += 1
             self.timestamp_stats["revisions"] += len(changes)
-            state = ("最终修复" if kind == "alignment.final" else
+            state = (("尾窗收尾（历史仍暂定）" if details.get('full_repair') is False else "最终修复")
+                     if kind == "alignment.final" else
                      "前缀重同步（暂定）" if details.get("scope") == "prefix_resync" else "暂定")
             shift = max((c["shift_ms"] for c in changes), default=0)
             message = (f"{state}字级时间戳 {len(rows)}/{details['total_units']}；"
@@ -239,7 +242,7 @@ class RealtimeSession:
             raise RuntimeError("Create a new RealtimeSession for each conversation")
         if not self.secret:
             raise ValueError("STEP_SECRET is required")
-        if not self.vector_store_id:
+        if self.requires_knowledge and not self.vector_store_id:
             raise ValueError("A successfully synchronized knowledge base is required")
         self.started_at = time.monotonic()
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -257,7 +260,10 @@ class RealtimeSession:
             try:
                 self.timestamps.start()
             except Exception as error:
-                self._alignment_event("alignment.error", message=f"Timestamp worker disabled: {error}; audio continues")
+                outcome = 'gesture session cannot start' if self.gesture_enabled else 'audio continues'
+                self._alignment_event("alignment.error", message=f"Timestamp worker disabled: {error}; {outcome}")
+                if self.gesture_enabled:
+                    raise RuntimeError('Gesture timestamps failed to initialize; session not started') from error
         if self.gestures is not None:
             try:
                 self.gestures.start()

@@ -1,6 +1,8 @@
+> 历史设计记录：当前目录与实际入口以 [目录规范](../repository-layout.md) 为准。
+
 # 本机Foxy＋GuideBot Python3.8迁移可行性
 
-实施状态：用户随后批准迁移，已落地。当前结果与性能限制以[实施报告](../experiments/foxy-local-migration-20261124.md)为准。下文保留实施前评估。
+实施状态：用户随后批准迁移，已落地。当前结果与性能限制以[实施报告](../../test/experiments/reports/foxy-local-migration-20261124.md)为准。下文保留实施前评估。
 
 日期：2026-11-24。用户已决定本机Foxy、GuideBot使用Python3.8、不再采用Docker。本轮仅核实可行性并规划，未改现有环境、卸载Docker、修改正式入口或启动设备。
 
@@ -80,7 +82,7 @@ main.py
       → 宿主资源worker待命
       → Enter授权，再请求ROS会话开始
 
-GuideBot/ros2/
+runtime/ros2/
   nodes/                 保留六节点和统一会话管理
   launch/                改为本地启动，明确指定GuideBot解释器
   config/                本地路径与非秘密ROS参数
@@ -92,7 +94,7 @@ GuideBot/host_bridge/
   worker.py、workers/    继续受ROS管理
   ipc.py、transport.py   保留本地资源桥接
 
-archive/                 原Docker专用代码与配置归档
+test/archive/                 原Docker专用代码与配置归档
 ```
 
 host_bridge仍有意义：桥接ROS管理与SDK资源，不再代表Docker。container.py和docker目录在正式切换时归档，不留“可选Docker”生产分支。模型、SDK、动作资产、凭证与录音仍在现有位置。

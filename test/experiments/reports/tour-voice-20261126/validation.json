@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-26",
+  "software_tests": 242,
+  "hardware_started": false,
+  "bundle_id": "81702dfe12eecc7389ecb727183815c2c7f3cbee8722eeda5c8734516bfff50e",
+  "points": 1,
+  "segments": 4,
+  "duration_s": 30.48,
+  "tts": {
+    "model": "stepaudio-3-tts",
+    "voice": "cixingnansheng",
+    "live_synthesis_requests": 4,
+    "wav_validation": "passed",
+    "cache_dry_run_to_generate": 0
+  },
+  "realtime": {
+    "model": "stepaudio-3-realtime-preview",
+    "voice": "cixingnansheng",
+    "server_vad": "acknowledged",
+    "session_updated": true,
+    "retrieval_requested": false,
+    "microphone_input_sent": false,
+    "audio_output_played": false
+  },
+  "preflight": "tour passed: ROS imports, SDK import, LocalVQE, AGC2, credentials, registered audio",
+  "unverified": [
+    "physical playback",
+    "live ASR and barge-in",
+    "echo suppression during narration",
+    "physical drain timing",
+    "real navigation"
+  ]
+}

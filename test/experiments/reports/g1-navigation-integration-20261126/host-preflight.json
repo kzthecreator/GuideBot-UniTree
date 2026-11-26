@@ -1,0 +1,58 @@
+{
+  "installed": {
+    "nav2_bringup": {
+      "path": "/opt/ros/foxy/share/nav2_bringup",
+      "version": "0.4.7"
+    },
+    "nav2_msgs": {
+      "path": "/opt/ros/foxy/share/nav2_msgs",
+      "version": "0.4.7"
+    },
+    "nav2_amcl": {
+      "path": "/opt/ros/foxy/share/nav2_amcl",
+      "version": "0.4.7"
+    },
+    "nav2_map_server": {
+      "path": "/opt/ros/foxy/share/nav2_map_server",
+      "version": "0.4.7"
+    },
+    "nav2_regulated_pure_pursuit_controller": {
+      "path": "/opt/ros/foxy/share/nav2_regulated_pure_pursuit_controller",
+      "version": "0.4.7"
+    },
+    "nav2_rotation_shim_controller": null,
+    "pointcloud_to_laserscan": {
+      "path": "/opt/ros/foxy/share/pointcloud_to_laserscan",
+      "version": "2.0.0"
+    },
+    "slam_toolbox": {
+      "path": "/opt/ros/foxy/share/slam_toolbox",
+      "version": "2.4.1"
+    },
+    "livox_ros_driver2": null,
+    "fast_lio": null
+  },
+  "graph_checked": true,
+  "robot_commands_sent": false,
+  "domain": 0,
+  "localhost_only": true,
+  "required_topics": {
+    "/livox/lidar": {
+      "types": [],
+      "type_matches": false
+    },
+    "/g1_odometry_publisher/odom": {
+      "types": [],
+      "type_matches": false
+    },
+    "/map": {
+      "types": [],
+      "type_matches": false
+    },
+    "/tf": {
+      "types": [],
+      "type_matches": false
+    }
+  },
+  "note": "Discovery only; presence does not prove freshness, localization, TF validity or safe movement"
+}

@@ -1,0 +1,13 @@
+# Motion stays disabled until measured values are filled in and confirmed.
+# Coordinates: body origin expressed in the leveled LiDAR XY frame (metres),
+# body forward yaw relative to leveled LiDAR +X (radians).
+# This is not the laser-to-IMU transform from FAST-LIO.
+confirmed: false
+evidence: ""
+body_x_in_lidar_m: null
+body_y_in_lidar_m: null
+body_yaw_in_lidar_rad: null
+body_radius_m: null
+# Waist [yaw, roll, pitch] when the above transform was measured.
+# The SDK worker requires fresh lowstate and each joint within 0.03rad of these.
+waist_reference_rad: null

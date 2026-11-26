@@ -4,14 +4,12 @@ import json
 import math
 from pathlib import Path
 import re
-from drivers.unitree_motion import assets as motion_library
+from GuideBot.robot.motion import assets as motion_library
 
-from drivers.timestamps.runtime import text_units
+from GuideBot.conversation.alignment.timestamps import text_units
 
-DIRECTORY = Path(__file__).resolve().parent
-from drivers.unitree_motion.paths import ASSETS as MOTION_ROOT, LIMITS
+from GuideBot.robot.motion.paths import ASSETS as MOTION_ROOT, LIMITS
 REGISTRY = MOTION_ROOT / 'actions.json'
-EXAMPLES = MOTION_ROOT / 'conversation-few-shots.json'
 COMMAND_FIELDS = {'action', 'start_unit', 'arrival_unit', 'response_id', 'job_id', 'request_id',
                   'monotonic', 'kind', 'simulated', 'start_audio_s', 'arrival_audio_s',
                   'start_monotonic', 'arrival_monotonic', 'compressed', 'alignment_version',
@@ -168,7 +166,8 @@ class Catalog:
             transition = max(transition, profile['minimum_total_ms']/1000. *
                              weights['transition']/sum(weights.values()))
         return dict(recorded_core_s=core, minimum_transition_s=transition,
-                    reserved_overhead_s=.65, minimum_remaining_s=core+transition+.65)
+                    reserved_overhead_s=.65, minimum_remaining_s=.5,
+                    minimum_execution_s=core+transition+.65)
 
     @staticmethod
     def context_allows(item, context):
@@ -222,31 +221,3 @@ def make_input(response_id, text, targets=(), existing=(), eligible=None, comple
                 eligible_anchor_ids=list(range(len(units))) if eligible is None else list(eligible),
                 targets=list(targets), existing_actions=list(existing), response_complete=complete,
                 interaction_context=interaction_context or {'stage': 'unspecified', 'history': []})
-
-
-def messages(catalog, payload, examples_path=EXAMPLES):
-    document = catalog.prompt_document()
-    if payload.get('timing_contract') == 'fixed_deadline':
-        document = dict(document, actions=[dict(item,
-            parameters={k:v for k,v in item['parameters'].items() if k != 'duration_s'},
-            required=[k for k in item['required'] if k != 'duration_s'],
-            **catalog.execution_timing(item['id']))
-            for item in document['actions']])
-    system = (DIRECTORY / 'prompt.md').read_text(encoding='utf-8').replace(
-        '{{REGISTRY}}', json.dumps(document, ensure_ascii=False))
-    result = [dict(role='system', content=system)]
-    for example in strict_json(Path(examples_path).read_text(encoding='utf-8')):
-        if payload.get('timing_contract') == 'fixed_deadline':
-            # Historical examples use arrival+duration, not fixed end windows.
-            continue
-        # Disabled or removed actions must not survive via historical examples.
-        if any(a['action'] not in catalog.actions for a in example['actions']):
-            continue
-        value = make_input('example', example['text'], example['targets'], complete=True,
-                           interaction_context=example.get('interaction_context'))
-        for row in example['actions']:
-            catalog.validate(row, value['eligible_anchor_ids'], value['targets'], value['interaction_context'])
-        result.extend([dict(role='user', content=json.dumps(value, ensure_ascii=False)),
-                       dict(role='assistant', content=json.dumps({'actions': example['actions']}, ensure_ascii=False))])
-    result.append(dict(role='user', content=json.dumps(payload, ensure_ascii=False)))
-    return result

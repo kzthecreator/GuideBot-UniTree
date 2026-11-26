@@ -1,0 +1,11 @@
+{
+  "desktop_ready": true,
+  "awaiting_enter": true,
+  "live_source_started": false,
+  "cloud_count": 0,
+  "velocity_publishers": {},
+  "websocket_authenticated": true,
+  "framebuffer_pixels": 1600000,
+  "wrong_password_rejected": true,
+  "keyboard_events_sent": 0
+}

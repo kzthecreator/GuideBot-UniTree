@@ -1,0 +1,342 @@
+{
+  "drivers/localvqe/runtime.py": {
+    "byte_identical_to_5816421": true
+  },
+  "drivers/agc2/runtime.py": {
+    "byte_identical_to_5816421": true
+  },
+  "historical": {
+    "path": "/home/fk/.local/state/guidebot/conversation/realtime-1794918705004044576",
+    "agc_replay_same_length": true,
+    "agc_replay_bit_identical": true,
+    "agc_max_sample_diff": 0.0,
+    "session": {
+      "model": "stepaudio-3-realtime-preview",
+      "voice": "jingdiannvsheng",
+      "turn_detection": {
+        "type": "server_vad",
+        "energy_awakeness_threshold": 4999,
+        "prefix_padding_ms": 500,
+        "silence_duration_ms": 300
+      }
+    },
+    "agc_settings": {
+      "speed": 3.0,
+      "noise_dbfs": -50.0,
+      "margin_db": 24.0,
+      "ceiling_dbfs": -1.0
+    },
+    "confirmed_interrupts": 6,
+    "aec": true,
+    "delay": 0,
+    "gate": null
+  },
+  "current": {
+    "path": "/home/fk/.local/state/guidebot/ros2/foxy-anti0p7s/session",
+    "agc_replay_same_length": true,
+    "agc_replay_bit_identical": true,
+    "agc_max_sample_diff": 0.0,
+    "session": {
+      "model": "stepaudio-3-realtime-preview",
+      "voice": "jingdiannvsheng",
+      "turn_detection": {
+        "type": "server_vad",
+        "energy_awakeness_threshold": 4999,
+        "prefix_padding_ms": 500,
+        "silence_duration_ms": 300
+      }
+    },
+    "agc_settings": {
+      "speed": 3.0,
+      "noise_dbfs": -50.0,
+      "margin_db": 24.0,
+      "ceiling_dbfs": -1.0
+    },
+    "confirmed_interrupts": 0,
+    "aec": true,
+    "delay": 0,
+    "gate": null,
+    "one_second_levels": [
+      {
+        "file_start_s": 0,
+        "raw_aec_agc_dbfs": [
+          -44.48,
+          -57.93,
+          -51.14
+        ]
+      },
+      {
+        "file_start_s": 1,
+        "raw_aec_agc_dbfs": [
+          -34.96,
+          -42.18,
+          -39.89
+        ]
+      },
+      {
+        "file_start_s": 2,
+        "raw_aec_agc_dbfs": [
+          -31.39,
+          -38.64,
+          -36.1
+        ]
+      },
+      {
+        "file_start_s": 3,
+        "raw_aec_agc_dbfs": [
+          -46.07,
+          -119.34,
+          -119.34
+        ]
+      },
+      {
+        "file_start_s": 4,
+        "raw_aec_agc_dbfs": [
+          -47.84,
+          -127.58,
+          -127.58
+        ]
+      },
+      {
+        "file_start_s": 5,
+        "raw_aec_agc_dbfs": [
+          -67.62,
+          -210.31,
+          -210.31
+        ]
+      },
+      {
+        "file_start_s": 6,
+        "raw_aec_agc_dbfs": [
+          -58.16,
+          -210.31,
+          -210.31
+        ]
+      },
+      {
+        "file_start_s": 7,
+        "raw_aec_agc_dbfs": [
+          -35.65,
+          -62.02,
+          -59.09
+        ]
+      },
+      {
+        "file_start_s": 8,
+        "raw_aec_agc_dbfs": [
+          -37.49,
+          -50.47,
+          -47.46
+        ]
+      },
+      {
+        "file_start_s": 9,
+        "raw_aec_agc_dbfs": [
+          -50.77,
+          -210.31,
+          -210.31
+        ]
+      },
+      {
+        "file_start_s": 10,
+        "raw_aec_agc_dbfs": [
+          -41.14,
+          -93.54,
+          -90.47
+        ]
+      },
+      {
+        "file_start_s": 11,
+        "raw_aec_agc_dbfs": [
+          -56.39,
+          -210.31,
+          -210.31
+        ]
+      },
+      {
+        "file_start_s": 12,
+        "raw_aec_agc_dbfs": [
+          -44.86,
+          -124.57,
+          -124.57
+        ]
+      },
+      {
+        "file_start_s": 13,
+        "raw_aec_agc_dbfs": [
+          -44.51,
+          -122.81,
+          -122.81
+        ]
+      },
+      {
+        "file_start_s": 14,
+        "raw_aec_agc_dbfs": [
+          -31.5,
+          -93.52,
+          -91.01
+        ]
+      },
+      {
+        "file_start_s": 15,
+        "raw_aec_agc_dbfs": [
+          -33.46,
+          -43.57,
+          -40.14
+        ]
+      },
+      {
+        "file_start_s": 16,
+        "raw_aec_agc_dbfs": [
+          -41.66,
+          -114.87,
+          -108.85
+        ]
+      },
+      {
+        "file_start_s": 17,
+        "raw_aec_agc_dbfs": [
+          -40.22,
+          -58.82,
+          -55.07
+        ]
+      },
+      {
+        "file_start_s": 18,
+        "raw_aec_agc_dbfs": [
+          -45.2,
+          -116.22,
+          -110.2
+        ]
+      },
+      {
+        "file_start_s": 19,
+        "raw_aec_agc_dbfs": [
+          -33.51,
+          -42.7,
+          -38.64
+        ]
+      },
+      {
+        "file_start_s": 20,
+        "raw_aec_agc_dbfs": [
+          -29.01,
+          -49.22,
+          -44.88
+        ]
+      },
+      {
+        "file_start_s": 21,
+        "raw_aec_agc_dbfs": [
+          -42.19,
+          -105.52,
+          -99.5
+        ]
+      },
+      {
+        "file_start_s": 22,
+        "raw_aec_agc_dbfs": [
+          -48.21,
+          -62.55,
+          -58.06
+        ]
+      },
+      {
+        "file_start_s": 23,
+        "raw_aec_agc_dbfs": [
+          -47.58,
+          -56.36,
+          -51.87
+        ]
+      },
+      {
+        "file_start_s": 24,
+        "raw_aec_agc_dbfs": [
+          -52.34,
+          -66.44,
+          -61.95
+        ]
+      },
+      {
+        "file_start_s": 25,
+        "raw_aec_agc_dbfs": [
+          -41.89,
+          -89.99,
+          -85.53
+        ]
+      },
+      {
+        "file_start_s": 26,
+        "raw_aec_agc_dbfs": [
+          -47.87,
+          -70.16,
+          -65.67
+        ]
+      },
+      {
+        "file_start_s": 27,
+        "raw_aec_agc_dbfs": [
+          -32.22,
+          -52.83,
+          -48.28
+        ]
+      },
+      {
+        "file_start_s": 28,
+        "raw_aec_agc_dbfs": [
+          -34.02,
+          -51.0,
+          -46.19
+        ]
+      },
+      {
+        "file_start_s": 29,
+        "raw_aec_agc_dbfs": [
+          -34.84,
+          -91.56,
+          -86.27
+        ]
+      },
+      {
+        "file_start_s": 30,
+        "raw_aec_agc_dbfs": [
+          -41.67,
+          -67.97,
+          -62.72
+        ]
+      },
+      {
+        "file_start_s": 31,
+        "raw_aec_agc_dbfs": [
+          -27.32,
+          -28.85,
+          -22.91
+        ]
+      },
+      {
+        "file_start_s": 32,
+        "raw_aec_agc_dbfs": [
+          -32.22,
+          -42.37,
+          -36.13
+        ]
+      },
+      {
+        "file_start_s": 33,
+        "raw_aec_agc_dbfs": [
+          -34.62,
+          -54.18,
+          -47.44
+        ]
+      },
+      {
+        "file_start_s": 34,
+        "raw_aec_agc_dbfs": [
+          -39.2,
+          -108.48,
+          -102.46
+        ]
+      }
+    ]
+  }
+}

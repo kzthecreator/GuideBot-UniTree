@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "status": "design_draft",
+  "experiment_only": true,
+  "execution_binding": null,
+  "note": "所有动作仅为离线符号，不是资产、轨迹或生产注册表；后四项是新定义的任意规则。",
+  "actions": [
+    {
+      "meaning": "reception_open",
+      "id": "n07",
+      "name": "虚拟展开环",
+      "description": "欢迎、接待自我介绍，或主动邀请听众提问/说明所需帮助。",
+      "avoid_when": "被引用的欢迎词、第三人称历史、否定接待。",
+      "real_analogue": "greet_open"
+    },
+    {
+      "meaning": "follow_invite",
+      "id": "q31",
+      "name": "虚拟引路带",
+      "description": "说话者现在邀请听众跟随自己转移到下一个地点。",
+      "avoid_when": "描述别人跟随、假设以后跟随、禁止跟随；不代表真实移动能力。",
+      "real_analogue": "invite_follow"
+    },
+    {
+      "meaning": "left_show",
+      "id": "m82",
+      "name": "虚拟左侧框",
+      "description": "明确引导听众观察或了解左侧目标。",
+      "avoid_when": "只是出现左字、左侧物体的普通事实、引用或否定指示。",
+      "real_analogue": "present_left"
+    },
+    {
+      "meaning": "right_show",
+      "id": "v14",
+      "name": "虚拟右侧框",
+      "description": "明确引导听众观察或了解右侧目标。",
+      "avoid_when": "只是出现右字、路线假设、第三人称指示或否定。",
+      "real_analogue": "present_right"
+    },
+    {
+      "meaning": "center_show",
+      "id": "k59",
+      "name": "虚拟中央框",
+      "description": "明确引导听众观察中央或正前方目标。",
+      "avoid_when": "未知方位的那边/这边、中央一词的普通事实。",
+      "real_analogue": "present_center"
+    },
+    {
+      "meaning": "wait_pause",
+      "id": "r26",
+      "name": "虚拟暂停环",
+      "description": "正在处理或核实请求，并明确请听众稍等。",
+      "avoid_when": "无需等待、过去等待、让第三人等待或仅说明处理事实。",
+      "real_analogue": "please_wait"
+    },
+    {
+      "meaning": "ask_repeat",
+      "id": "t93",
+      "name": "虚拟重听环",
+      "description": "说话者因没听清或没理解，明确请当前听众重新说或说明。",
+      "avoid_when": "重复讲解事实、引述他人的请求、无需重复。",
+      "real_analogue": "request_repeat"
+    },
+    {
+      "meaning": "emphasis",
+      "id": "z40",
+      "name": "虚拟重点脉冲",
+      "description": "明确强调、特别提醒当前听众注意某个关键事项。",
+      "avoid_when": "任何普通事实默认不算重点；引用标语或假设强调不算。",
+      "real_analogue": "emphasize_once"
+    },
+    {
+      "meaning": "compare_two",
+      "id": "b68",
+      "name": "虚拟双卡并排",
+      "description": "明确要求同时对比恰好两个方案或对象。",
+      "avoid_when": "只列出两个名词、比较三个对象、否定比较。",
+      "real_analogue": null
+    },
+    {
+      "meaning": "enumerate_three",
+      "id": "d15",
+      "name": "虚拟三格点亮",
+      "description": "明确宣布并列出恰好三个步骤或要点。",
+      "avoid_when": "三点钟、三个人、第三个、四个步骤或引用别人三步骤。",
+      "real_analogue": null
+    },
+    {
+      "meaning": "verified_fact",
+      "id": "c74",
+      "name": "虚拟实心校验印",
+      "description": "明确说当前结论已与权威记录核实或复核一致。",
+      "avoid_when": "估计、尚未核实、声称别人曾核实，不因出现已字就触发。",
+      "real_analogue": null
+    },
+    {
+      "meaning": "missing_record",
+      "id": "h22",
+      "name": "虚拟空心记录印",
+      "description": "说话者明确报告当前检索未找到记录或名单为空。",
+      "avoid_when": "没有听清、并非没有记录、否定未找到、历史空表。",
+      "real_analogue": null
+    }
+  ]
+}

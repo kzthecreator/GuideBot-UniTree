@@ -1,0 +1,7 @@
+{
+  "tools/experiments/benchmark_qwen_speed.py": "4badf4ea3b0831061271d6f35780417ac90d55c72355e50f21ff87c859954461",
+  "tools/experiments/benchmark_qwen_production_speed.py": "17859ac4c8ffece68fa0d9028abaacbd14e28c13b8a1bd1638eab57162bc3e1c",
+  "tools/experiments/summarize_qwen_speed.py": "efd917eeff557528e93a7b79eca7706c8992bb9aa10e06b103537db24a333dc9",
+  "GuideBot/gesture/semantic_planner.py": "f8636573e67b0cd80d5ebf0666c96803089779f69078a0a50e37c9fd1eec626e",
+  "GuideBot/gesture/semantic.py": "f20c42ea1168e9bc5be65c8de14505c4c86020d97c02f66225f302b15903edc8"
+}

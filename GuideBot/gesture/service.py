@@ -9,9 +9,11 @@ import re
 import threading
 import time
 
-from .catalog import Catalog, make_input, units_for, strict_json
-from .planner import Planner
-from .scheduler import Scheduler
+from GuideBot.gesture.catalog import Catalog, make_input, units_for, strict_json
+from GuideBot.gesture.streaming import PlannerClient
+from GuideBot.gesture.semantic_planner import SemanticPlanner
+from GuideBot.gesture.semantic import bind, next_chunk, validate_output
+from GuideBot.gesture.scheduler import Scheduler
 
 
 @dataclass
@@ -22,6 +24,8 @@ class PlanningReply:
     submitted_text: str = None
     submitted_complete: bool = False
     in_flight: bool = False
+    sent_offset: int = 0
+    request_id: int = 0
     cancelled: threading.Event = field(default_factory=threading.Event)
 
 
@@ -30,7 +34,10 @@ class GestureService:
                  debounce=.18, max_wait=.4, interaction_context=None, execution_mode=None, executor=None):
         self.directory = Path(directory)
         self.catalog = catalog or Catalog()
-        self.planner = planner or Planner(self.catalog)
+        self.planner = planner or SemanticPlanner(self.catalog)
+        self.semantic = getattr(self.planner, 'semantic', False) is True
+        self.pending_intents = {}
+        self.semantic_attempts = {}
         self.targets = list(targets)
         self.interaction_context = self._validate_interaction_context(interaction_context)
         if len({t['id'] for t in self.targets}) != len(self.targets):
@@ -46,7 +53,8 @@ class GestureService:
                                 'immediate' if execution_mode == 'robot' else 'aligned')
         if timing_mode not in {'immediate', 'aligned'}:
             raise ValueError('Invalid gesture timing mode')
-        self.scheduler = Scheduler(self.catalog, self._emit, immediate=timing_mode == 'immediate')
+        self.scheduler = Scheduler(self.catalog, self._emit,
+                                   immediate=not self.semantic and timing_mode == 'immediate')
         self.replies = {}
         self.pool = self.thread = self.log = None
         self.request_id = 0
@@ -110,11 +118,12 @@ class GestureService:
     def start(self):
         if self.thread is not None:
             raise RuntimeError('Create a new gesture service per session')
-        if isinstance(self.planner, Planner) and not self.planner.api_key:
+        if (isinstance(self.planner, PlannerClient) and not self.planner.api_key
+                and getattr(self.planner, 'provider', None) != 'local_qwen'):
             raise RuntimeError('DEEPSEEK_API_KEY is not set; gesture planning disabled')
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.log = (self.directory / 'gesture.jsonl').open('w', encoding='utf-8')
-        self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix='gesture-planner')
+        self.pool = ThreadPoolExecutor(max_workers=1 if self.semantic else 2, thread_name_prefix='gesture-planner')
         self.thread = threading.Thread(target=self._run, name='gesture-scheduler', daemon=True)
         self.thread.start()
         self.submit('ready', model=getattr(self.planner, 'model', 'test'), actions=list(self.catalog.actions))
@@ -128,6 +137,8 @@ class GestureService:
             self.overflow.set()
 
     def _emit(self, kind, **details):
+        if self.semantic and kind == 'gesture.command' and details.get('response_id') != '__scheduler__':
+            self.semantic_attempts.setdefault(details.get('response_id'), set()).add(details['job_id'])
         value = dict(kind=kind, monotonic=time.monotonic(), **details)
         if kind in {'gesture.command', 'gesture.reset'} and self.executor is not None:
             try:
@@ -150,6 +161,8 @@ class GestureService:
         return value
 
     def _cancel(self, rid, reason):
+        self.pending_intents.pop(rid, None)
+        self.semantic_attempts.pop(rid, None)
         state = self.replies.pop(rid, None)
         if state:
             state.cancelled.set()
@@ -179,6 +192,10 @@ class GestureService:
                     self.scheduler.release_active(value['condition'])
                 elif kind == 'execution_result':
                     self.scheduler.execution_result(value['job_id'], value['success'], value.get('reason', ''))
+                elif kind == 'semantic_action':
+                    self._semantic_result(rid, value, incremental=True)
+                elif kind == 'semantic_result':
+                    self._semantic_result(rid, value)
                 elif rid in self.scheduler.closed:
                     continue
                 elif kind in {'text', 'text_delta', 'done'}:
@@ -190,7 +207,12 @@ class GestureService:
                     if kind == 'done':
                         state.complete = True
                     else:
-                        state.text = state.text + value['text'] if kind == 'text_delta' else value['text']
+                        text = state.text + value['text'] if kind == 'text_delta' else value['text']
+                        if self.semantic and not text.startswith(state.text):
+                            self._emit('gesture.rejected', response_id=rid, reason='text_replaced')
+                            self._cancel(rid, 'text_replaced')
+                            continue
+                        state.text = text
                         if len(state.text) > 12000:
                             self._cancel(rid, 'text_limit')
                             continue
@@ -199,6 +221,8 @@ class GestureService:
                             state.changed_at = time.monotonic()
                 elif kind == 'alignment':
                     self.scheduler.alignment(rid, value)
+                    if self.semantic:
+                        self._invalidate_semantic_windows(rid)
                 elif kind == 'playback':
                     if self.speaking_response is not None and self.speaking_response != rid:
                         self._cancel(self.speaking_response, 'playback_replaced')
@@ -226,6 +250,8 @@ class GestureService:
                     self._emit('gesture.planner_result', response_id=rid, **value)
                     if 'error' in value:
                         self.scheduler.discard_request(rid, value['request_id'])
+                if self.semantic:
+                    self._resolve_semantic()
                 self._plan_due()
                 self.scheduler.tick()
         except Exception as error:
@@ -237,6 +263,8 @@ class GestureService:
             self.stopping.set()
 
     def _plan_due(self):
+        if self.semantic:
+            return self._plan_semantic_due()
         now = time.monotonic()
         # Two slots allow a newly interrupted turn to proceed while a cancelled
         # HTTP request is winding down. No queue of obsolete text snapshots.
@@ -288,6 +316,165 @@ class GestureService:
             message = str(error) if type(error) is RuntimeError else type(error).__name__
             self.submit('result', rid, request_id=request_id, error=message)
 
+    def _semantic_capacity(self, rid):
+        reply = self.scheduler.replies.get(rid)
+        queued = sum(j.status in {'waiting', 'scheduled'} for j in reply.jobs) if reply else 0
+        return max(0, 3-len(self.semantic_attempts.get(rid, ()))-queued
+                   -len(self.pending_intents.get(rid, ())))
+
+    def _plan_semantic_due(self):
+        self.requests = [f for f in self.requests if not f.done()]
+        if self.requests:
+            return
+        for rid, state in list(self.replies.items()):
+            if state.in_flight or not self._semantic_capacity(rid):
+                continue
+            chunk = next_chunk(state.text, state.sent_offset, state.complete)
+            if chunk is None:
+                continue
+            state.sent_offset = chunk.offset+len(chunk.text)
+            state.in_flight = True
+            self.request_id += 1
+            state.request_id = self.request_id
+            self._emit('gesture.planner_started', response_id=rid, request_id=self.request_id,
+                       protocol='semantic_v1', chunk_offset=chunk.offset,
+                       input_characters=len(chunk.text))
+            self.requests.append(self.pool.submit(self._semantic_request, rid, chunk,
+                                                  self.request_id, state.cancelled))
+            return
+
+    def _semantic_request(self, rid, chunk, request_id, cancelled):
+        try:
+            if getattr(self.planner, 'incremental_actions', False) is True:
+                def action(row):
+                    self.submit('semantic_action', rid, chunk=chunk, request_id=request_id,
+                                result={'actions': [row]})
+                result = self.planner.analyze(chunk.text, cancelled, on_action=action)
+            else:
+                result = self.planner.analyze(chunk.text, cancelled)
+        except Exception as error:
+            result = dict(error=str(error) if type(error) is RuntimeError else type(error).__name__)
+        self.submit('semantic_result', rid, chunk=chunk, request_id=request_id, result=result)
+
+    def _semantic_result(self, rid, value, incremental=False):
+        state = self.replies.get(rid)
+        result, chunk = value['result'], value['chunk']
+        if (state is None or state.request_id != value['request_id']
+                or state.cancelled.is_set() or rid in self.scheduler.closed):
+            self._emit('gesture.semantic_discarded', response_id=rid, reason='stale_request')
+            return
+        if not incremental:
+            state.in_flight = False
+            self._emit('gesture.planner_result', response_id=rid, request_id=value['request_id'],
+                       **{k:v for k,v in result.items() if k != 'actions'})
+        if result.get('error') or result.get('cancelled'):
+            self.pending_intents[rid] = [p for p in self.pending_intents.get(rid, ())
+                                         if p['request_id'] != value['request_id']]
+            self.scheduler.discard_request(rid, value['request_id'])
+            return
+        if result.get('streamed') and result.get('actions'):
+            return
+        if not state.text.startswith(chunk.snapshot):
+            self._emit('gesture.rejected', response_id=rid, reason='stale_text')
+            return
+        try:
+            rows = validate_output(self.catalog, {'actions': result['actions']})
+        except (ValueError, KeyError, TypeError):
+            self._emit('gesture.rejected', response_id=rid, reason='semantic_json_invalid')
+            return
+        if not rows:
+            self._emit('gesture.semantic_none', response_id=rid, request_id=value['request_id'])
+        for row in rows:
+            if not self._semantic_capacity(rid):
+                self._emit('gesture.rejected', response_id=rid, reason='quota_reached')
+                break
+            try:
+                begin, finish, source = bind(self.catalog, row, chunk)
+            except ValueError as error:
+                self._emit('gesture.rejected', response_id=rid, reason=str(error), action=row['action'])
+                continue
+            reply = self.scheduler.replies[rid]
+            if (any(j.plan.action == row['action'] and j.plan.arrival_unit == finish
+                    for j in reply.jobs if j.status != 'cancelled') or
+                    any(p['action'] == row['action'] and p['finish'] == finish
+                        for p in self.pending_intents.get(rid, ()))):
+                self._emit('gesture.rejected', response_id=rid, reason='duplicate_intent')
+                continue
+            self.pending_intents.setdefault(rid, []).append(dict(action=row['action'],
+                begin=begin, finish=finish, source=source, request_id=value['request_id'], waiting=False))
+            self._emit('gesture.semantic_bound', response_id=rid, action=row['action'],
+                       begin_unit=begin, finish_unit=finish, request_id=value['request_id'])
+
+    def _resolve_semantic(self):
+        for rid, pending in list(self.pending_intents.items()):
+            reply = self.scheduler.replies.get(rid)
+            if reply is None or rid in self.scheduler.closed:
+                self.pending_intents.pop(rid, None)
+                continue
+            keep = []
+            for item in pending:
+                if tuple(reply.units[:item['finish']+1]) != item['source']:
+                    self._emit('gesture.rejected', response_id=rid, reason='stale_text')
+                    continue
+                if (reply.playback_origin is not None and item.get('end_cap') is not None
+                        and time.monotonic()-reply.playback_origin >= item['end_cap']):
+                    self._emit('gesture.skipped', response_id=rid, action=item['action'],
+                               reason='deadline_passed')
+                    continue
+                if reply.playback_origin is None or any(i not in reply.anchors for i in (item['begin'],item['finish'])):
+                    if not item['waiting']:
+                        self._emit('gesture.alignment_waiting', response_id=rid,
+                                   action=item['action'], reason='alignment_not_ready')
+                        item['waiting'] = True
+                    keep.append(item)
+                    continue
+                start, end = [reply.anchors[i]['start'] for i in (item['begin'], item['finish'])]
+                anchor_pair = (start, end)
+                end = min(end, item.get('end_cap', end))
+                now = time.monotonic()-reply.playback_origin
+                remaining = end-max(start, now)
+                minimum = self.catalog.execution_timing(item['action'])['minimum_remaining_s']
+                reason = ('deadline_passed' if now >= end else
+                          'insufficient_budget' if remaining < minimum else None)
+                if reason:
+                    self._emit('gesture.skipped', response_id=rid, action=item['action'],
+                               reason=reason, remaining_s=remaining, minimum_remaining_s=minimum)
+                    continue
+                row = dict(action=item['action'], start_unit=item['begin'], arrival_unit=item['finish'],
+                           start_s=start, end_s=end)
+                try:
+                    plan = self.catalog.validate(row, range(len(reply.units)), self.targets,
+                                                 self.interaction_context)
+                except ValueError:
+                    self._emit('gesture.rejected', response_id=rid, reason='invalid_timed_window')
+                    continue
+                job = self.scheduler.add(rid, plan, item['source'], item['request_id'])
+                if job is not None:
+                    job.anchor_pair = anchor_pair
+                self._emit('gesture.window_bound', response_id=rid, action=item['action'],
+                           alignment_version=reply.version, start_s=start, end_s=end,
+                           remaining_s=remaining)
+            self.pending_intents[rid] = keep
+
+    def _invalidate_semantic_windows(self, rid):
+        reply = self.scheduler.replies.get(rid)
+        if reply is None:
+            return
+        for job in reply.jobs:
+            if job.status not in {'waiting', 'scheduled'}:
+                continue
+            indices = (job.plan.start_unit, job.plan.arrival_unit)
+            actual = tuple(reply.anchors[i]['start'] if i in reply.anchors else None for i in indices)
+            if actual != (job.anchor_pair or (job.plan.start_s, job.plan.end_s)):
+                job.status, job.reason = 'cancelled', 'alignment_changed'
+                self._emit('gesture.cancelled', response_id=rid, job_id=job.id, reason='alignment_changed')
+                self.pending_intents.setdefault(rid, []).append(dict(action=job.plan.action,
+                    begin=job.plan.start_unit, finish=job.plan.arrival_unit,
+                    source=job.source_units, request_id=job.request_id, waiting=False,
+                    end_cap=job.plan.end_s))
+                self._emit('gesture.replanning', response_id=rid, job_id=job.id,
+                           reason='alignment_changed', end_cap_s=job.plan.end_s)
+
     def close(self, *, wait=True):
         """Stop scheduling immediately; ROS control may avoid waiting for provider I/O."""
         self.stopping.set()
@@ -300,6 +487,9 @@ class GestureService:
                 self.pool.shutdown(wait=wait, cancel_futures=True)
             except TypeError:
                 self.pool.shutdown(wait=wait)
+        close_planner = getattr(self.planner, 'close', None)
+        if callable(close_planner):
+            close_planner()
         if self.log:
             self.log.close()
 

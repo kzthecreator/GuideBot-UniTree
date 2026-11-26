@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "contract": "fixed_deadline",
+  "sample_note": "Synthetic repeated text; punctuation included in character count",
+  "tokenizers": [
+    {
+      "tokenizer": "Qwen2.5-3B-Instruct",
+      "enable_thinking": false,
+      "source_sha256": {
+        "tokenizer_config.json": "5b5d4f65d0acd3b2d56a35b56d374a36cbc1c8fa5cf3b3febbbfabf22f359583",
+        "tokenizer.json": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539"
+      },
+      "samples": [
+        {
+          "text": "你好欢迎参观",
+          "unicode_characters": 6,
+          "han_characters": 6,
+          "source_units": 6,
+          "raw_text_tokens": 3,
+          "system_tokens": 6653,
+          "user_json_tokens": 224,
+          "chat_template_tokens": 13,
+          "full_input_tokens": 6890,
+          "message_count": 2,
+          "user_json_characters": 614,
+          "units_field_tokens": 124,
+          "eligible_ids_field_tokens": 23,
+          "independent_field_counts_are_not_additive": true,
+          "one_unit": {
+            "unit_id": 0,
+            "text": "你",
+            "text_offset": 0
+          },
+          "one_unit_json_tokens": 20,
+          "candidate_indexed_list": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 6759,
+            "user_json_tokens": 93
+          },
+          "candidate_plain_text": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 6742,
+            "user_json_tokens": 76
+          }
+        },
+        {
+          "text": "欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。",
+          "unicode_characters": 231,
+          "han_characters": 210,
+          "source_units": 210,
+          "raw_text_tokens": 168,
+          "system_tokens": 6653,
+          "user_json_tokens": 5855,
+          "chat_template_tokens": 13,
+          "full_input_tokens": 12521,
+          "message_count": 2,
+          "user_json_characters": 11753,
+          "units_field_tokens": 4833,
+          "eligible_ids_field_tokens": 945,
+          "independent_field_counts_are_not_additive": true,
+          "one_unit": {
+            "unit_id": 0,
+            "text": "欢",
+            "text_offset": 0
+          },
+          "one_unit_json_tokens": 20,
+          "candidate_indexed_list": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 7169,
+            "user_json_tokens": 503
+          },
+          "candidate_plain_text": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 6907,
+            "user_json_tokens": 241
+          }
+        },
+        {
+          "text": "欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。",
+          "unicode_characters": 1111,
+          "han_characters": 1010,
+          "source_units": 1010,
+          "raw_text_tokens": 808,
+          "system_tokens": 6653,
+          "user_json_tokens": 29175,
+          "chat_template_tokens": 13,
+          "full_input_tokens": 35841,
+          "message_count": 2,
+          "user_json_characters": 56673,
+          "units_field_tokens": 24143,
+          "eligible_ids_field_tokens": 4955,
+          "independent_field_counts_are_not_additive": true,
+          "one_unit": {
+            "unit_id": 0,
+            "text": "欢",
+            "text_offset": 0
+          },
+          "one_unit_json_tokens": 20,
+          "candidate_indexed_list": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 8770,
+            "user_json_tokens": 2104
+          },
+          "candidate_plain_text": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 7547,
+            "user_json_tokens": 881
+          }
+        }
+      ]
+    },
+    {
+      "tokenizer": "Qwen3-1.7B",
+      "enable_thinking": false,
+      "source_sha256": {
+        "tokenizer_config.json": "d5d09f07b48c3086c508b30d1c9114bd1189145b74e982a265350c923acd8101",
+        "tokenizer.json": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+      },
+      "samples": [
+        {
+          "text": "你好欢迎参观",
+          "unicode_characters": 6,
+          "han_characters": 6,
+          "source_units": 6,
+          "raw_text_tokens": 3,
+          "system_tokens": 6653,
+          "user_json_tokens": 224,
+          "chat_template_tokens": 17,
+          "full_input_tokens": 6894,
+          "message_count": 2,
+          "user_json_characters": 614,
+          "units_field_tokens": 124,
+          "eligible_ids_field_tokens": 23,
+          "independent_field_counts_are_not_additive": true,
+          "one_unit": {
+            "unit_id": 0,
+            "text": "你",
+            "text_offset": 0
+          },
+          "one_unit_json_tokens": 20,
+          "candidate_indexed_list": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 6763,
+            "user_json_tokens": 93
+          },
+          "candidate_plain_text": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 6746,
+            "user_json_tokens": 76
+          }
+        },
+        {
+          "text": "欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。",
+          "unicode_characters": 231,
+          "han_characters": 210,
+          "source_units": 210,
+          "raw_text_tokens": 168,
+          "system_tokens": 6653,
+          "user_json_tokens": 5855,
+          "chat_template_tokens": 17,
+          "full_input_tokens": 12525,
+          "message_count": 2,
+          "user_json_characters": 11753,
+          "units_field_tokens": 4833,
+          "eligible_ids_field_tokens": 945,
+          "independent_field_counts_are_not_additive": true,
+          "one_unit": {
+            "unit_id": 0,
+            "text": "欢",
+            "text_offset": 0
+          },
+          "one_unit_json_tokens": 20,
+          "candidate_indexed_list": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 7173,
+            "user_json_tokens": 503
+          },
+          "candidate_plain_text": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 6911,
+            "user_json_tokens": 241
+          }
+        },
+        {
+          "text": "欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。欢迎参观香洲创港中心。",
+          "unicode_characters": 1111,
+          "han_characters": 1010,
+          "source_units": 1010,
+          "raw_text_tokens": 808,
+          "system_tokens": 6653,
+          "user_json_tokens": 29175,
+          "chat_template_tokens": 17,
+          "full_input_tokens": 35845,
+          "message_count": 2,
+          "user_json_characters": 56673,
+          "units_field_tokens": 24143,
+          "eligible_ids_field_tokens": 4955,
+          "independent_field_counts_are_not_additive": true,
+          "one_unit": {
+            "unit_id": 0,
+            "text": "欢",
+            "text_offset": 0
+          },
+          "one_unit_json_tokens": 20,
+          "candidate_indexed_list": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 8774,
+            "user_json_tokens": 2104
+          },
+          "candidate_plain_text": {
+            "existing_contract_supported": false,
+            "full_input_tokens": 7551,
+            "user_json_tokens": 881
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "robot_sdk": false,
+  "synthetic_robot": true,
+  "footprint_geometry_and_timestamp_preserved": true,
+  "wall_detour_path_points": 294,
+  "short_goal_final_pose": [
+    -1.7417310549873535,
+    -1.9999999955950138,
+    2.6318892114034646e-09
+  ],
+  "low_obstacle_stop_ms": 141.22320000024047,
+  "stale_cloud_stop_ms": 842.1124159995088,
+  "packets": 78,
+  "max_linear_m_s": 0.1,
+  "isolated_domain": 187,
+  "final_guard": {
+    "armed": false,
+    "motion_enabled": true,
+    "reason": "Ready; arm then select a new goal",
+    "goal_state": "cancelled",
+    "sequence": 79,
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "goals": 4,
+    "obstacle_clear": true,
+    "footprint_messages": {
+      "local": 24,
+      "global": 23
+    },
+    "ready": true,
+    "updated_at": 11766.178023104
+  },
+  "motion_commands_to_hardware": false,
+  "old_goal_rejected": true,
+  "initial_pose_reset_disarms": true
+}

@@ -1,0 +1,8 @@
+{
+  "model": "stepaudio-3-tts",
+  "voice": "jingdiannvsheng",
+  "speed": 1.0,
+  "sample_rate": 24000,
+  "response_format": "wav",
+  "max_segment_chars": 180
+}

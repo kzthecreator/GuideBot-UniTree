@@ -23,7 +23,7 @@ fork/clone 后运行：
 source /opt/conda/etc/profile.d/conda.sh
 conda env create -f environment.yml
 conda activate GuideBot
-python tools/deployment/setup.py install
+python test/tools/deployment/setup.py install
 ```
 
 脚本从本机 `/var/tmp/guidebot-runtime` 校验并安装模型和音频原生库，
@@ -41,12 +41,12 @@ python main.py --gesture-backend unitree
 
 按 Enter 后自动启动运动子进程、接管上肢并连接语音；再次 Enter 停止并释放。
 不要同时手动运行运动服务。原 `--skip-joint-limits` 参数已移除，使用 fork 的 URDF 范围审计配置。
-需配置 `STEP_SECRET` 和 `DEEPSEEK_API_KEY`；默认录音保留。
+需配置 `STEP_SECRET`；动作默认使用 DeepSeek API，另需 `DEEPSEEK_API_KEY`。可选本地 Qwen 的安装见 docs/setup.md。默认录音保留。
 动作采用 fork b84ff1f 的物理资产、Sequence 下发和生命周期；上下文只作建议。
-LLM 使用相对于本条回复播放起点的固定 `start_s/end_s`，不因规划延迟重新计时。
+LLM 只接收固定语义表和原文段，返回动作及原文引用；本地时间戳映射成固定 `start_s/end_s`。
 过期或剩余时间不足则丢弃；新动作先制动取消旧动作，再检查能否在原期限内完成。
-动态核心保持录制时长，不按模型 duration_s 续时或强行压缩；固定期限不依赖文字对齐。
-10个有效资产均可供LLM选择，包括neutral。
+动态核心保持录制时长，不按模型 duration_s 续时或强行压缩；锚点修订不延后原截止。
+10个有效资产均可供LLM选择；无自然动作返回空数组。
 本地状态分为倾听和说话：倾听请求neutral，播放开始后才执行LLM队列。
 确认打断或预计播完时取消当前队列并回neutral；云端response.done不结束说话。
 文本可提前规划，但播放前不执行；过期回复和迟到结果不能恢复动作。
@@ -55,9 +55,22 @@ LLM 使用相对于本条回复播放起点的固定 `start_s/end_s`，不因规
 序列起步时，14个手臂关节最大实测／指令偏差超过0.3rad才拒绝，包括neutral。
 此前现场约0.0357rad偏差现可通过此检查；实际动作效果仍待真机验收。
 
-不加参数仍是原来的纯语音，`--gestures` 为模拟动作。
+不加参数先选择语音交互或导览；`--service conversation` 直接选择原纯语音业务，`--gestures` 为模拟动作。
 原有目录与 LocalVQE v1.2 → AGC2 语音完整保留。
-详细适配与验证见 [fork逻辑接入](docs/experiments/fork-logic-preserved-layout-20261124.md)。
+详细适配与验证见 [fork逻辑接入](test/experiments/reports/fork-logic-preserved-layout-20261124.md)。
+
+## 导览服务
+
+```bash
+python test/tools/tour/prepare.py --dry-run
+python test/tools/tour/prepare.py  # 调用StepFun TTS，只生成不播放
+python main.py --service tour
+```
+
+按Enter启动后，离线讲解时持续监听，插话问答播完后从当前片段开头续讲。
+当前只提供人工到达确认，不启动动作或真实导航。详见 [导览运行说明](docs/tour-service.md)。
+
+实验室地图与雷达定位使用[原仓库 RViz＋标准 AMCL](docs/rviz-navigation.md)，支持录制回放和按 Enter 启动实时定位。当前为只读定位验证，尚未接通自主行走。
 
 ## 固定语音前端
 
@@ -67,19 +80,20 @@ AGC2：增益变化上限 3 dB/s，初始饱和余量 24 dB，噪声增益约束
 量化前峰值上限 -1 dBFS。这不等于所有人声 RMS 达标，也不保证分离旁人交谈。
 
 正式入口不提供 provider、AEC/AGC/gate 开关或参考延迟实验参数。
-`LOCALVQE_MODEL` 不改变正式入口选用的 v1.2 权重；实验模型通过 tools/ 驱动工具对比。
-模型、AGC/gate 与时序对照工具保留在 `tools/audio/`、`tools/timestamps/`。
-AGC2 动态库可用 `GUIDEBOT_AGC2_LIBRARY` 指定；构建入口为 `drivers/agc2/build_agc2.sh`。
+`LOCALVQE_MODEL` 不改变正式入口选用的 v1.2 权重；实验模型通过 test/tools/ 驱动工具对比。
+模型、AGC/gate 与时序对照工具保留在 `test/diagnostics/audio/`、`test/experiments/timestamps/`。
+AGC2 动态库可用 `GUIDEBOT_AGC2_LIBRARY` 指定；构建入口为 `test/tools/deployment/build_agc2.sh`。
 
 ## 可调参数与配置
 
 | 参数 | 用途 |
 | --- | --- |
+| `--service conversation/tour` | 自由语音交互或离线讲解＋在线问答；省略时显示菜单 |
 | `--vad-energy 0..5000` | StepFun 服务端 VAD 能量阈值，默认 4999 |
 | `--voice NAME` | StepFun 音色，未指定时沿用 STEP_VOICE 或服务默认 |
 | `--sync-knowledge` | 启动前同步知识库 |
 | `--diagnose-audio` / `--no-diagnose-audio` | 保存/不保存音频，默认保存 |
-| `--timestamps` | 可选 FP32 字级时间戳 |
+| `--timestamps` | 纯语音可选 FP32 字级时间戳；动作模式自动启用 |
 | `--gestures` | 动作规划；模拟执行，同样经ROS2管理 |
 | `--gesture-backend simulated/unitree` | 模拟/真实动作 |
 
@@ -100,19 +114,20 @@ AGC2 动态库可用 `GUIDEBOT_AGC2_LIBRARY` 指定；构建入口为 `drivers/a
 
 ## 仓库结构
 
-- `GuideBot/runtime/`：本机Foxy进程引导、独立环境和资源工作进程管理。
-- `GuideBot/ros2/`：节点、launch、配置、接口定义。
+- `runtime/app/`：本机Foxy进程引导、独立环境和资源工作进程管理。
+- `runtime/ros2/`：节点、launch 和 ROS 适配；契约位于 `runtime/interfaces/`。
 - `GuideBot/conversation/`、`gesture/`：语音和动作业务，与节点适配分离。
-- `GuideBot/agent/`：人设和知识文本。
-- `tools/`：动作制作、预览、诊断及实验入口。
-- `drivers/`：硬件与模型适配；LocalVQE 和时间戳权重位于本机 models 目录，不纳入 Git。
-- `assets/motion/`：轨迹、位姿、序列、元数据及动作目录。
-- `archive/`：豆包 demo、历史豆包 provider 和旧运动示例，不参与正式运行。
+- `GuideBot/tour/`：导览状态机、离线注册及人工导航；共享语音归入 `GuideBot/conversation/`。
+- `developer/`：对话 prompt、知识库、动作选择 prompt 和导览配置，见 [配置说明](developer/README.md)。
+- `test/`：统一单测、集成、诊断、工具、仿真和实验入口。
+- `GuideBot/robot/`：G1 设备接口；音频处理与时间戳位于 `GuideBot/conversation/`，模型权重在 Git 外。
+- `assets/motions/`：轨迹、位姿、序列、元数据及动作目录。
+- `test/archive/`：豆包 demo、历史豆包 provider 和旧运动示例，不参与正式运行。
 
-运动入口见 [驱动说明](drivers/unitree_motion/README.md)。
+运动入口见 [驱动说明](GuideBot/robot/motion/README.md)。
 仅真实动作模式在 Enter 后自动启动运动服务；纯语音和模拟模式不接管上肢。
-目录与依赖说明见 [仓库结构](docs/repository-layout.md)，归档范围见 [归档清单](archive/README.md)。
-实验依据保留在 `docs/experiments/`，不将历史方案作为当前默认。
+目录与依赖说明见 [仓库结构](docs/repository-layout.md)，归档范围见 [归档清单](test/archive/README.md)。
+实验依据保留在 `test/experiments/reports/`，不将历史方案作为当前默认。
 
 继续开发先读 [Agent 续接文档](docs/AGENT_HANDOFF.md)。
 知识文本仍需运营方核实，不把示例或待确认信息当成场所事实。
@@ -132,9 +147,9 @@ python main.py --gesture-backend unitree
 
 迁移已通过离线测试；真实语音与真机效果仍需按Enter人工验收。
 
-本机迁移验证与时间戳性能限制见 [实施报告](docs/experiments/foxy-local-migration-20261124.md)。
+本机迁移验证与时间戳性能限制见 [实施报告](test/experiments/reports/foxy-local-migration-20261124.md)。
 
-时间戳已采用 FP32，保留1线程、预测器复用和完整前缀策略。对照见 [复测报告](docs/experiments/timestamp-runtime-retest-20261125.md)。
+时间戳已采用 FP32，保留1线程、预测器复用和完整前缀策略。对照见 [复测报告](test/experiments/reports/timestamp-runtime-retest-20261125.md)。
 
 ### 四个核心节点
 
@@ -145,4 +160,8 @@ python main.py --gesture-backend unitree
 
 GestureService保留调度线程、输入队列和规划线程池；ROS回调不执行阻塞式模型请求。
 StepFun仍提供端到端实时语音，音频16ms流水线留在隔离的Runtime资源进程。
-四个ROS节点不代表系统只有四个进程。结构与验收见[四节点收敛](docs/experiments/four-core-nodes-20261125.md)。
+四个ROS节点不代表系统只有四个进程。结构与验收见[四节点收敛](test/experiments/reports/four-core-nodes-20261125.md)。
+
+### 文本语义动作协议（DeepSeek）
+
+当前模型仅接收固定指令和至少10字的标点分段原文，返回动作与原文引用。本地完成时间戳匹配和固定截止规划，来不及则丢弃；动作模式自动加载时间戳，仍需 Enter 开始。实现、日志判断与验收见 [语义协议实施报告](test/experiments/reports/semantic-action-implementation-20261125.md)。

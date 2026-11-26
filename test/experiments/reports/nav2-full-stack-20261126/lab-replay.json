@@ -1,0 +1,163 @@
+{
+  "directory": "/home/fk/.local/state/guidebot/navigation/nav2-real-replay-20261126-r3",
+  "mode": "replay",
+  "error": null,
+  "interrupted": false,
+  "ros_domain": 183,
+  "motion_commands": false,
+  "audio_started": false,
+  "navigation_enabled": true,
+  "navigation_ready": false,
+  "live_verified": false,
+  "navigation": {
+    "armed": false,
+    "motion_enabled": false,
+    "reason": "Obstacle inside stop ring",
+    "goal_state": "idle",
+    "sequence": 534,
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "goals": 0,
+    "obstacle_clear": false,
+    "ready": false,
+    "updated_at": 9846.96181344
+  },
+  "velocity": {},
+  "upstream_sha": "ace298393ec6cadc1f4a66e70a3311e1d2c4d7ff",
+  "backend": [
+    "nav2_map_server",
+    "nav2_amcl",
+    "pointcloud_to_laserscan"
+  ],
+  "last_active_localization": {
+    "reason": "LiDAR odometry active; AMCL is the map localizer",
+    "lost": false,
+    "map_frame": "map",
+    "base_frame": "guidebot_lidar_ground",
+    "odom_frame": "guidebot_lidar_odom",
+    "motion_commands": false,
+    "lifecycles": {
+      "map_server": "active",
+      "amcl": "active"
+    },
+    "map_cells": 146231,
+    "cloud_age_s": 0.9604044160005287,
+    "odom_age_s": 0.6034520640005212,
+    "odometry_fresh": true,
+    "map_to_lidar_fresh": true,
+    "velocity_publishers": {},
+    "lidar_pose": [
+      -0.08897471337373389,
+      0.020311558169625158,
+      12.749407299916252
+    ],
+    "overlap": 0.9894842263395093,
+    "inlier_rms_m": 0.04427097938600324,
+    "processing_ms": 356.9420799994987,
+    "floor_height_m": 1.2389395236968994,
+    "amcl_pose": [
+      -0.1246963665006891,
+      0.018122870322085073,
+      0.21547885393648855
+    ],
+    "amcl_covariance_xyyaw": [
+      0.03373039599418556,
+      0.06157510633586968,
+      0.02341199098260576
+    ],
+    "amcl_last_at": 9838.918397472,
+    "map_to_lidar_age_s": 1.0679659843444824,
+    "counts": {
+      "raw_clouds": 453,
+      "processed": 153,
+      "rejected": 1,
+      "scans": 153,
+      "amcl_poses": 90,
+      "maps": 1,
+      "skipped": 299
+    },
+    "processing_median_ms": 197.0781119998719,
+    "processing_p95_ms": 282.8473984009179
+  },
+  "localization": {
+    "reason": "LiDAR odometry active; AMCL is the map localizer",
+    "lost": false,
+    "map_frame": "map",
+    "base_frame": "guidebot_lidar_ground",
+    "odom_frame": "guidebot_lidar_odom",
+    "motion_commands": false,
+    "lifecycles": {
+      "map_server": "active",
+      "amcl": "active"
+    },
+    "map_cells": 146231,
+    "cloud_age_s": 6.381961151999349,
+    "odom_age_s": 6.025008799999341,
+    "odometry_fresh": false,
+    "map_to_lidar_fresh": false,
+    "velocity_publishers": {},
+    "lidar_pose": [
+      -0.08897471337373389,
+      0.020311558169625158,
+      12.749407299916252
+    ],
+    "overlap": 0.9894842263395093,
+    "inlier_rms_m": 0.04427097938600324,
+    "processing_ms": 356.9420799994987,
+    "floor_height_m": 1.2389395236968994,
+    "amcl_pose": [
+      -0.1246963665006891,
+      0.018122870322085073,
+      0.21547885393648855
+    ],
+    "amcl_covariance_xyyaw": [
+      0.03373039599418556,
+      0.06157510633586968,
+      0.02341199098260576
+    ],
+    "amcl_last_at": 9838.918397472,
+    "map_to_lidar_age_s": 6.489038944244385,
+    "counts": {
+      "raw_clouds": 453,
+      "processed": 153,
+      "rejected": 1,
+      "scans": 153,
+      "amcl_poses": 90,
+      "maps": 1,
+      "skipped": 299
+    },
+    "processing_median_ms": 197.0781119998719,
+    "processing_p95_ms": 282.8473984009179
+  },
+  "source": {
+    "replay": true,
+    "sources": {
+      "imu": {
+        "count": 10678
+      },
+      "odom": {
+        "count": 43388
+      },
+      "cloud": {
+        "count": 533
+      }
+    },
+    "errors": [],
+    "elapsed_s": 53.37890502400114
+  },
+  "bridge": {
+    "published": {
+      "imu": 10678,
+      "odom": 43388,
+      "cloud": 533
+    },
+    "overwritten": {},
+    "errors": [],
+    "clock_offset_ns": 9510785220128,
+    "timestamp_policy": "one shared offset from first received source sample; raw CDR timestamps preserved",
+    "source_disconnected": true
+  }
+}

@@ -1,0 +1,452 @@
+[
+  {
+    "config": "ngram",
+    "case_id": "seed_003",
+    "text": "档案记载，去年开馆仪式上有人说过欢迎各位来宾。",
+    "family": "reception_open",
+    "gold": {
+      "acceptable_action_sets": [
+        []
+      ],
+      "anchor_examples": []
+    },
+    "repeat": 0,
+    "seconds": 0.23129404800056363,
+    "content": "{\"actions\": []}",
+    "usage": {
+      "completion_tokens": 6,
+      "prompt_tokens": 1694,
+      "total_tokens": 1700,
+      "prompt_tokens_details": {
+        "cached_tokens": 1671
+      }
+    },
+    "timings": {
+      "cache_n": 1671,
+      "prompt_n": 23,
+      "prompt_ms": 46.536,
+      "prompt_per_token_ms": 2.023304347826087,
+      "prompt_per_second": 494.24101770672166,
+      "predicted_n": 6,
+      "predicted_ms": 157.653,
+      "predicted_per_token_ms": 31.5306,
+      "predicted_per_second": 31.715222672578385
+    },
+    "finish_reason": "stop",
+    "result": {
+      "actions": []
+    },
+    "production_binding_valid": true,
+    "production_binding_pass": true,
+    "predicted": [],
+    "format_and_quotes_valid": true,
+    "action_set_correct": true,
+    "mechanical_pass": true,
+    "spans": []
+  },
+  {
+    "config": "ngram",
+    "case_id": "seed_021",
+    "text": "我正在为您核对最新的开放安排，请大家先稍等片刻。",
+    "family": "wait_pause",
+    "gold": {
+      "acceptable_action_sets": [
+        [
+          "wait_pause"
+        ]
+      ],
+      "anchor_examples": [
+        {
+          "meaning": "wait_pause",
+          "begin": {
+            "text": "我正在",
+            "occurrence": 1
+          },
+          "finish_by": {
+            "text": "稍等片刻",
+            "occurrence": 1
+          }
+        }
+      ]
+    },
+    "repeat": 0,
+    "seconds": 1.0992196799998055,
+    "content": "{\"actions\": [{\"action\": \"r26\", \"begin\": {\"text\": \"我正在为您核对\", \"occurrence\": 1}, \"finish_by\": {\"text\": \"稍等片刻\", \"occurrence\": 1}}]}",
+    "usage": {
+      "completion_tokens": 52,
+      "prompt_tokens": 1695,
+      "total_tokens": 1747,
+      "prompt_tokens_details": {
+        "cached_tokens": 1671
+      }
+    },
+    "timings": {
+      "cache_n": 1671,
+      "prompt_n": 24,
+      "prompt_ms": 45.32,
+      "prompt_per_token_ms": 1.8883333333333334,
+      "prompt_per_second": 529.567519858782,
+      "predicted_n": 52,
+      "predicted_ms": 1034.871,
+      "predicted_per_token_ms": 20.29158823529412,
+      "predicted_per_second": 49.28150465130437,
+      "draft_n": 64,
+      "draft_n_accepted": 19
+    },
+    "finish_reason": "stop",
+    "result": {
+      "actions": [
+        {
+          "action": "r26",
+          "begin": {
+            "text": "我正在为您核对",
+            "occurrence": 1
+          },
+          "finish_by": {
+            "text": "稍等片刻",
+            "occurrence": 1
+          }
+        }
+      ]
+    },
+    "production_binding_valid": true,
+    "production_binding_pass": true,
+    "predicted": [
+      "wait_pause"
+    ],
+    "format_and_quotes_valid": true,
+    "action_set_correct": true,
+    "mechanical_pass": true,
+    "spans": [
+      [
+        [
+          0,
+          7
+        ],
+        [
+          19,
+          23
+        ]
+      ]
+    ]
+  },
+  {
+    "config": "ngram",
+    "case_id": "seed_029",
+    "text": "在开始参观之前我要特别提醒大家，请注意台阶边缘。",
+    "family": "emphasis",
+    "gold": {
+      "acceptable_action_sets": [
+        [
+          "emphasis"
+        ]
+      ],
+      "anchor_examples": [
+        {
+          "meaning": "emphasis",
+          "begin": {
+            "text": "在开始参观之前",
+            "occurrence": 1
+          },
+          "finish_by": {
+            "text": "台阶边缘",
+            "occurrence": 1
+          }
+        }
+      ]
+    },
+    "repeat": 0,
+    "seconds": 1.0190553279999222,
+    "content": "{\"actions\": [{\"action\": \"z40\", \"begin\": {\"text\": \"在开始参观之前\", \"occurrence\": 1}, \"finish_by\": {\"text\": \"台阶边缘\", \"occurrence\": 1}}]}",
+    "usage": {
+      "completion_tokens": 50,
+      "prompt_tokens": 1693,
+      "total_tokens": 1743,
+      "prompt_tokens_details": {
+        "cached_tokens": 1671
+      }
+    },
+    "timings": {
+      "cache_n": 1671,
+      "prompt_n": 22,
+      "prompt_ms": 45.895,
+      "prompt_per_token_ms": 2.086136363636364,
+      "prompt_per_second": 479.35504956966986,
+      "predicted_n": 50,
+      "predicted_ms": 952.5,
+      "predicted_per_token_ms": 19.43877551020408,
+      "predicted_per_second": 51.44356955380577,
+      "draft_n": 48,
+      "draft_n_accepted": 20
+    },
+    "finish_reason": "stop",
+    "result": {
+      "actions": [
+        {
+          "action": "z40",
+          "begin": {
+            "text": "在开始参观之前",
+            "occurrence": 1
+          },
+          "finish_by": {
+            "text": "台阶边缘",
+            "occurrence": 1
+          }
+        }
+      ]
+    },
+    "production_binding_valid": true,
+    "production_binding_pass": true,
+    "predicted": [
+      "emphasis"
+    ],
+    "format_and_quotes_valid": true,
+    "action_set_correct": true,
+    "mechanical_pass": true,
+    "spans": [
+      [
+        [
+          0,
+          7
+        ],
+        [
+          19,
+          23
+        ]
+      ]
+    ]
+  },
+  {
+    "config": "qwen06-ngram",
+    "case_id": "seed_003",
+    "text": "档案记载，去年开馆仪式上有人说过欢迎各位来宾。",
+    "family": "reception_open",
+    "gold": {
+      "acceptable_action_sets": [
+        []
+      ],
+      "anchor_examples": []
+    },
+    "repeat": 0,
+    "seconds": 0.7004567679996399,
+    "content": "{\"actions\": [{\"action\": \"n07\", \"begin\": {\"text\": \"档案记载\", \"occurrence\": 1}, \"finish_by\": {\"text\": \"欢迎各位来宾\", \"occurrence\": 1}}]}",
+    "usage": {
+      "completion_tokens": 53,
+      "prompt_tokens": 1694,
+      "total_tokens": 1747,
+      "prompt_tokens_details": {
+        "cached_tokens": 1671
+      }
+    },
+    "timings": {
+      "cache_n": 1671,
+      "prompt_n": 23,
+      "prompt_ms": 104.596,
+      "prompt_per_token_ms": 4.547652173913043,
+      "prompt_per_second": 219.89368618302802,
+      "predicted_n": 53,
+      "predicted_ms": 575.018,
+      "predicted_per_token_ms": 11.058038461538462,
+      "predicted_per_second": 90.43195169542518,
+      "draft_n": 64,
+      "draft_n_accepted": 20
+    },
+    "finish_reason": "stop",
+    "result": {
+      "actions": [
+        {
+          "action": "n07",
+          "begin": {
+            "text": "档案记载",
+            "occurrence": 1
+          },
+          "finish_by": {
+            "text": "欢迎各位来宾",
+            "occurrence": 1
+          }
+        }
+      ]
+    },
+    "production_binding_valid": true,
+    "production_binding_pass": false,
+    "predicted": [
+      "reception_open"
+    ],
+    "format_and_quotes_valid": true,
+    "action_set_correct": false,
+    "mechanical_pass": false,
+    "spans": [
+      [
+        [
+          0,
+          4
+        ],
+        [
+          16,
+          22
+        ]
+      ]
+    ]
+  },
+  {
+    "config": "qwen06-ngram",
+    "case_id": "seed_021",
+    "text": "我正在为您核对最新的开放安排，请大家先稍等片刻。",
+    "family": "wait_pause",
+    "gold": {
+      "acceptable_action_sets": [
+        [
+          "wait_pause"
+        ]
+      ],
+      "anchor_examples": [
+        {
+          "meaning": "wait_pause",
+          "begin": {
+            "text": "我正在",
+            "occurrence": 1
+          },
+          "finish_by": {
+            "text": "稍等片刻",
+            "occurrence": 1
+          }
+        }
+      ]
+    },
+    "repeat": 0,
+    "seconds": 0.6252102400003423,
+    "content": "{\"actions\": [{\"action\": \"r26\", \"begin\": {\"text\": \"请稍等片刻\", \"occurrence\": 1}, \"finish_by\": {\"text\": \"大家\", \"occurrence\": 1}}]}",
+    "usage": {
+      "completion_tokens": 53,
+      "prompt_tokens": 1695,
+      "total_tokens": 1748,
+      "prompt_tokens_details": {
+        "cached_tokens": 1671
+      }
+    },
+    "timings": {
+      "cache_n": 1671,
+      "prompt_n": 24,
+      "prompt_ms": 27.97,
+      "prompt_per_token_ms": 1.1654166666666665,
+      "prompt_per_second": 858.0622095101895,
+      "predicted_n": 53,
+      "predicted_ms": 576.262,
+      "predicted_per_token_ms": 11.081961538461538,
+      "predicted_per_second": 90.23673259732553,
+      "draft_n": 48,
+      "draft_n_accepted": 19
+    },
+    "finish_reason": "stop",
+    "result": {
+      "actions": [
+        {
+          "action": "r26",
+          "begin": {
+            "text": "请稍等片刻",
+            "occurrence": 1
+          },
+          "finish_by": {
+            "text": "大家",
+            "occurrence": 1
+          }
+        }
+      ]
+    },
+    "production_binding_valid": false,
+    "production_binding_pass": false,
+    "predicted": [
+      "wait_pause"
+    ],
+    "format_and_quotes_valid": false,
+    "action_set_correct": true,
+    "mechanical_pass": false,
+    "spans": []
+  },
+  {
+    "config": "qwen06-ngram",
+    "case_id": "seed_029",
+    "text": "在开始参观之前我要特别提醒大家，请注意台阶边缘。",
+    "family": "emphasis",
+    "gold": {
+      "acceptable_action_sets": [
+        [
+          "emphasis"
+        ]
+      ],
+      "anchor_examples": [
+        {
+          "meaning": "emphasis",
+          "begin": {
+            "text": "在开始参观之前",
+            "occurrence": 1
+          },
+          "finish_by": {
+            "text": "台阶边缘",
+            "occurrence": 1
+          }
+        }
+      ]
+    },
+    "repeat": 0,
+    "seconds": 0.6350133759997334,
+    "content": "{\"actions\": [{\"action\": \"k59\", \"begin\": {\"text\": \"在开始参观之前\", \"occurrence\": 1}, \"finish_by\": {\"text\": \"台阶边缘\", \"occurrence\": 1}}]}",
+    "usage": {
+      "completion_tokens": 50,
+      "prompt_tokens": 1693,
+      "total_tokens": 1743,
+      "prompt_tokens_details": {
+        "cached_tokens": 1671
+      }
+    },
+    "timings": {
+      "cache_n": 1671,
+      "prompt_n": 22,
+      "prompt_ms": 103.993,
+      "prompt_per_token_ms": 4.726954545454546,
+      "prompt_per_second": 211.5527006625446,
+      "predicted_n": 50,
+      "predicted_ms": 510.062,
+      "predicted_per_token_ms": 10.409428571428572,
+      "predicted_per_second": 96.06675266928335,
+      "draft_n": 48,
+      "draft_n_accepted": 20
+    },
+    "finish_reason": "stop",
+    "result": {
+      "actions": [
+        {
+          "action": "k59",
+          "begin": {
+            "text": "在开始参观之前",
+            "occurrence": 1
+          },
+          "finish_by": {
+            "text": "台阶边缘",
+            "occurrence": 1
+          }
+        }
+      ]
+    },
+    "production_binding_valid": true,
+    "production_binding_pass": false,
+    "predicted": [
+      "center_show"
+    ],
+    "format_and_quotes_valid": true,
+    "action_set_correct": false,
+    "mechanical_pass": false,
+    "spans": [
+      [
+        [
+          0,
+          7
+        ],
+        [
+          19,
+          23
+        ]
+      ]
+    ]
+  }
+]

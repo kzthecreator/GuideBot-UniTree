@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "keyboard_events_sent": 0,
+  "motion_commands": false,
+  "directory": "/home/fk/.local/state/guidebot/navigation/browser-rviz/desktop-pwawdqvl",
+  "error": "RuntimeError: Native RViz GL vertex buffer crash after sensor/costmap input"
+}

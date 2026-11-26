@@ -167,9 +167,9 @@ __pycache__/
 artifacts/
 node_modules/
 
-# Machine-local model installations (drivers entry points)
-/drivers/localvqe/models
-/drivers/timestamps/models
-
 # Archived demo machine-local credentials/configuration.
-/archive/doubao-demo/config.toml
+/test/archive/doubao-demo/config.toml
+
+# Directory migration: generated output and local resources remain outside Git.
+/build/
+/test/results/

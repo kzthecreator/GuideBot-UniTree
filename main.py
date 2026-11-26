@@ -2,7 +2,7 @@
 import signal
 import sys
 
-from GuideBot.runtime.launcher import main
+from runtime.app.launcher import main
 
 if __name__ == '__main__':
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))

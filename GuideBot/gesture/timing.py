@@ -1,9 +1,7 @@
-"""FP32 FunASR configuration selected after the Foxy regression comparison; still best effort, not a deadline guarantee.
+"""GPU FP32 full-prefix alignment; sliding 5/10/15/20s failed drift checks.
 
-Full-prefix inference avoids accumulated sliding-cursor drift. The window equals
-the existing response length limit; it does not delay inference until 120s.
-FP32 selection: docs/experiments/timestamp-runtime-retest-20261125.md.
-Earlier scheduling evidence: docs/experiments/realtime-optimization.md.
+The 120s window equals the existing reply length limit. Every update computes
+the entire received prefix; startup warmup and action replan recovery remain.
 """
 
 ALIGNMENT_OPTIONS = dict(window=120., step=.5, tail=.1, resync_every=0., final_repair=True)

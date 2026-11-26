@@ -1,0 +1,67 @@
+{
+  "source_session": "/home/fk/.local/state/guidebot/ros2/foxy-ml96c23r/session",
+  "tracks": {
+    "microphone": {
+      "seconds": 9.28,
+      "rms_dbfs": -36.60509380964797,
+      "peak_dbfs": -10.801281719405011,
+      "early_reference_match": {
+        "normalized_correlation": 0.04221933941526759,
+        "file_offset_ms": 969.0625,
+        "reference_seconds": 2.2
+      },
+      "rms_by_file_window_dbfs": {
+        "(0, 2)": -41.3893357548321,
+        "(2, 6)": -40.70693427760867,
+        "(6, 9.28)": -33.27590261644073
+      }
+    },
+    "microphone-aec": {
+      "seconds": 9.28,
+      "rms_dbfs": -66.24932115204528,
+      "peak_dbfs": -32.36745863500595,
+      "early_reference_match": {
+        "normalized_correlation": -0.07712873848593571,
+        "file_offset_ms": 856.3125,
+        "reference_seconds": 2.2
+      },
+      "rms_by_file_window_dbfs": {
+        "(0, 2)": -60.26254790607271,
+        "(2, 6)": -96.98114365613495,
+        "(6, 9.28)": -70.14126170211257
+      }
+    },
+    "microphone-agc": {
+      "seconds": 9.28,
+      "rms_dbfs": -63.142566900025145,
+      "peak_dbfs": -29.178524217612352,
+      "early_reference_match": {
+        "normalized_correlation": -0.07444576915335481,
+        "file_offset_ms": 856.3125,
+        "reference_seconds": 2.2
+      },
+      "rms_by_file_window_dbfs": {
+        "(0, 2)": -57.105820427987865,
+        "(2, 6)": -94.11040544511155,
+        "(6, 9.28)": -67.342638536126
+      }
+    },
+    "speaker": {
+      "seconds": 5.4,
+      "rms_dbfs": -13.86104333087994,
+      "peak_dbfs": -1.0001519038193567
+    }
+  },
+  "candidate_received_s": 3.704332383998917,
+  "discard_received_s": 3.705079327999556,
+  "candidate_to_discard_ms": 0.746944000638905,
+  "confirmed_interrupt_events": 0,
+  "asr_final_events": 0,
+  "response_created_events": 1,
+  "aec_reference_active_input_output_energy_reduction_db": 28.81296212265883,
+  "controller_reproduction": "candidate speech_started clears output and emits interrupt without confirmation",
+  "normalized_listening_copy": {
+    "path": "/home/fk/.local/state/guidebot/diagnostics/tour-barge-in-foxy-ml96c23r/microphone-agc-listening-normalized.wav",
+    "gain_db": 26.17852421761235
+  }
+}

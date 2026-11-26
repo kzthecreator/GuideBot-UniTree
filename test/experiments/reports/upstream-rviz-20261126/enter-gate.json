@@ -1,0 +1,48 @@
+{
+  "directory": "/home/fk/.local/state/guidebot/navigation/rviz-wxwwfiuf",
+  "mode": "live",
+  "error": "RuntimeError: Interactive Enter required for live sensors",
+  "interrupted": false,
+  "ros_domain": 142,
+  "motion_commands": false,
+  "audio_started": false,
+  "navigation_ready": false,
+  "live_verified": false,
+  "upstream_sha": "ace298393ec6cadc1f4a66e70a3311e1d2c4d7ff",
+  "backend": [
+    "nav2_map_server",
+    "nav2_amcl",
+    "pointcloud_to_laserscan"
+  ],
+  "last_active_localization": {},
+  "localization": {
+    "reason": "Waiting for sensors",
+    "lost": false,
+    "map_frame": "map",
+    "base_frame": "guidebot_lidar_ground",
+    "odom_frame": "guidebot_lidar_odom",
+    "motion_commands": false,
+    "lifecycles": {
+      "map_server": "active",
+      "amcl": "active"
+    },
+    "map_cells": 146231,
+    "cloud_age_s": null,
+    "odom_age_s": null,
+    "odometry_fresh": false,
+    "map_to_lidar_fresh": false,
+    "tf_status": "\"map\" passed to lookupTransform argument target_frame does not exist. ",
+    "velocity_publishers": {},
+    "counts": {
+      "raw_clouds": 0,
+      "processed": 0,
+      "rejected": 0,
+      "scans": 0,
+      "amcl_poses": 0,
+      "maps": 1,
+      "skipped": 0
+    },
+    "processing_median_ms": null,
+    "processing_p95_ms": null
+  }
+}

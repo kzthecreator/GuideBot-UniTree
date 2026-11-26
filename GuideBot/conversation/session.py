@@ -2,21 +2,22 @@
 import os
 from pathlib import Path
 
-from .knowledge import AGENT_DIRECTORY, load_secret, load_knowledge, read_soul, sync_knowledge
-from .stepfun import RealtimeSession
+from GuideBot.conversation.knowledge import USER_CONFIG_DIRECTORY, load_secret, load_knowledge, read_conversation_prompt, sync_knowledge
+from GuideBot.conversation.stepfun import RealtimeSession
 
-STANDARD_AEC_MODEL = Path(__file__).resolve().parents[2]/'drivers/localvqe/models/localvqe-v1.2-1.3M-f32.gguf'
+STANDARD_AEC_MODEL = Path(os.environ.get('LOCALVQE_MODEL', Path.home()/'.local/share/guidebot/deps/LocalVQE/models/localvqe-v1.2-1.3M-f32.gguf'))
 
 
 def prepare(options):
     secret = load_secret()
     gestures = options.get('gestures', False) or options.get('gesture_backend') is not None
-    if gestures and not os.environ.get('DEEPSEEK_API_KEY', '').strip():
-        raise ValueError('DEEPSEEK_API_KEY is required for gesture planning')
-    directory = Path(AGENT_DIRECTORY)
-    knowledge = (sync_knowledge(directory/'knowledge', secret=secret).vector_store_id
-                 if options.get('sync_knowledge_before_start') else load_knowledge(directory/'knowledge'))
-    return dict(secret=secret, instructions=read_soul(directory), vector_store_id=knowledge)
+    if gestures:
+        from GuideBot.gesture.provider import validate_configuration
+        validate_configuration()
+    directory = Path(USER_CONFIG_DIRECTORY)
+    knowledge = (sync_knowledge(directory/'conversation'/'knowledge', secret=secret).vector_store_id
+                 if options.get('sync_knowledge_before_start') else load_knowledge(directory/'conversation'/'knowledge'))
+    return dict(secret=secret, instructions=read_conversation_prompt(directory), vector_store_id=knowledge)
 
 
 def build_session(options, directory, prepared, gesture_service_factory):

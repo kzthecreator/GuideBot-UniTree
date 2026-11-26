@@ -1,0 +1,57 @@
+{
+  "status": "offline_draft_consistent",
+  "navigation_ready": false,
+  "capture": "/home/fk/.local/state/guidebot/navigation/lab-lv280ttd",
+  "source_clouds": 533,
+  "matched_clouds": 178,
+  "duration_s": 53.313467025756836,
+  "trajectory_length_m": 13.204273498165694,
+  "odom_endpoint_xy_m": 0.07506081160330765,
+  "lidar_endpoint_xy_m": 0.09871543791757927,
+  "lidar_endpoint_yaw_deg": 9.643607370523954,
+  "independent_loop_pose": [
+    -0.03659324310155672,
+    0.08698844286403426,
+    12.708897200851409
+  ],
+  "loop_overlap": 0.8135095447870778,
+  "loop_inlier_rms_m": 0.06940662861087123,
+  "closure_disagreement_m": 0.1241687974205212,
+  "closure_yaw_disagreement_deg": 1.4774354961125573,
+  "local_overlap_min": 0.7756886751202449,
+  "local_inlier_rms_median_m": 0.05033610277248142,
+  "local_inlier_rms_max_m": 0.07076917263092791,
+  "floor_height_median_m": 1.2374617457389832,
+  "floor_rms_p95_m": 0.011613206937909126,
+  "grid": {
+    "resolution_m": 0.05,
+    "width": 349,
+    "height": 419,
+    "origin": [
+      -9.600000000000001,
+      -8.15
+    ],
+    "occupied_cells": 11941,
+    "free_cells": 37575
+  },
+  "method": "Measured per-frame floor leveling; 3D correspondences, planar ICP; factory odom relative yaw seeds only; previous 8 scans as local submap; every third cloud; no forced loop or pose graph correction",
+  "coordinate_frame": "First leveled LiDAR, Z up, floor Z=0; not robot_center",
+  "obstacle_height_m": [
+    0.3,
+    1.7
+  ],
+  "range_m": [
+    0.5,
+    12
+  ],
+  "limits": [
+    "No calibrated robot_center-to-lidar TF",
+    "No per-point motion deskew",
+    "No localization or navigation acceptance",
+    "No low obstacles below 0.3m in draft grid",
+    "Projected free-space rays do not certify clearance or traversability",
+    "ICP residual/overlap are inlier fit statistics, not absolute map accuracy"
+  ],
+  "robot_commands": false,
+  "audio_started": false
+}

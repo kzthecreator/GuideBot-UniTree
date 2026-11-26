@@ -1,0 +1,26 @@
+{
+  "experiment": "same_capture_even_map_odd_tracking",
+  "independent_capture": false,
+  "initialization": "Known map start plus 0.15m/-0.15m/5deg perturbation",
+  "map_points": 26653,
+  "attempted": 89,
+  "accepted": 89,
+  "failed_scan_indices": [],
+  "min_overlap": 0.8664383561643836,
+  "rms_median_m": 0.05108263899721307,
+  "compute_median_ms": 106.7049279999992,
+  "compute_p95_ms": 141.08630399991853,
+  "compute_max_ms": 148.9391360000809,
+  "position_consistency_p95_m": 0.12528368568282008,
+  "position_consistency_max_m": 0.1290252845273598,
+  "yaw_consistency_p95_deg": 1.8833352663984249,
+  "limits": [
+    "Same recording as mapping; not independent physical ground truth",
+    "Requires approximate starting pose; no global kidnapped-robot recovery",
+    "Only ICP compute timed; floor fitting and cloud decoding excluded",
+    "Leveled LiDAR poses only; no calibrated robot_center TF"
+  ],
+  "live_ready": false,
+  "navigation_ready": false,
+  "robot_commands": false
+}

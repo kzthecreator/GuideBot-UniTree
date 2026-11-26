@@ -1,3 +1,5 @@
+> 历史设计记录：当前目录与实际入口以 [目录规范](../repository-layout.md) 为准。
+
 # 仓库结构重设计：ROS2统一管理
 
 日期：2026-11-24。状态：已按用户确认实施，离线验收记录见docs/experiments/ros2-structure-migration-20261124.md。取代上一版“应用运行层统一管理＋旧直连临时回退”方案。
@@ -29,8 +31,8 @@
 | drivers/ros2_gateway | 通用私有IPC | 移到GuideBot/host_bridge内部 |
 | assets/motion | 轨迹、语义动作表、审批元数据 | 保留 |
 | interfaces/guidebot_interfaces | ROS消息、服务、Actions | 保留并补充生命周期契约 |
-| tools/motion、gesture、audio、timestamps | 制作、管理、评估、离线分析 | 保留 |
-| tools/ros2 | 正式启动、Docker与验收混杂 | 只保留验收、诊断与回放 |
+| test/tools/motion、gesture、audio、timestamps | 制作、管理、评估、离线分析 | 保留 |
+| test/tools/ros2 | 正式启动、Docker与验收混杂 | 只保留验收、诊断与回放 |
 | bringup/guidebot_bringup | 只有README | 启动定义归GuideBot/ros2/launch，说明合并后移除空目录 |
 | deploy/ros2 | Docker构建、运行与说明 | Docker内容迁入GuideBot/host_bridge；验收归tools/tests |
 | tests、docs、archive | 回归、证据与历史 | 保留 |
@@ -134,11 +136,11 @@ GuideBot-UniTree/
     localvqe/
     agc2/
     timestamps/
-  assets/motion/
-  tools/                            # 制作、运维、离线验证
+  assets/motions/
+  test/tools/                            # 制作、运维、离线验证
   tests/
   docs/
-  archive/
+  test/archive/
   recordings/                       # 历史样本
 ```
 
@@ -152,7 +154,7 @@ GuideBot-UniTree/
 
 应从正式路径删除：
 
-- tools/ros2/conversation.py和sidecar.py承担的应用启动职责。
+- test/tools/ros2/conversation.py和sidecar.py承担的应用启动职责。
 - conversation.py独立启动完整会话、接管运动和退出释放的入口。
 - StepFun中选择本地GestureService或ROSGestureService的双路径分支。
 - 跨节点任意修改的Shared可变会话状态。

@@ -1,0 +1,8 @@
+{
+  "GuideBot/gesture/provider.py": "aadac84d7ff534f0da4157da2e37625d1b60077397d2a3700aaa400166495ccb",
+  "GuideBot/gesture/semantic_planner.py": "8b91671d9e994f3ac0161ee9a4b295afcba3e6f2861476011935e776e513623a",
+  "GuideBot/gesture/service.py": "a914afa1909b682a3ea246cbf5fd5a446ad5e18d27d5c6ea003964951819fc8c",
+  "tools/experiments/benchmark_deepseek_latency.py": "e5b8f75ec369ced73023783bd364e0dd8fa4ced505df10ea13980429c3815159",
+  "tools/experiments/probe_deepseek_sse_latency.py": "b8982e36d6ca5c28bcafc761f9b5b9e5a43a89a9a2dee96274f53ce4a5419e8e",
+  "tests/test_deepseek_keepalive.py": "c43d7f8374545e6688faf4b6c6fec38e9b88733c07e341c079a81e36433433a9"
+}

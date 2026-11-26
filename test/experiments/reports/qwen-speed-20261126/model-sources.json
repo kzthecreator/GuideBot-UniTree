@@ -1,0 +1,17 @@
+{
+  "community": {
+    "repo": "bartowski/Qwen_Qwen3-1.7B-GGUF",
+    "revision": "88c7af366a0a55ddfa728c2e91e1fd2f39a4f39e",
+    "files": {
+      "Qwen_Qwen3-1.7B-Q4_K_M.gguf": "72c5c3cb38fa32d5256e2fe30d03e7a64c6c79e668ad84057e3bd66e250b24fb",
+      "Qwen_Qwen3-1.7B-Q5_K_M.gguf": "4287aca1b231f27dbd20012c4bf9693c89b6c849dc02b7027096da54564d4037",
+      "Qwen_Qwen3-1.7B-Q6_K.gguf": "95aec3c8e76caf949b5a7a3b02adbb7e307eb0aa55880f6a6f9fb5f46abe6d4f"
+    },
+    "note": "Third-party quantizations of Qwen3-1.7B; evaluate quality, not assumed identical to official Q8."
+  },
+  "official_q8": {
+    "path": "~/.local/share/guidebot/models/qwen3-1.7b/Qwen3-1.7B-Q8_0.gguf",
+    "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+  },
+  "llama_cpp_commit": "5bd90fa0e40b79af1f7e7e8b2802223c1b15d118"
+}

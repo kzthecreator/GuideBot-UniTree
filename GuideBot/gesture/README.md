@@ -1,3 +1,5 @@
+> 当前正式语义规划读取 developer/actions/prompt.md；本页锚点规划实验已归档到 test/archive/anchor_planner，模板为该目录的 prompt.md。当前结构以 docs/repository-layout.md 为准。
+
 # 动作规划与执行
 
 ## 当前规则（2026-11-25）
@@ -7,7 +9,7 @@
 两种动作模式均使用真实 StepFun 语音和 DeepSeek 规划；离线验收工具使用显式固定规划器。
 
 - 10 个录制动作全部可供 LLM 选择，包括 neutral。
-- 动作声明在 `assets/motion/actions.json`；旧 `conversation-few-shots.json` 保留给历史锚点测试，不注入固定期限规划请求。
+- 动作声明在 `assets/motions/actions.json`；旧 `test/archive/anchor_planner/conversation-few-shots.json` 保留给历史锚点测试，不注入固定期限规划请求。
 - 上下文作为语义建议，不作为动作选择的前置门禁；来源、版本和 TTL 校验仍保留。
 - Gesture 节点内部调用 `GestureService → Planner / Scheduler`，规划不再使用 ROS Action。
 - 运动由独立 Motion 节点通过 `ExecuteGesture` 调用 Runtime 原生资源。
@@ -39,7 +41,7 @@ B需要执行而A仍活跃时，取消A并等待结果及原生idle，再检查B
 
 截止针对指令轨迹，不保证实测关节严格准时到位，也不提供任意运动状态下的无缝轨迹接续。
 pose到位后可静态保持至下一动作或倾听复位；end_s不要求自动回neutral。
-离线完整验收：`python tools/ros2/deadline_acceptance.py`。实现与证据见 `docs/experiments/fixed-action-deadlines-20261125.md`。
+离线完整验收：`python test/integration/ros2/deadline_acceptance.py`。实现与证据见 `test/experiments/reports/fixed-action-deadlines-20261125.md`。
 
 ## 执行边界与已知问题
 
@@ -54,14 +56,14 @@ lowstate 新鲜度、有限姿态、R1+R2、信号中断、循环延迟、服务
 正常释放回位还保留腿速与腰／臂跟踪偏差检查，不等同于 neutral 请求。
 所有真机运行须由用户 Enter 开始和结束。
 
-最新状态见 `docs/AGENT_HANDOFF.md`，四节点验收见 `docs/experiments/four-core-nodes-20261125.md`。
+最新状态见 `docs/AGENT_HANDOFF.md`，四节点验收见 `test/experiments/reports/four-core-nodes-20261125.md`。
 
 ## 历史模拟方案（2026-11-15）
 
 以下章节为历史实验记录。旧动作 ID、入口和调度描述不作为当前运行规范。
 
 
-离线回放只输出模拟命令；正式unitree模式由ROS运动网关调用宿主执行器控制G1上肢。FunASR使用 `drivers/timestamps/runtime.py`，新动作逻辑均在本目录。语音不会等待 DeepSeek 或时间戳。
+离线回放只输出模拟命令；正式unitree模式由ROS运动网关调用宿主执行器控制G1上肢。FunASR使用 `GuideBot/conversation/alignment/timestamps.py`，新动作逻辑均在本目录。语音不会等待 DeepSeek 或时间戳。
 
 ## 修改动作与示例
 
@@ -89,8 +91,8 @@ lowstate 新鲜度、有限姿态、R1+R2、信号中断、循环延迟、服务
 在仓库根目录、GuideBot Conda 环境中执行，无网络与外设：
 
 ```bash
-python -m tools.gesture prompt --text '请注意这里的沙盘。'
-python -m tools.gesture --registry /path/to/actions.json prompt
+python -m test.tools.gesture prompt --text '请注意这里的沙盘。'
+python -m test.tools.gesture --registry /path/to/actions.json prompt
 ```
 
 文字单元复用 FunASR 的中文字符/英文词/数字串规则。LLM 引用程序分配的 unit_id；offset 和 response_id 由本地保存，不让模型猜时间。
@@ -101,9 +103,9 @@ python -m tools.gesture --registry /path/to/actions.json prompt
 
 ```bash
 # 已有配置文件时，在同一 shell 执行 source /你的配置文件绝对路径
-python -m tools.gesture evaluate --repeats 2
+python -m test.tools.gesture evaluate --repeats 2
 # 可配置 DEEPSEEK_MODEL、DEEPSEEK_BASE_URL；默认 deepseek-chat 与官方地址
-python -m tools.gesture evaluate --model deepseek-chat --case hold_model
+python -m test.tools.gesture evaluate --model deepseek-chat --case hold_model
 ```
 
 该命令只发送 `evaluation.json` 中的人工合成文字和示例目标，不上传录音或知识库。默认 21 个用例：每个动作两个正例，加五个负例。注册动作改变后应同步调整评估用例。结果默认在 `~/.local/state/guidebot/gesture-evaluation/`，包括逐条计划、耗时、错误和汇总；汇总记录注册表/Prompt/示例摘要。网络/格式错误计入失败，不从分母删除。
@@ -127,7 +129,7 @@ python -m tools.gesture evaluate --model deepseek-chat --case hold_model
 其中 ID 只是格式示意，必须按对应录音文本检查。先验证 response_id、锚点范围和参数，再进行墙钟 PCM 回放：
 
 ```bash
-python -m tools.gesture replay --data recordings/live-session \
+python -m test.tools.gesture replay --data recordings/live-session \
   --response-id a9525bae-4a90-4a84-acbb-6a707578492c \
   --plans /path/to/cached-plans.json --output /tmp/gesture-replay
 ```
@@ -136,7 +138,7 @@ python -m tools.gesture replay --data recordings/live-session \
 
 实验性 `replay --no-resync` 同时关闭周期性/冲突触发的前缀重同步，以及回复结束的全段修复。结束时只做普通滑窗并记录 `scope=final_window`，仍为 provisional，可能缺少尾部单元。冲突窗口被丢弃，等待下一批输入，不强制修复。该开关不改变线上默认参数；底层选项为 `resync_every=0, final_repair=False`。
 
-`tools/timestamps/listen_start_boundaries.py` 可把 `alignment.starts` 的首次或末次快照起点转换为插入静音的 WAV。原音频完整保留，每个已有起点插入 150ms 静音；缺失起点不从全段参考补齐。`--reference` 仅用于偏差统计，不用于试听切点。
+`test/experiments/timestamps/listen_start_boundaries.py` 可把 `alignment.starts` 的首次或末次快照起点转换为插入静音的 WAV。原音频完整保留，每个已有起点插入 150ms 静音；缺失起点不从全段参考补齐。`--reference` 仅用于偏差统计，不用于试听切点。
 
 ## 会话连接与调度规则
 
@@ -146,12 +148,12 @@ python -m tools.gesture replay --data recordings/live-session \
 python main.py --gestures
 ```
 
-本服务器不要运行该硬件入口。`--gestures` 默认关闭。2026-11-15 起，开启时使用 `timing.py` 中综合测量最好的尽力同步配置：单线程、动态 INT8、同窗口 predictor 复用、完整前缀、0.5s 更新、0.1s 尾部保留、关闭周期重同步、完成后修复。`window=120` 是已有回复长度上限内始终从零计算，不是等待 120 秒。327 单元墙钟对照为 314/327 同时满足一字容差和提前发布，仍非严格保证；过程和边界见 `docs/experiments/realtime-optimization.md`。原有单独 `--timestamps` 参数仍保持 6/2/1。正式ROS入口在缺少动作Key或初始化失败时终止本次启动，不静默降级。
+本服务器不要运行该硬件入口。`--gestures` 默认关闭。2026-11-15 起，开启时使用 `timing.py` 中综合测量最好的尽力同步配置：单线程、动态 INT8、同窗口 predictor 复用、完整前缀、0.5s 更新、0.1s 尾部保留、关闭周期重同步、完成后修复。`window=120` 是已有回复长度上限内始终从零计算，不是等待 120 秒。327 单元墙钟对照为 314/327 同时满足一字容差和提前发布，仍非严格保证；过程和边界见 `test/experiments/reports/realtime-optimization.md`。原有单独 `--timestamps` 参数仍保持 6/2/1。正式ROS入口在缺少动作Key或初始化失败时终止本次启动，不静默降级。
 
 回放入口的默认 4s/0.5s/0.25s 保留为历史对照；复现新的动作配置需显式给出：
 
 ```bash
-python -m tools.gesture replay --data recordings/live-session \
+python -m test.tools.gesture replay --data recordings/live-session \
   --response-id a9525bae-4a90-4a84-acbb-6a707578492c \
   --plans /path/to/cached-plans.json --output /tmp/gesture-best-replay \
   --window 120 --step .5 --tail .1 --resync-every 0 \
@@ -172,6 +174,6 @@ python -m tools.gesture replay --data recordings/live-session \
 
 ## 验证边界
 
-本轮完成注册/解析/调度/取消与会话事件接线测试，以及真实 PCM + FunASR + 缓存计划回放。真实模型检测结果与首次动作输出延迟只有 evaluate 实际成功调用 API 后才成立。最新服务器回放观测及 Key 状态见 `docs/experiments/gesture-integration.md`。
+本轮完成注册/解析/调度/取消与会话事件接线测试，以及真实 PCM + FunASR + 缓存计划回放。真实模型检测结果与首次动作输出延迟只有 evaluate 实际成功调用 API 后才成立。最新服务器回放观测及 Key 状态见 `test/experiments/reports/gesture-integration.md`。
 
 DeepSeek JSON 模式一手文档：https://api-docs.deepseek.com/guides/json_mode 。客户端显式设置 `response_format={"type":"json_object"}`，Prompt 包含 JSON 约定，仍在本地验证结构与语义参数。

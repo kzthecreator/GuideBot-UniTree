@@ -1,0 +1,15 @@
+{
+  "status": "development_pilot_complete_no_production_change",
+  "seed_count": 64,
+  "all_seeds_visible_development": true,
+  "blind_test_generated": false,
+  "labels": "draft; syntax/existence/order checked, semantics not independently reviewed",
+  "fake_action_count": 12,
+  "production_files_modified": false,
+  "expansion_probe_count": 48,
+  "experiment_unique_texts": 112,
+  "model_calls": 1534,
+  "report": "../qwen-eval-results-20261125/README.md",
+  "total_unique_texts_run": 112,
+  "results": "../qwen-eval-results-20261125/README.md"
+}

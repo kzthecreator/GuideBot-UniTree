@@ -1,3 +1,5 @@
+> 历史设计记录：当前目录与实际入口以 [目录规范](../repository-layout.md) 为准。
+
 # ROS2通信重构方案（讨论稿）
 
 日期：2026-11-24。仅规划，尚未迁移、安装依赖或启动硬件。
@@ -97,11 +99,11 @@ scene来自操作员确认/场景配置/感知；navigation来自真实导航与
 保留既有核心类，使它们不依赖ROS。
 
 - interfaces/guidebot_interfaces/：ament_cmake，msg/srv/action定义。
-- GuideBot/ros2/：业务节点适配与worker入口。
+- runtime/ros2/：业务节点适配与worker入口。
 - drivers/ros2_gateway/：宿主worker与容器ROS节点之间的兼容网关及私有IPC协议。
-- drivers/unitree_motion/ros2/：运动Action、状态与接管适配，不复制Player。
+- GuideBot/robot/motion/ros2/：运动Action、状态与接管适配，不复制Player。
 - bringup/guidebot_bringup/：launch、参数、QoS、模拟配置。
-- tools/ros2/：离线回放、接口检查、迁移工具。
+- test/tools/ros2/：离线回放、接口检查、迁移工具。
 
 用colcon --base-paths显式列出各包，避免扫描archive和其他历史代码。build/install/log统一放仓库外本地依赖目录；不移动模型和轨迹。具体包数量待环境验证后定稿。
 

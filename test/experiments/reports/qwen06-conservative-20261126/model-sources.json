@@ -1,0 +1,9 @@
+{
+  "repo": "Qwen/Qwen3-0.6B-GGUF",
+  "revision": "32d6327dd2a5b42f7ce0fe5e6b6f25346b0ee8f9",
+  "files": {
+    "Qwen3-0.6B-Q8_0.gguf": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+    "LICENSE": "5de36594c10839788a8c589443a8ef9d8b8d17c65a1b5807206ae037fc36c6bd"
+  },
+  "source": "https://modelscope.cn/models/Qwen/Qwen3-0.6B-GGUF"
+}

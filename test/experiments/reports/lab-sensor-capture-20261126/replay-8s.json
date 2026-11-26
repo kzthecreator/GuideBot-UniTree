@@ -1,0 +1,35 @@
+{
+  "directory": "/home/fk/.local/state/guidebot/navigation/replay-6sk4c176",
+  "motion_commands": false,
+  "audio_started": false,
+  "error": null,
+  "source-status": {
+    "replay": true,
+    "sources": {
+      "imu": {
+        "count": 1598
+      },
+      "odom": {
+        "count": 6371
+      },
+      "cloud": {
+        "count": 80
+      }
+    },
+    "errors": [],
+    "elapsed_s": 7.999764255999935
+  },
+  "bridge-status": {
+    "published": {
+      "imu": 1598,
+      "odom": 6371,
+      "cloud": 80
+    },
+    "overwritten": {},
+    "errors": [],
+    "clock_offset_ns": 664334177632,
+    "timestamp_policy": "one shared offset from first received source sample; raw CDR timestamps preserved",
+    "source_disconnected": true
+  },
+  "all_streams_received": true
+}

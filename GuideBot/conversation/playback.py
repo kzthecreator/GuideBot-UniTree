@@ -6,7 +6,7 @@ import threading
 import tempfile
 import time
 import numpy as np
-from drivers.unitree_audio.runtime import load_audio_sdk
+from GuideBot.robot.audio.runtime import load_audio_sdk
 
 RATE = 16000
 CLOUD_RATE = 24000
@@ -155,18 +155,18 @@ class StreamingSpeaker:
                 self.responses[response_id].done = True
             self.condition.notify_all()
 
-    def interrupt(self):
+    def interrupt(self, reason="server_vad"):
         with self.condition:
             entries = list(self.pending)
             self.pending.clear()
             self.responses.clear()
             self.buffered_bytes = 0
             self.generation += 1
-            self.stop_reason = "server_vad"
+            self.stop_reason = reason
             self.condition.notify_all()
         for entry in entries:
             entry.data.close()
-            self._emit("playback.discard_requested", entry, reason="server_vad")
+            self._emit("playback.discard_requested", entry, reason=reason)
 
     def cancel(self, response_id, reason):
         with self.condition:

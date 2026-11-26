@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "keyboard_events_sent": 0,
+  "motion_commands": false,
+  "directory": "/home/fk/.local/state/guidebot/navigation/browser-rviz/desktop-hq50u84k",
+  "frames": 25,
+  "replay_counts": {
+    "raw_clouds": 462,
+    "processed": 153,
+    "rejected": 1,
+    "scans": 153,
+    "amcl_poses": 89,
+    "maps": 1,
+    "skipped": 308
+  },
+  "footprint_messages": {
+    "local": 159,
+    "global": 159
+  },
+  "rviz_log_maps": 3,
+  "browser_connected_after_replay": true,
+  "owned_children_after_stop": []
+}

@@ -1,0 +1,48 @@
+{
+  "experiment_only": true,
+  "note": "同时重写schema、示例和金标；模型只看到该轮字典，不看到meaning。",
+  "codebooks": {
+    "7": {
+      "reception_open": "z40",
+      "follow_invite": "h22",
+      "left_show": "v14",
+      "right_show": "c74",
+      "center_show": "b68",
+      "wait_pause": "k59",
+      "ask_repeat": "d15",
+      "emphasis": "q31",
+      "compare_two": "n07",
+      "enumerate_three": "t93",
+      "verified_fact": "m82",
+      "missing_record": "r26"
+    },
+    "29": {
+      "reception_open": "z40",
+      "follow_invite": "d15",
+      "left_show": "n07",
+      "right_show": "t93",
+      "center_show": "v14",
+      "wait_pause": "m82",
+      "ask_repeat": "h22",
+      "emphasis": "c74",
+      "compare_two": "k59",
+      "enumerate_three": "r26",
+      "verified_fact": "q31",
+      "missing_record": "b68"
+    },
+    "61": {
+      "reception_open": "k59",
+      "follow_invite": "h22",
+      "left_show": "q31",
+      "right_show": "d15",
+      "center_show": "n07",
+      "wait_pause": "t93",
+      "ask_repeat": "c74",
+      "emphasis": "r26",
+      "compare_two": "v14",
+      "enumerate_three": "b68",
+      "verified_fact": "m82",
+      "missing_record": "z40"
+    }
+  }
+}

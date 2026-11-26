@@ -1,0 +1,12 @@
+{
+  "python_full_suite_tests": 333,
+  "navigation_tests": 37,
+  "sdk_watchdog_fake_rpc": true,
+  "hardware_configuration_missing_rejected_before_launch": true,
+  "native_robot_motion_started": false,
+  "audio_started": false,
+  "requirements_changed": false,
+  "browser_navigation_enabled": true,
+  "browser_motion_enabled": false,
+  "browser_awaiting_human_enter": true
+}

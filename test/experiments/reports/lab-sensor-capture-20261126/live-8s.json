@@ -1,0 +1,55 @@
+{
+  "directory": "/home/fk/.local/state/guidebot/navigation/lab-uektnxkd",
+  "motion_commands": false,
+  "audio_started": false,
+  "error": null,
+  "source-status": {
+    "read_only": true,
+    "interface": "eth0",
+    "domain": 0,
+    "sources": {
+      "imu": {
+        "count": 1598,
+        "topic": "rt/utlidar/imu_livox_mid360",
+        "frame": "",
+        "source_stamp_ns": 1795669970099357696,
+        "last_received_ns": 1795670454238362848,
+        "source_clock_offset_s": 484.139005152
+      },
+      "odom": {
+        "count": 6371,
+        "topic": "rt/dog_odom",
+        "frame": "odom",
+        "source_stamp_ns": 1795669970100323139,
+        "last_received_ns": 1795670454239012064,
+        "source_clock_offset_s": 484.138688925,
+        "child_frame": "robot_center"
+      },
+      "cloud": {
+        "count": 80,
+        "topic": "rt/utlidar/cloud_livox_mid360",
+        "frame": "livox_frame",
+        "source_stamp_ns": 1795669969944930560,
+        "last_received_ns": 1795670454189839136,
+        "source_clock_offset_s": 484.244908576,
+        "points": 20064,
+        "bytes": 441408
+      }
+    },
+    "errors": [],
+    "elapsed_s": 8.002335551999977
+  },
+  "bridge-status": {
+    "published": {
+      "imu": 1598,
+      "odom": 6371,
+      "cloud": 80
+    },
+    "overwritten": {},
+    "errors": [],
+    "clock_offset_ns": 484144413728,
+    "timestamp_policy": "one shared offset from first received source sample; raw CDR timestamps preserved",
+    "source_disconnected": true
+  },
+  "all_streams_received": true
+}

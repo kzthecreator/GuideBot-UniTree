@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-26",
+  "scope": "G1 directory migration; no dependency or hardware behavior changes",
+  "moved_files": 441,
+  "baseline_python_tests": 281,
+  "python_tests": 324,
+  "cpp_tests": 4,
+  "js_motion_ui": "passed",
+  "ros_build_packages": [
+    "guidebot_interfaces",
+    "guidebot_ros2"
+  ],
+  "ros_acceptance": {
+    "ros_offline": [
+      "/home/fk/.local/state/guidebot/ros2/foxy-1p_tji5v/acceptance.json"
+    ],
+    "aligned": [
+      "/home/fk/.local/state/guidebot/ros2/foxy-j8exoqvs/aligned-acceptance.json"
+    ],
+    "lifecycle": [
+      "/home/fk/.local/state/guidebot/ros2/foxy-u29tswd1/lifecycle-acceptance.json",
+      "/home/fk/.local/state/guidebot/ros2/foxy-jn8w2toc/lifecycle-acceptance.json",
+      "/home/fk/.local/state/guidebot/ros2/foxy-39gu2d5j/lifecycle-acceptance.json",
+      "/home/fk/.local/state/guidebot/ros2/foxy-g_sk6c5o/lifecycle-acceptance.json"
+    ],
+    "tour_lifecycle": [
+      "/home/fk/.local/state/guidebot/ros2/foxy-z_khk0sv/tour-lifecycle-acceptance.json"
+    ],
+    "semantic": [
+      "/home/fk/.local/state/guidebot/ros2/foxy-g6d5y98f/semantic-acceptance.json"
+    ],
+    "deadline": [
+      "/home/fk/.local/state/guidebot/ros2/foxy-0vkd4hii/deadline-acceptance.json"
+    ]
+  },
+  "nav2_fake_server": "passed; no velocity publisher or SDK",
+  "sensor_replay": {
+    "duration_s": 2,
+    "cloud": 20,
+    "imu": 402,
+    "odom": 1623,
+    "overwritten": 0,
+    "errors": 0
+  },
+  "task_and_motion_content_unchanged_files": 41,
+  "guidebot_environment": "/home/fk/.conda/envs/GuideBot/bin/python",
+  "python_version": "3.8.20",
+  "dependency_manifests": "unchanged",
+  "backup": "/home/fk/.local/state/guidebot/layout-migrations/20261126-143743",
+  "hardware_started": false,
+  "cloud_requests": false,
+  "committed": false
+}

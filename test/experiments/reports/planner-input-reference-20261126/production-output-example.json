@@ -1,0 +1,15 @@
+{
+  "actions": [
+    {
+      "action": "present_left",
+      "begin": {
+        "text": "接下来",
+        "occurrence": 1
+      },
+      "finish_by": {
+        "text": "园区沙盘",
+        "occurrence": 1
+      }
+    }
+  ]
+}

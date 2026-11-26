@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Proposed semantic action output v1; not yet connected to runtime",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["actions"],
+  "properties": {
+    "actions": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "begin", "finish_by"],
+        "properties": {
+          "action": {
+            "enum": ["neutral", "greet_open", "greet_wave", "invite_follow", "present_center", "present_left", "present_right", "please_wait", "request_repeat", "emphasize_once"]
+          },
+          "begin": {"$ref": "#/$defs/quote"},
+          "finish_by": {"$ref": "#/$defs/quote"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "quote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "occurrence"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1},
+        "occurrence": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

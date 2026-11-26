@@ -1,0 +1,114 @@
+[
+  {
+    "item_id": "17b09493-3ab6-4e3f-a9ec-5664a8b7aae6",
+    "candidate_at": 5.6088201599995955,
+    "outcome": "input_audio_buffer.speech_stopped",
+    "window_s": [
+      2.56,
+      5.12
+    ],
+    "rms_dbfs": {
+      "microphone": -32.19,
+      "microphone-aec": -43.55,
+      "microphone-agc": -40.42
+    }
+  },
+  {
+    "item_id": "42321f61-1edc-4030-b9c2-b65be3ede2d9",
+    "candidate_at": 12.455292672000724,
+    "outcome": "input_audio_buffer.speech_backchannel",
+    "window_s": [
+      9.28,
+      19.92335196800028
+    ],
+    "rms_dbfs": {
+      "microphone": -32.7,
+      "microphone-aec": -42.11,
+      "microphone-agc": -38.41
+    }
+  },
+  {
+    "item_id": "03c19417-eba0-4f48-87ab-9c2d0ee87dd0",
+    "candidate_at": 26.390621728000042,
+    "outcome": "input_audio_buffer.speech_stopped",
+    "window_s": [
+      23.36,
+      28.48
+    ],
+    "rms_dbfs": {
+      "microphone": -23.62,
+      "microphone-aec": -23.95,
+      "microphone-agc": -22.64
+    }
+  },
+  {
+    "item_id": "04729f02-dd37-41c6-82ce-450231ebc247",
+    "candidate_at": 37.64053337600126,
+    "outcome": "input_audio_buffer.speech_backchannel",
+    "window_s": [
+      34.56,
+      42.30924204799899
+    ],
+    "rms_dbfs": {
+      "microphone": -33.12,
+      "microphone-aec": -46.13,
+      "microphone-agc": -39.77
+    }
+  },
+  {
+    "item_id": "74ddcc3d-3724-4546-8a10-6e22e86b80af",
+    "candidate_at": 46.05775683200045,
+    "outcome": "input_audio_buffer.speech_backchannel",
+    "window_s": [
+      42.88,
+      45.526687071998964
+    ],
+    "rms_dbfs": {
+      "microphone": -30.73,
+      "microphone-aec": -43.17,
+      "microphone-agc": -36.4
+    }
+  },
+  {
+    "item_id": "4d9004c9-fdbe-4ca6-b019-408523f1a625",
+    "candidate_at": 47.53319865599951,
+    "outcome": "input_audio_buffer.speech_stopped",
+    "window_s": [
+      44.48,
+      47.04
+    ],
+    "rms_dbfs": {
+      "microphone": -32.43,
+      "microphone-aec": -45.5,
+      "microphone-agc": -38.16
+    }
+  },
+  {
+    "item_id": "70e9e5b9-5257-4885-8ce0-6f4375c5c46c",
+    "candidate_at": 53.381044671999916,
+    "outcome": "input_audio_buffer.speech_backchannel",
+    "window_s": [
+      49.92,
+      51.39187747199881
+    ],
+    "rms_dbfs": {
+      "microphone": -34.66,
+      "microphone-aec": -46.41,
+      "microphone-agc": -38.71
+    }
+  },
+  {
+    "item_id": "712e132b-e5fc-4e5e-b25f-a1e763b9221e",
+    "candidate_at": 63.26888009600043,
+    "outcome": "no_end_before_stop",
+    "window_s": [
+      60.16,
+      62.16
+    ],
+    "rms_dbfs": {
+      "microphone": -32.97,
+      "microphone-aec": -86.63,
+      "microphone-agc": -78.07
+    }
+  }
+]

@@ -1,0 +1,117 @@
+{
+  "directory": "/home/fk/.local/state/guidebot/navigation/browser-rviz/desktop-gblb8wt3/localization",
+  "mode": "replay",
+  "error": null,
+  "interrupted": false,
+  "ros_domain": 182,
+  "motion_commands": false,
+  "audio_started": false,
+  "navigation_ready": false,
+  "live_verified": false,
+  "upstream_sha": "ace298393ec6cadc1f4a66e70a3311e1d2c4d7ff",
+  "backend": [
+    "nav2_map_server",
+    "nav2_amcl",
+    "pointcloud_to_laserscan"
+  ],
+  "last_active_localization": {
+    "reason": "LiDAR odometry active; AMCL is the map localizer",
+    "lost": false,
+    "map_frame": "map",
+    "base_frame": "guidebot_lidar_ground",
+    "odom_frame": "guidebot_lidar_odom",
+    "motion_commands": false,
+    "lifecycles": {
+      "map_server": "active",
+      "amcl": "active"
+    },
+    "map_cells": 146231,
+    "cloud_age_s": 0.9791576320003514,
+    "odom_age_s": 0.47061497600043367,
+    "odometry_fresh": true,
+    "map_to_lidar_fresh": true,
+    "velocity_publishers": {},
+    "lidar_pose": [
+      -0.06512067688399673,
+      0.06976687790564445,
+      12.705138202494906
+    ],
+    "overlap": 0.9960019990004998,
+    "inlier_rms_m": 0.03669571431635121,
+    "processing_ms": 508.53382399964175,
+    "floor_height_m": 1.2389016151428223,
+    "amcl_pose": [
+      -0.17168163111221624,
+      0.04263107435287507,
+      0.16573939014971859
+    ],
+    "amcl_covariance_xyyaw": [
+      0.04289647810668648,
+      0.14648715064158394,
+      0.05522983481113425
+    ],
+    "amcl_last_at": 6983.054368256,
+    "map_to_lidar_age_s": 1.0943078994750977,
+    "counts": {
+      "raw_clouds": 472,
+      "processed": 120,
+      "rejected": 1,
+      "scans": 120,
+      "amcl_poses": 71,
+      "maps": 1,
+      "skipped": 351
+    },
+    "processing_median_ms": 298.316431999865,
+    "processing_p95_ms": 465.35230720082836
+  },
+  "localization": {
+    "reason": "LiDAR odometry active; AMCL is the map localizer",
+    "lost": false,
+    "map_frame": "map",
+    "base_frame": "guidebot_lidar_ground",
+    "odom_frame": "guidebot_lidar_odom",
+    "motion_commands": false,
+    "lifecycles": {
+      "map_server": "active",
+      "amcl": "active"
+    },
+    "map_cells": 146231,
+    "cloud_age_s": 2.273779136000485,
+    "odom_age_s": 1.765236480000567,
+    "odometry_fresh": true,
+    "map_to_lidar_fresh": false,
+    "velocity_publishers": {},
+    "lidar_pose": [
+      -0.06512067688399673,
+      0.06976687790564445,
+      12.705138202494906
+    ],
+    "overlap": 0.9960019990004998,
+    "inlier_rms_m": 0.03669571431635121,
+    "processing_ms": 508.53382399964175,
+    "floor_height_m": 1.2389016151428223,
+    "amcl_pose": [
+      -0.17168163111221624,
+      0.04263107435287507,
+      0.16573939014971859
+    ],
+    "amcl_covariance_xyyaw": [
+      0.04289647810668648,
+      0.14648715064158394,
+      0.05522983481113425
+    ],
+    "amcl_last_at": 6983.054368256,
+    "map_to_lidar_age_s": 2.3885791301727295,
+    "counts": {
+      "raw_clouds": 472,
+      "processed": 120,
+      "rejected": 1,
+      "scans": 120,
+      "amcl_poses": 71,
+      "maps": 1,
+      "skipped": 351
+    },
+    "processing_median_ms": 298.316431999865,
+    "processing_p95_ms": 465.35230720082836
+  }
+}

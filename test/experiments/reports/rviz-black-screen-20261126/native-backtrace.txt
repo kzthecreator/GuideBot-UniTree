@@ -1,0 +1,36 @@
+Thread 17 "rviz2" received signal SIGABRT, Aborted.
+[Switching to Thread 0xffffb7ffe720 (LWP 87184)]
+__GI_raise (sig=sig@entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50
+50	../sysdeps/unix/sysv/linux/raise.c: No such file or directory.
+#0  __GI_raise (sig=sig@entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50
+#1  0x0000fffff71b0aac in __GI_abort () at abort.c:79
+#2  0x0000fffff73d58bc in __gnu_cxx::__verbose_terminate_handler() () from /lib/aarch64-linux-gnu/libstdc++.so.6
+#3  0x0000fffff73d320c in ?? () from /lib/aarch64-linux-gnu/libstdc++.so.6
+#4  0x0000fffff73d3270 in std::terminate() () from /lib/aarch64-linux-gnu/libstdc++.so.6
+#5  0x0000fffff73d3564 in __cxa_throw () from /lib/aarch64-linux-gnu/libstdc++.so.6
+#6  0x0000ffffbd45c01c in ?? () from /opt/ros/foxy/opt/rviz_ogre_vendor/lib/OGRE/RenderSystem_GL.so.1.12.1
+#7  0x0000ffffbd45c23c in ?? () from /opt/ros/foxy/opt/rviz_ogre_vendor/lib/OGRE/RenderSystem_GL.so.1.12.1
+#8  0x0000ffffbd4bda4c in Ogre::GLHardwareVertexBuffer::GLHardwareVertexBuffer(Ogre::HardwareBufferManagerBase*, unsigned long, unsigned long, Ogre::HardwareBuffer::Usage, bool) () from /opt/ros/foxy/opt/rviz_ogre_vendor/lib/OGRE/RenderSystem_GL.so.1.12.1
+#9  0x0000ffffbd4b5138 in Ogre::GLHardwareBufferManager::createVertexBuffer(unsigned long, unsigned long, Ogre::HardwareBuffer::Usage, bool) () from /opt/ros/foxy/opt/rviz_ogre_vendor/lib/OGRE/RenderSystem_GL.so.1.12.1
+#10 0x0000fffff6cd2e48 in Ogre::ManualObject::end() () from /opt/ros/foxy/opt/rviz_ogre_vendor/lib/libOgreMain.so.1.12.1
+#11 0x0000ffffbcece86c in rviz_default_plugins::displays::PolygonDisplay::processMessage(std::shared_ptr<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > const>) () from /opt/ros/foxy/lib/librviz_default_plugins.so
+#12 0x0000ffffbcd1502c in rviz_common::MessageFilterDisplay<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > >::incomingMessage(std::shared_ptr<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > const>) () from /opt/ros/foxy/lib/librviz_default_plugins.so
+#13 0x0000ffffbcd152e8 in std::_Function_handler<void (std::shared_ptr<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > const> const&), std::_Bind<void (rviz_common::MessageFilterDisplay<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > >::*(rviz_common::MessageFilterDisplay<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > >*, std::_Placeholder<1>))(std::shared_ptr<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > const>)> >::_M_invoke(std::_Any_data const&, std::shared_ptr<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > const> const&) () from /opt/ros/foxy/lib/librviz_default_plugins.so
+#14 0x0000ffffbcd23e28 in message_filters::CallbackHelper1T<std::shared_ptr<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > const> const&, geometry_msgs::msg::PolygonStamped_<std::allocator<void> > >::call(message_filters::MessageEvent<geometry_msgs::msg::PolygonStamped_<std::allocator<void> > const> const&, bool) () from /opt/ros/foxy/lib/librviz_default_plugins.so
+#15 0x0000ffffbcd206c0 in tf2_ros::MessageFilter<geometry_msgs::msg::PolygonStamped_<std::allocator<void> >, rviz_common::transformation::FrameTransformer>::transformReadyCallback(std::shared_future<geometry_msgs::msg::TransformStamped_<std::allocator<void> > > const&, unsigned long) () from /opt/ros/foxy/lib/librviz_default_plugins.so
+#16 0x0000ffffbc71f04c in ?? () from /opt/ros/foxy/lib/libtf2_ros.so
+#17 0x0000ffffbc6c2b34 in tf2::BufferCore::testTransformableRequests() () from /opt/ros/foxy/lib/libtf2.so
+#18 0x0000ffffbc6c3c6c in tf2::BufferCore::setTransformImpl(tf2::Transform const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::chrono::time_point<std::chrono::_V2::system_clock, std::chrono::duration<long, std::ratio<1l, 1000000000l> > >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool) () from /opt/ros/foxy/lib/libtf2.so
+#19 0x0000ffffbc6c4c34 in tf2::BufferCore::setTransform(geometry_msgs::msg::TransformStamped_<std::allocator<void> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool) () from /opt/ros/foxy/lib/libtf2.so
+#20 0x0000ffffbc726818 in tf2_ros::TransformListener::subscription_callback(std::shared_ptr<tf2_msgs::msg::TFMessage_<std::allocator<void> > >, bool) () from /opt/ros/foxy/lib/libtf2_ros.so
+#21 0x0000ffffbcf2b2b0 in std::_Function_handler<void (std::shared_ptr<tf2_msgs::msg::TFMessage_<std::allocator<void> > >), std::_Bind<void (tf2_ros::TransformListener::*(tf2_ros::TransformListener*, std::_Placeholder<1>, bool))(std::shared_ptr<tf2_msgs::msg::TFMessage_<std::allocator<void> > >, bool)> >::_M_invoke(std::_Any_data const&, std::shared_ptr<tf2_msgs::msg::TFMessage_<std::allocator<void> > >&&) () from /opt/ros/foxy/lib/librviz_default_plugins.so
+#22 0x0000ffffbcf311e8 in rclcpp::AnySubscriptionCallback<tf2_msgs::msg::TFMessage_<std::allocator<void> >, std::allocator<void> >::dispatch(std::shared_ptr<tf2_msgs::msg::TFMessage_<std::allocator<void> > >, rclcpp::MessageInfo const&) () from /opt/ros/foxy/lib/librviz_default_plugins.so
+#23 0x0000ffffbcf31b64 in rclcpp::Subscription<tf2_msgs::msg::TFMessage_<std::allocator<void> >, std::allocator<void>, rclcpp::message_memory_strategy::MessageMemoryStrategy<tf2_msgs::msg::TFMessage_<std::allocator<void> >, std::allocator<void> > >::handle_message(std::shared_ptr<void>&, rclcpp::MessageInfo const&) () from /opt/ros/foxy/lib/librviz_default_plugins.so
+#24 0x0000fffff7602e6c in ?? () from /opt/ros/foxy/lib/librclcpp.so
+#25 0x0000fffff7603a70 in rclcpp::Executor::execute_subscription(std::shared_ptr<rclcpp::SubscriptionBase>) () from /opt/ros/foxy/lib/librclcpp.so
+#26 0x0000fffff76042b4 in rclcpp::Executor::execute_any_executable(rclcpp::AnyExecutable&) () from /opt/ros/foxy/lib/librclcpp.so
+#27 0x0000fffff7609d8c in rclcpp::executors::SingleThreadedExecutor::spin() () from /opt/ros/foxy/lib/librclcpp.so
+#28 0x0000ffffbc72706c in ?? () from /opt/ros/foxy/lib/libtf2_ros.so
+#29 0x0000fffff7400f9c in ?? () from /lib/aarch64-linux-gnu/libstdc++.so.6
+#30 0x0000fffff5a89624 in start_thread (arg=0xfffff7400f80) at pthread_create.c:477
+#31 0x0000fffff726162c in thread_start () at ../sysdeps/unix/sysv/linux/aarch64/clone.S:78

@@ -1,0 +1,30 @@
+[
+  {
+    "file": "fluxbox_1.3.5-2build2_arm64.deb",
+    "sha256": "5e38456ff42cb0a85e886bb44ade446db0b4e8b7e9af5550c22da4ed987a59e4"
+  },
+  {
+    "file": "libimlib2_1.6.1-1ubuntu0.1_arm64.deb",
+    "sha256": "e8866fefd34519a0ef834d9059ef7952fcd72ef0db06e825629e69466f336131"
+  },
+  {
+    "file": "libvncserver1_0.9.12+dfsg-9ubuntu0.3_arm64.deb",
+    "sha256": "7a3657401c3ac37790992bab3539407356f52a364ca8823d6cdeacc70f4c34b3"
+  },
+  {
+    "file": "novnc_1%3a1.0.0-2_all.deb",
+    "sha256": "2f90776f41cc7621d943c6c45304ee8e48796d2b7d3de1ed0f74fbc8c92a7793"
+  },
+  {
+    "file": "python3-websockify_0.9.0-0ubuntu2_arm64.deb",
+    "sha256": "0b473651eef77ac116c237a0f14cc05335078372c03b9b7d4004013ca9d36034"
+  },
+  {
+    "file": "x11vnc_0.9.16-3_arm64.deb",
+    "sha256": "c4f5e7dfd4440c5d0916287aeb957a6789ec7ae52d6e9f0db5ede307a7f36840"
+  },
+  {
+    "file": "xvfb_2%3a1.20.13-1ubuntu1~20.04.20_arm64.deb",
+    "sha256": "98b2defee09fc26fa8afd14a3b0477fcdd7007f7caac92734178fb7f0d5921bf"
+  }
+]

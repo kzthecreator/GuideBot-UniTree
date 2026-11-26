@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "keyboard_events_sent": 0,
+  "motion_commands": false,
+  "directory": "/home/fk/.local/state/guidebot/navigation/browser-rviz/desktop-25lqex1r",
+  "rviz_failure_retains_browser": true,
+  "frames": 5,
+  "browser_connected_after_replay": true,
+  "owned_children_after_stop": []
+}

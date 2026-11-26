@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-26",
+  "software_tests": 250,
+  "hardware_audio_started": false,
+  "cloud_calls": false,
+  "checks": [
+    {
+      "ok": true,
+      "host_loss": false,
+      "heartbeats": 6,
+      "hardware": false,
+      "cloud": false,
+      "operations": [
+        "authorize",
+        "activate",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "tour",
+        "deactivate"
+      ],
+      "evidence": "/home/fk/.local/state/guidebot/ros2/foxy-3b7qlm_7/tour-lifecycle-acceptance.json"
+    },
+    {
+      "ok": true,
+      "host_loss": true,
+      "heartbeats": 7,
+      "hardware": false,
+      "cloud": false,
+      "operations": [
+        "authorize",
+        "activate",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "health",
+        "heartbeat",
+        "tour",
+        "health",
+        "heartbeat",
+        "deactivate"
+      ],
+      "evidence": "/home/fk/.local/state/guidebot/ros2/foxy-9ddk01wu/tour-lifecycle-acceptance.json"
+    }
+  ]
+}

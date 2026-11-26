@@ -1,0 +1,10 @@
+{
+  "snapshot_date": "2026-11-26",
+  "comparison_inputs": 112,
+  "system_sha256": {
+    "production-qwen": "3cfb5d7cba4560dc4bd3f5c665841f42dd01a9b7b0cdf0419a070619fdb0a3e8",
+    "production-deepseek": "b0a06dfc12670c3eda748e7da95bb6a7a6e8939e87d727f5efa6dd345071c015",
+    "comparison-full": "6536879be7560bd891433a1d5b4e6f214a3048c6fa12f08991fe51759a033568"
+  },
+  "note": "Reference snapshots; production code remains authoritative. source_case_id is an audit index, NOT sent to model. Request examples use default model names; credentials/headers intentionally absent. No requests or hardware started."
+}

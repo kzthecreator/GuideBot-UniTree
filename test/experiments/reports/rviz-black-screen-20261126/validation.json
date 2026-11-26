@@ -1,0 +1,10 @@
+{
+  "python_full_suite": 335,
+  "graphical_full_replay_passed": true,
+  "footprint_geometry_and_timestamp_preserved": true,
+  "forced_rviz_exit_browser_remains_connected": true,
+  "actual_live_source_started": false,
+  "robot_motion_started": false,
+  "audio_started": false,
+  "requirements_changed": false
+}
