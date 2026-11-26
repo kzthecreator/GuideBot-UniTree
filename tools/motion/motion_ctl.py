@@ -212,7 +212,7 @@ def main():
     sequence.add_argument("--poses", type=Path, default=ROOT / "poses")
     sequence.add_argument("--metadata", type=Path, default=ROOT / "metadata")
     preview = commands.add_parser("preview", help="单次试播或复查一个已录制动作")
-    preview.add_argument("name", help="动作清单中的名称，如 neutral")
+    preview.add_argument("name", help="动作清单中的名称，如 B_Neutral_Rest")
     preview.add_argument("--sequence-file", type=Path, help="组合试播的 Sequence JSON 文件；全组只接管和释放一次")
     preview_mode = preview.add_mutually_exclusive_group()
     preview_mode.add_argument("--check", action="store_true", help="只做离线校验，不连接机器人")

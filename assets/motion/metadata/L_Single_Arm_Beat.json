@@ -1,0 +1,111 @@
+{
+  "schema_version": 3,
+  "file_format_version": 1,
+  "name": "L_Single_Arm_Beat",
+  "category": "prosody",
+  "type": "motion",
+  "label": "L单臂点节拍",
+  "description": "左臂肩pitch做一次短促下压。",
+  "robot_model": "G1-7DOF",
+  "source": "teach_with_name",
+  "version": 2,
+  "status": "approved",
+  "movement_context": "stationary",
+  "scenes": [
+    "prosody"
+  ],
+  "notes": "",
+  "sha256": "05a1c736a3ed0d3056801437e185abb6411ef725e1909feb1316712e0064c134",
+  "verified_by": "kwx",
+  "verified_at": "2026-11-26T09:24:55+08:00",
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0,
+    300
+  ],
+  "nominal_duration_ms": 300,
+  "entry_pose": [
+    -0.269921,
+    0.532016,
+    0.038373,
+    -0.12774,
+    0.552257,
+    0.0,
+    0.0,
+    0.092638,
+    -0.261244,
+    0.026761,
+    0.967966,
+    0.005788,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    -0.056829,
+    0.502966,
+    -0.210179,
+    0.03044,
+    0.748427,
+    0.0,
+    0.0,
+    0.081649,
+    -0.262287,
+    0.026533,
+    0.966863,
+    0.005752,
+    0.0,
+    0.0
+  ],
+  "loopable": false,
+  "interruptible": true,
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "safety": {
+    "max_velocity_rad_s": 0.4,
+    "max_acceleration_rad_s2": 0.8,
+    "joint_limits_profile": "config/arm_joint_limits.json"
+  },
+  "gesture_group": "prosody",
+  "gesture_subcategory": "节拍/强调",
+  "recording_task_id": "13",
+  "timing_profile": {
+    "phase_weights": {
+      "transition": 1,
+      "core": 2,
+      "hold": 1
+    },
+    "minimum_total_ms": 701,
+    "frame_weights": []
+  },
+  "preview_confirmation": {
+    "sha256": "05a1c736a3ed0d3056801437e185abb6411ef725e1909feb1316712e0064c134",
+    "version": 2,
+    "timing_profile": {
+      "phase_weights": {
+        "transition": 1,
+        "core": 2,
+        "hold": 1
+      },
+      "minimum_total_ms": 701,
+      "frame_weights": []
+    },
+    "total_ms": 701
+  }
+}

@@ -310,6 +310,8 @@ def _worker(incoming, outgoing, model_path, log_path, alignment_options=None, ba
             outgoing.put({"kind": "alignment.ready"})
             states = OrderedDict()
             closed = set()
+            staged_audio = {}
+            pending_done = set()
             while True:
                 messages = []
                 try:
@@ -318,12 +320,23 @@ def _worker(incoming, outgoing, model_path, log_path, alignment_options=None, ba
                         messages.append(incoming.get_nowait())
                 except queue.Empty:
                     pass
+                expanded = []
+                for action, rid, payload, sent_at in messages:
+                    if action == 'bundle':
+                        for kind in ('text', 'audio', 'done'):
+                            if kind in payload:
+                                expanded.append((kind, rid, payload[kind], sent_at))
+                    else:
+                        expanded.append((action, rid, payload, sent_at))
+                messages = expanded
                 audio_messages = {}
                 for action, rid, payload, sent_at in messages:
                     if action == "stop":
                         return
                     if action == "cancel":
                         states.pop(rid, None)
+                        staged_audio.pop(rid, None)
+                        pending_done.discard(rid)
                         closed.add(rid)
                         if len(closed) > 512:
                             raise RuntimeError("Timestamp response limit reached; restart session")
@@ -337,24 +350,34 @@ def _worker(incoming, outgoing, model_path, log_path, alignment_options=None, ba
                     state = states[rid]
                     if action == "audio":
                         audio_messages[rid] = audio_messages.get(rid, 0)+1
-                        if len(state.data) + len(payload) > RATE * 2 * 120:
+                        if len(state.data) + len(staged_audio.get(rid, b'')) + len(payload) > RATE * 2 * 120:
                             outgoing.put({"kind": "alignment.warning", "response_id": rid,
                                           "reason": "audio_limit", "message": "Reply exceeds 120s timestamp limit"})
                             del states[rid]
                             closed.add(rid)
                             continue
-                        state.data.extend(payload)
+                        staged_audio.setdefault(rid, bytearray()).extend(payload)
                         state.newest_audio_sent_at = sent_at
                     elif action == "text":
                         state.set_text(payload)
                     elif action == "text_delta":
                         state.set_text(state.text + payload)
                     elif action == "done":
-                        state.done = True
+                        pending_done.add(rid)
                 # Audio deltas accumulated during inference are merged into one
                 # latest snapshot; there is no FIFO of old inference windows.
-                state = next((s for s in states.values() if s.due()), None)
+                state = next((s for s in reversed(list(states.values()))
+                              if staged_audio.get(s.response_id) or s.due() or s.response_id in pending_done), None)
                 if state is None:
+                    continue
+                buffered = staged_audio.get(state.response_id, bytearray())
+                # Preserve all samples, but advance cold/lagging alignment in bounded
+                # increments so a fast cloud burst cannot lose the rolling cursor.
+                chunk = min(len(buffered), RATE*2*4)
+                state.data.extend(buffered[:chunk])
+                del buffered[:chunk]
+                state.done = state.response_id in pending_done and not buffered
+                if not state.due():
                     continue
                 try:
                     result = state.update(backend)
@@ -373,6 +396,8 @@ def _worker(incoming, outgoing, model_path, log_path, alignment_options=None, ba
                                   "profile": dict(state.last_profile)})
                 if state.done:
                     states.pop(state.response_id, None)
+                    staged_audio.pop(state.response_id, None)
+                    pending_done.discard(state.response_id)
                     closed.add(state.response_id)
         except BaseException as error:
             outgoing.put({"kind": "alignment.error", "message": str(error)})
@@ -405,10 +430,14 @@ class StreamingTimestamps:
         self.cancelled = set()
         self.enabled = False
         self.sent_audio_samples = {}
+        self.pending = OrderedDict()
+        self.pending_lock = threading.Lock()
+        self.text_snapshots = {}
+        self.sender = None
 
     def start(self, timeout=60):
         context = multiprocessing.get_context("spawn")
-        self.incoming, self.outgoing = context.Queue(maxsize=256), context.Queue(maxsize=128)
+        self.incoming, self.outgoing = context.Queue(maxsize=1), context.Queue(maxsize=128)
         self.process = context.Process(target=_worker, args=(self.incoming, self.outgoing, self.model_path,
                                        str(self.directory / "alignment-worker.log"), self.alignment_options,
                                        self.backend_options), daemon=True)
@@ -421,6 +450,8 @@ class StreamingTimestamps:
             self.close()
             raise
         self.enabled = True
+        self.sender = threading.Thread(target=self._flush_loop, name='timestamp-inputs', daemon=True)
+        self.sender.start()
         self.on_event(**event)
         self.reader = threading.Thread(target=self._read, name="timestamp-results", daemon=True)
         self.reader.start()
@@ -448,6 +479,9 @@ class StreamingTimestamps:
                 event['profile']['audio_ahead_of_snapshot_seconds'] = max(
                     0., self.sent_audio_samples.get(event.get('response_id'), 0)/RATE -
                     event['profile']['audio_seconds'])
+            if event['kind'] == 'alignment.final':
+                with self.pending_lock:
+                    self.text_snapshots.pop(event.get('response_id'), None)
             try:
                 self.on_event(**event)
             except Exception:
@@ -455,24 +489,73 @@ class StreamingTimestamps:
                 self.enabled = False
                 return
 
+    def _flush_pending(self):
+        # Caller holds pending_lock. At most one IPC bundle waits behind inference.
+        for rid, (action, payload, sent_at) in list(self.pending.items()):
+            try:
+                self.incoming.put_nowait((action, rid, payload, sent_at))
+            except queue.Full:
+                return
+            del self.pending[rid]
+
+    def _flush_loop(self):
+        while not self.closing.wait(.02):
+            if self.enabled:
+                with self.pending_lock:
+                    self._flush_pending()
+
     def send(self, action, response_id, payload=None):
-        if not self.enabled or (response_id in self.cancelled and action != "cancel"):
+        if not self.enabled or (response_id in self.cancelled and action != 'cancel'):
             return
-        if action == "cancel":
-            self.cancelled.add(response_id)
-        try:
-            self.incoming.put_nowait((action, response_id, payload, time.monotonic()))
-            if action == 'audio':
-                self.sent_audio_samples[response_id] = self.sent_audio_samples.get(response_id, 0)+len(payload)//2
-        except queue.Full:
-            self.enabled = False
-            self.on_event(kind="alignment.error", message="Timestamp input overflow; audio continues")
+        failure = False
+        with self.pending_lock:
+            if action == 'cancel':
+                self.cancelled.add(response_id)
+                self.pending.pop(response_id, None)
+                self.text_snapshots.pop(response_id, None)
+                self.sent_audio_samples.pop(response_id, None)
+                self.pending[response_id] = ('cancel', None, time.monotonic())
+                self.pending.move_to_end(response_id, last=False)
+            else:
+                pending_action, bundle, _ = self.pending.get(response_id, ('bundle', {}, 0))
+                if action == 'audio':
+                    count = self.sent_audio_samples.get(response_id, 0)+len(payload)//2
+                    self.sent_audio_samples[response_id] = count
+                    if count > RATE*120:
+                        failure = True
+                    else:
+                        bundle.setdefault('audio', bytearray()).extend(payload)
+                elif action in {'text', 'text_delta'}:
+                    text = (self.text_snapshots.get(response_id, '')+payload if action == 'text_delta' else payload)
+                    if len(text) > 12000:
+                        failure = True
+                    else:
+                        self.text_snapshots[response_id] = text
+                        bundle['text'] = text
+                elif action == 'done':
+                    bundle['done'] = True
+                else:
+                    raise ValueError('Unknown timestamp action')
+                self.pending[response_id] = ('bundle', bundle, time.monotonic())
+                if len(self.pending) > 16:
+                    failure = True
+                if failure:
+                    self.cancelled.add(response_id)
+                    self.pending[response_id] = ('cancel', None, time.monotonic())
+                    self.pending.move_to_end(response_id, last=False)
+                    self.text_snapshots.pop(response_id, None)
+            self._flush_pending()
+        if failure:
+            self.on_event(kind='alignment.warning', response_id=response_id,
+                          reason='response_input_limit', message='Timestamp response input limit; this response cancelled, later replies remain enabled')
 
     def close(self):
         if self.closing.is_set():
             return
         self.enabled = False
         self.closing.set()
+        if self.sender is not None and self.sender is not threading.current_thread():
+            self.sender.join(timeout=1)
         if self.process is not None:
             try:
                 self.incoming.put_nowait(("stop", "", None, time.monotonic()))

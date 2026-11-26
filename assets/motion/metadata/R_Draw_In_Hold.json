@@ -1,0 +1,111 @@
+{
+  "schema_version": 3,
+  "file_format_version": 1,
+  "name": "R_Draw_In_Hold",
+  "category": "semantic",
+  "type": "motion",
+  "label": "R端臂近身",
+  "description": "右臂肩roll外展约25°，右肘屈曲至约60°，右前臂收至胸前偏右侧。",
+  "robot_model": "G1-7DOF",
+  "source": "teach_with_name",
+  "version": 2,
+  "status": "approved",
+  "movement_context": "stationary",
+  "scenes": [
+    "semantic"
+  ],
+  "notes": "",
+  "sha256": "15ecc566cfbd9ac6befaf54a2aaaf12cdcf9a8560edf316821753dd70d6e24fd",
+  "verified_by": "kwx",
+  "verified_at": "2026-11-25T23:16:35+08:00",
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0,
+    300
+  ],
+  "nominal_duration_ms": 300,
+  "entry_pose": [
+    0.227856,
+    0.249188,
+    0.039224,
+    0.864926,
+    -0.008437,
+    0.0,
+    0.0,
+    -0.177534,
+    -0.360282,
+    -0.583116,
+    0.334671,
+    0.005657,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    0.189543,
+    0.200292,
+    0.113646,
+    0.855314,
+    -0.008497,
+    0.0,
+    0.0,
+    -0.329123,
+    -0.661409,
+    0.756384,
+    -0.8022,
+    0.674808,
+    0.0,
+    0.0
+  ],
+  "loopable": false,
+  "interruptible": true,
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "safety": {
+    "max_velocity_rad_s": 0.4,
+    "max_acceleration_rad_s2": 0.8,
+    "joint_limits_profile": "config/arm_joint_limits.json"
+  },
+  "gesture_group": "semantic",
+  "gesture_subcategory": "指代",
+  "recording_task_id": "04",
+  "timing_profile": {
+    "phase_weights": {
+      "transition": 1,
+      "core": 2,
+      "hold": 1
+    },
+    "minimum_total_ms": 901,
+    "frame_weights": []
+  },
+  "preview_confirmation": {
+    "sha256": "15ecc566cfbd9ac6befaf54a2aaaf12cdcf9a8560edf316821753dd70d6e24fd",
+    "version": 2,
+    "timing_profile": {
+      "phase_weights": {
+        "transition": 1,
+        "core": 2,
+        "hold": 1
+      },
+      "minimum_total_ms": 901,
+      "frame_weights": []
+    },
+    "total_ms": 901
+  }
+}

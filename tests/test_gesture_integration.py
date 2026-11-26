@@ -9,11 +9,12 @@ from GuideBot.gesture.service import GestureService
 
 
 class GestureIntegrationTests(unittest.TestCase):
-    def test_robot_immediate_mode_does_not_start_aligner(self):
+    def test_robot_defaults_to_keyframe_alignment_with_startup_buffer(self):
         with patch.dict('os.environ', {'GUIDEBOT_GESTURE_EXECUTION_MODE': 'robot'}, clear=False):
             session = RealtimeSession('dummy', Path('/tmp/unused-gesture-session'), gestures=True, gesture_service_factory=GestureService)
-        self.assertIsNone(session.timestamps)
-        self.assertTrue(session.gestures.scheduler.immediate)
+        self.assertIsNotNone(session.timestamps)
+        self.assertFalse(session.gestures.scheduler.immediate)
+        self.assertEqual(session.speaker.startup_buffer_s, 3.)
 
     def session(self):
         value = RealtimeSession('dummy', Path('/tmp/unused-gesture-session'), gestures=True, gesture_service_factory=GestureService)

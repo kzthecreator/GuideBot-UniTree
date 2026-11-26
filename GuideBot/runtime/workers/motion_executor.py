@@ -43,28 +43,68 @@ class MotionExecutor:
         start = event['start_monotonic']
         arrival = event['arrival_monotonic']
         end = event.get('end_monotonic', 0.)
+        if event.get('timing_mode') == 'semantic_keyframes':
+            from GuideBot.gesture.timing import phases
+            entry, minimum, minimum_hold = phases(asset)
+            core, hold = event['core_s'], event['hold_s']
+            if (any(type(v) not in (int,float) or not math.isfinite(v) for v in (core,hold))
+                    or core < minimum or hold < minimum_hold or core > 600 or hold > 300):
+                raise ValueError('Invalid semantic phase timing')
+            required = entry+core+hold
+            if end-max(now,start) < required+.05:
+                raise MotionTimingRejected('semantic_deadline_too_close', end-max(now,start), required+.05)
+            step = dict(type=item['asset_type'], name=item['motion_name'],
+                        transition_ms=1000, hold_ms=round(hold*1000))
+            if core:
+                step['duration_ms'] = round(core*1000)
+            return {'序列': dict(sequence_name='guidebot_'+action, preserve_transition=True, steps=[step]),
+                    'end_monotonic': end, 'job_id': event['job_id']}
         if end:
             if not math.isfinite(end) or not math.isfinite(start):
                 raise ValueError('Action end deadline passed or invalid')
             timing = self.catalog.execution_timing(action)
+            # Retain only the native resolver's existing 50ms deadline check
+            # when the optional coordination reserve is disabled.
+            budget_ms = max(50, round(timing['reserved_overhead_s']*1000))
+            if 'minimum_total_ms' in timing:
+                remaining = end-max(now, start)
+                if math.floor(remaining*1000)-budget_ms < timing['minimum_total_ms']:
+                    raise MotionTimingRejected('insufficient_remaining_time', remaining,
+                                               timing['minimum_total_ms']/1000+budget_ms/1000)
+                step = dict(type=item['asset_type'], name=item['motion_name'],
+                            total_ms=min(600000, max(timing['minimum_total_ms'],
+                                                    math.floor(remaining*1000)-budget_ms)))
+                return {'序列': dict(sequence_name='guidebot_'+action, steps=[step]),
+                        'end_monotonic': end, 'job_id': event['job_id']}
             remaining = end-max(now, start)
             if remaining <= 0:
                 raise MotionTimingRejected('end_deadline_passed', remaining, timing['minimum_remaining_s'])
-            # Never accelerate the recorded core. Reserve worst-case existing
-            # measured/commanded reconciliation (500ms) and IPC/tick margin.
+            # Never accelerate the recorded core. The optional coordination
+            # reserve comes from the catalog; native deadline margin stays.
             core_ms = round(timing['recorded_core_s']*1000)
             minimum_entry = timing['minimum_transition_s']*1000
-            available_ms = math.floor((end-max(now, start))*1000) - core_ms - 650
+            available_ms = math.floor((end-max(now, start))*1000) - core_ms - budget_ms
             transition_ms = min(2000, available_ms)
             if transition_ms < minimum_entry:
                 raise MotionTimingRejected('insufficient_remaining_time', remaining,
-                                           timing['minimum_remaining_s'])
+                                           timing['recorded_core_s'] + timing['minimum_transition_s'] + budget_ms/1000)
             step = dict(type=item['asset_type'], name=item['motion_name'],
                         transition_ms=transition_ms)
             if core_ms:
                 step['duration_ms'] = core_ms
             return {'序列': dict(sequence_name='guidebot_'+action, steps=[step]),
                     'end_monotonic': end, 'job_id': event['job_id']}
+        from drivers.unitree_motion.planning import confirmed_timing
+        confirmed = confirmed_timing(meta)
+        if confirmed:
+            if now >= arrival or (arrival-max(now,start)) < confirmed['transition_s']:
+                raise ValueError('Insufficient transition time for confirmed preview')
+            return {'序列': dict(sequence_name='guidebot_'+action, steps=[dict(
+                type=item['asset_type'], name=item['motion_name'],
+                total_ms=min(600000, max(confirmed['minimum_total_ms'],
+                    math.ceil((arrival-max(now,start))*1000 *
+                              sum(meta['timing_profile']['phase_weights'].values()) /
+                              meta['timing_profile']['phase_weights']['transition']))))])}
         if now >= arrival:
             raise ValueError('Action arrival deadline passed')
         available_ms = round((arrival - max(now, start)) * 1000)

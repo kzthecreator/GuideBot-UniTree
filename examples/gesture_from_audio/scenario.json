@@ -1,0 +1,9 @@
+{
+  "name": "g1_self_introduction",
+  "audio": "data/g1_selfprompt.mp3",
+  "timestamps": "data/g1_selfprompt.timestamps.json",
+  "prompt_variant": "minimal",
+  "stream_step_s": 4.0,
+  "text_lookahead_s": 6.0,
+  "max_actions_per_request": 3
+}

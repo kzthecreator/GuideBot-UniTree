@@ -1,40 +1,530 @@
 [
-  {"text":"欢迎来到我们的展厅。","targets":[],"interaction_context":{"stage":"welcome","history":[]},"actions":[{"action":"greet_open","start_unit":0,"arrival_unit":1}]},
-  {"text":"各位来宾下午好，很高兴见到大家。","targets":[],"interaction_context":{"stage":"welcome","history":[]},"actions":[{"action":"greet_open","start_unit":0,"arrival_unit":1}]},
-  {"text":"大家还有什么问题吗？","targets":[],"interaction_context":{"stage":"qa_invitation","history":["本展区讲解已经结束"]},"actions":[{"action":"greet_open","start_unit":0,"arrival_unit":1}]},
-  {"text":"谁愿意来体验一下这个互动装置？","targets":[],"interaction_context":{"stage":"participation_invitation","facts":["互动装置当前开放"]},"actions":[{"action":"greet_open","start_unit":0,"arrival_unit":1}]},
-  {"text":"欢迎说说你们对这个设计的看法。","targets":[],"interaction_context":{"stage":"feedback_invitation","history":["刚才已经介绍该设计"]},"actions":[{"action":"greet_open","start_unit":0,"arrival_unit":1}]},
-  {"text":"谢谢你的分享，很高兴听到你的想法。","targets":[],"interaction_context":{"stage":"open_response","history":["访客刚刚分享了积极看法"]},"actions":[{"action":"greet_open","start_unit":0,"arrival_unit":1}]},
-  {"text":"远处的朋友你们好！","targets":[],"actions":[{"action":"greet_wave","start_unit":0,"arrival_unit":1,"duration_s":2}]},
-  {"text":"你好，我看到你了，欢迎过来一起参观。","targets":[],"actions":[{"action":"greet_wave","start_unit":0,"arrival_unit":1,"duration_s":2}]},
-  {"text":"谢谢来访，再见，祝您参观愉快。","targets":[],"actions":[{"action":"greet_wave","start_unit":0,"arrival_unit":1,"duration_s":2}]},
-  {"text":"请跟我继续参观下一处展区。","targets":[],"interaction_context":{"navigation":{"status":"ready","destination":"next_area","route_confirmed":true,"movement_allowed":true}},"actions":[{"action":"invite_follow","start_unit":0,"arrival_unit":1,"duration_s":2}]},
-  {"text":"当前展厅已经讲解完，下一站请随我前往体验区。","targets":[],"interaction_context":{"navigation":{"status":"ready","destination":"experience_area","route_confirmed":true,"movement_allowed":true}},"actions":[{"action":"invite_follow","start_unit":0,"arrival_unit":1,"duration_s":2}]},
-  {"text":"欢迎跟我到前方已开放的互动区试一试。","targets":[],"interaction_context":{"navigation":{"status":"ready","destination":"interactive_area","route_confirmed":true,"movement_allowed":true}},"actions":[{"action":"invite_follow","start_unit":0,"arrival_unit":1,"duration_s":2}]},
-  {"text":"根据展厅导览图，核心展项就在机器人正前方，请看这里。","targets":[],"interaction_context":{"scene":{"confirmed":true,"direction":"center","target_id":"core_exhibit"}},"actions":[{"action":"present_center","start_unit":0,"arrival_unit":1}]},
-  {"text":"请留意正前方中央展区的结构特点。","targets":[],"interaction_context":{"scene":{"confirmed":true,"direction":"center","target_id":"center_area"}},"actions":[{"action":"present_center","start_unit":0,"arrival_unit":1}]},
-  {"text":"请看机器人左侧的展柜。","targets":[],"interaction_context":{"scene":{"confirmed":true,"direction":"left","target_id":"left_case"}},"actions":[{"action":"present_left","start_unit":0,"arrival_unit":1}]},
-  {"text":"左边这片区域是本次讲解的重点，大家可以观察它的布局。","targets":[],"interaction_context":{"scene":{"confirmed":true,"direction":"left","target_id":"left_area"}},"actions":[{"action":"present_left","start_unit":0,"arrival_unit":1}]},
-  {"text":"请看机器人右侧的展品。","targets":[],"interaction_context":{"scene":{"confirmed":true,"direction":"right","target_id":"right_exhibit"}},"actions":[{"action":"present_right","start_unit":0,"arrival_unit":1}]},
-  {"text":"右边这台设备是本区重点，请留意它的外观。","targets":[],"interaction_context":{"scene":{"confirmed":true,"direction":"right","target_id":"right_device"}},"actions":[{"action":"present_right","start_unit":0,"arrival_unit":1}]},
-  {"text":"请稍等片刻，我来核对开放时间。","targets":[],"interaction_context":{"task":{"status":"running"}},"actions":[{"action":"please_wait","start_unit":0,"arrival_unit":1}]},
-  {"text":"讲解暂停一下，我正在查询这项信息，马上继续。","targets":[],"interaction_context":{"task":{"status":"waiting"}},"actions":[{"action":"please_wait","start_unit":0,"arrival_unit":1}]},
-  {"text":"抱歉，我没有听清，能再说一遍吗？","targets":[],"interaction_context":{"asr":{"needs_repeat":true},"dialogue":{"state":"awaiting_rephrase"}},"actions":[{"action":"request_repeat","start_unit":0,"arrival_unit":1}]},
-  {"text":"您说的地点是指入口服务台还是中央展区？","targets":[],"interaction_context":{"asr":{"needs_repeat":true},"dialogue":{"state":"clarification_needed"}},"actions":[{"action":"request_repeat","start_unit":0,"arrival_unit":1}]},
-  {"text":"为了帮您查询，请问您想了解哪一类展品？","targets":[],"interaction_context":{"asr":{"needs_repeat":true},"dialogue":{"state":"missing_required_information"}},"actions":[{"action":"request_repeat","start_unit":0,"arrival_unit":1}]},
-  {"text":"最重要的是，维护前必须断电。","targets":[],"actions":[{"action":"emphasize_once","start_unit":0,"arrival_unit":1,"duration_s":2.5}]},
-  {"text":"总结来说，稳定性是这套系统最核心的优势。","targets":[],"actions":[{"action":"emphasize_once","start_unit":0,"arrival_unit":1,"duration_s":2.5}]},
-  {"text":"请记住，设备运行时不要打开防护罩。","targets":[],"actions":[{"action":"emphasize_once","start_unit":0,"arrival_unit":1,"duration_s":2.5}]},
-  {"text":"请看机器人右侧的展品，介绍结束后欢迎大家提问。","targets":[],"interaction_context":{"stage":"explanation_then_qa","facts":["目标在机器人右侧","展品介绍结束后进入问答"],"scene":{"confirmed":true,"direction":"right","target_id":"right_exhibit"}},"actions":[{"action":"present_right","start_unit":0,"arrival_unit":6},{"action":"greet_open","start_unit":7,"arrival_unit":17}]},
-  {"text":"这项服务周一到周五开放。","targets":[],"actions":[]},
-  {"text":"大家还有什么问题吗？（引导访客提问，不是机器人自己提出问题。）","targets":[],"actions":[{"action":"greet_open","start_unit":0,"arrival_unit":1}]},
-  {"text":"请和我握手，然后拍手欢迎大家。","targets":[],"actions":[]},
-  {"text":"我刚才引用了“欢迎大家提问”，现在继续介绍设备参数。","targets":[],"actions":[]},
-  {"text":"不要向右侧展示，那里目前没有开放。","targets":[],"actions":[]},
-  {"text":"假设我们邀请大家体验，但活动区今天并未开放。","targets":[],"actions":[]},
-  {"text":"机器人可以抓取展品并递给访客。","targets":[],"actions":[]},
-  {"text":"请精确指出左上方第三个按钮。","targets":[],"actions":[]},
-  {"text":"机器人说“请稍候”这句话出现在历史录音里。","targets":[],"actions":[]},
-  {"text": "我在听，请继续。", "targets": [], "actions": [{"action": "neutral", "start_unit": 0, "arrival_unit": 1}]},
-  {"text": "我会恢复自然待机。", "targets": [], "actions": [{"action": "neutral", "start_unit": 0, "arrival_unit": 1}]}
+  {
+    "text": "欢迎来到我们的展厅。",
+    "targets": [],
+    "interaction_context": {
+      "stage": "welcome",
+      "history": []
+    },
+    "actions": [
+      {
+        "action": "B_Open_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "各位来宾下午好，很高兴见到大家。",
+    "targets": [],
+    "interaction_context": {
+      "stage": "welcome",
+      "history": []
+    },
+    "actions": [
+      {
+        "action": "B_Open_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "大家还有什么问题吗？",
+    "targets": [],
+    "interaction_context": {
+      "stage": "qa_invitation",
+      "history": [
+        "本展区讲解已经结束"
+      ]
+    },
+    "actions": [
+      {
+        "action": "B_Open_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "谁愿意来体验一下这个互动装置？",
+    "targets": [],
+    "interaction_context": {
+      "stage": "participation_invitation",
+      "facts": [
+        "互动装置当前开放"
+      ]
+    },
+    "actions": [
+      {
+        "action": "B_Open_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "欢迎说说你们对这个设计的看法。",
+    "targets": [],
+    "interaction_context": {
+      "stage": "feedback_invitation",
+      "history": [
+        "刚才已经介绍该设计"
+      ]
+    },
+    "actions": [
+      {
+        "action": "B_Open_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "谢谢你的分享，很高兴听到你的想法。",
+    "targets": [],
+    "interaction_context": {
+      "stage": "open_response",
+      "history": [
+        "访客刚刚分享了积极看法"
+      ]
+    },
+    "actions": [
+      {
+        "action": "B_Open_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "远处的朋友你们好！",
+    "targets": [],
+    "actions": [
+      {
+        "action": "L_Greeting_Wave",
+        "start_unit": 0,
+        "arrival_unit": 1,
+        "duration_s": 2
+      }
+    ]
+  },
+  {
+    "text": "你好，我看到你了，欢迎过来一起参观。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "L_Greeting_Wave",
+        "start_unit": 0,
+        "arrival_unit": 1,
+        "duration_s": 2
+      }
+    ]
+  },
+  {
+    "text": "谢谢来访，再见，祝您参观愉快。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "L_Greeting_Wave",
+        "start_unit": 0,
+        "arrival_unit": 1,
+        "duration_s": 2
+      }
+    ]
+  },
+  {
+    "text": "请跟我继续参观下一处展区。",
+    "targets": [],
+    "interaction_context": {
+      "navigation": {
+        "status": "ready",
+        "destination": "next_area",
+        "route_confirmed": true,
+        "movement_allowed": true
+      }
+    },
+    "actions": [
+      {
+        "action": "B_Guiding_Swing",
+        "start_unit": 0,
+        "arrival_unit": 1,
+        "duration_s": 2
+      }
+    ]
+  },
+  {
+    "text": "当前展厅已经讲解完，下一站请随我前往体验区。",
+    "targets": [],
+    "interaction_context": {
+      "navigation": {
+        "status": "ready",
+        "destination": "experience_area",
+        "route_confirmed": true,
+        "movement_allowed": true
+      }
+    },
+    "actions": [
+      {
+        "action": "B_Guiding_Swing",
+        "start_unit": 0,
+        "arrival_unit": 1,
+        "duration_s": 2
+      }
+    ]
+  },
+  {
+    "text": "欢迎跟我到前方已开放的互动区试一试。",
+    "targets": [],
+    "interaction_context": {
+      "navigation": {
+        "status": "ready",
+        "destination": "interactive_area",
+        "route_confirmed": true,
+        "movement_allowed": true
+      }
+    },
+    "actions": [
+      {
+        "action": "B_Guiding_Swing",
+        "start_unit": 0,
+        "arrival_unit": 1,
+        "duration_s": 2
+      }
+    ]
+  },
+  {
+    "text": "根据展厅导览图，核心展项就在机器人正前方，请看这里。",
+    "targets": [],
+    "interaction_context": {
+      "scene": {
+        "confirmed": true,
+        "direction": "center",
+        "target_id": "core_exhibit"
+      }
+    },
+    "actions": [
+      {
+        "action": "R_Center_Present",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "请留意正前方中央展区的结构特点。",
+    "targets": [],
+    "interaction_context": {
+      "scene": {
+        "confirmed": true,
+        "direction": "center",
+        "target_id": "center_area"
+      }
+    },
+    "actions": [
+      {
+        "action": "R_Center_Present",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "请看机器人左侧的展柜。",
+    "targets": [],
+    "interaction_context": {
+      "scene": {
+        "confirmed": true,
+        "direction": "left",
+        "target_id": "left_case"
+      }
+    },
+    "actions": [
+      {
+        "action": "L_Side_Present",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "左边这片区域是本次讲解的重点，大家可以观察它的布局。",
+    "targets": [],
+    "interaction_context": {
+      "scene": {
+        "confirmed": true,
+        "direction": "left",
+        "target_id": "left_area"
+      }
+    },
+    "actions": [
+      {
+        "action": "L_Side_Present",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "请看机器人右侧的展品。",
+    "targets": [],
+    "interaction_context": {
+      "scene": {
+        "confirmed": true,
+        "direction": "right",
+        "target_id": "right_exhibit"
+      }
+    },
+    "actions": [
+      {
+        "action": "R_Side_Present",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "右边这台设备是本区重点，请留意它的外观。",
+    "targets": [],
+    "interaction_context": {
+      "scene": {
+        "confirmed": true,
+        "direction": "right",
+        "target_id": "right_device"
+      }
+    },
+    "actions": [
+      {
+        "action": "R_Side_Present",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "请稍等片刻，我来核对开放时间。",
+    "targets": [],
+    "interaction_context": {
+      "task": {
+        "status": "running"
+      }
+    },
+    "actions": [
+      {
+        "action": "L_Front_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "讲解暂停一下，我正在查询这项信息，马上继续。",
+    "targets": [],
+    "interaction_context": {
+      "task": {
+        "status": "waiting"
+      }
+    },
+    "actions": [
+      {
+        "action": "L_Front_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "抱歉，我没有听清，能再说一遍吗？",
+    "targets": [],
+    "interaction_context": {
+      "asr": {
+        "needs_repeat": true
+      },
+      "dialogue": {
+        "state": "awaiting_rephrase"
+      }
+    },
+    "actions": [
+      {
+        "action": "R_Head_Side_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "您说的地点是指入口服务台还是中央展区？",
+    "targets": [],
+    "interaction_context": {
+      "asr": {
+        "needs_repeat": true
+      },
+      "dialogue": {
+        "state": "clarification_needed"
+      }
+    },
+    "actions": [
+      {
+        "action": "R_Head_Side_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "为了帮您查询，请问您想了解哪一类展品？",
+    "targets": [],
+    "interaction_context": {
+      "asr": {
+        "needs_repeat": true
+      },
+      "dialogue": {
+        "state": "missing_required_information"
+      }
+    },
+    "actions": [
+      {
+        "action": "R_Head_Side_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "最重要的是，维护前必须断电。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "B_Single_Emphasis",
+        "start_unit": 0,
+        "arrival_unit": 1,
+        "duration_s": 2.5
+      }
+    ]
+  },
+  {
+    "text": "总结来说，稳定性是这套系统最核心的优势。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "B_Single_Emphasis",
+        "start_unit": 0,
+        "arrival_unit": 1,
+        "duration_s": 2.5
+      }
+    ]
+  },
+  {
+    "text": "请记住，设备运行时不要打开防护罩。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "B_Single_Emphasis",
+        "start_unit": 0,
+        "arrival_unit": 1,
+        "duration_s": 2.5
+      }
+    ]
+  },
+  {
+    "text": "请看机器人右侧的展品，介绍结束后欢迎大家提问。",
+    "targets": [],
+    "interaction_context": {
+      "stage": "explanation_then_qa",
+      "facts": [
+        "目标在机器人右侧",
+        "展品介绍结束后进入问答"
+      ],
+      "scene": {
+        "confirmed": true,
+        "direction": "right",
+        "target_id": "right_exhibit"
+      }
+    },
+    "actions": [
+      {
+        "action": "R_Side_Present",
+        "start_unit": 0,
+        "arrival_unit": 6
+      },
+      {
+        "action": "B_Open_Hold",
+        "start_unit": 7,
+        "arrival_unit": 17
+      }
+    ]
+  },
+  {
+    "text": "这项服务周一到周五开放。",
+    "targets": [],
+    "actions": []
+  },
+  {
+    "text": "大家还有什么问题吗？（引导访客提问，不是机器人自己提出问题。）",
+    "targets": [],
+    "actions": [
+      {
+        "action": "B_Open_Hold",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "请和我握手，然后拍手欢迎大家。",
+    "targets": [],
+    "actions": []
+  },
+  {
+    "text": "我刚才引用了“欢迎大家提问”，现在继续介绍设备参数。",
+    "targets": [],
+    "actions": []
+  },
+  {
+    "text": "不要向右侧展示，那里目前没有开放。",
+    "targets": [],
+    "actions": []
+  },
+  {
+    "text": "假设我们邀请大家体验，但活动区今天并未开放。",
+    "targets": [],
+    "actions": []
+  },
+  {
+    "text": "机器人可以抓取展品并递给访客。",
+    "targets": [],
+    "actions": []
+  },
+  {
+    "text": "请精确指出左上方第三个按钮。",
+    "targets": [],
+    "actions": []
+  },
+  {
+    "text": "机器人说“请稍候”这句话出现在历史录音里。",
+    "targets": [],
+    "actions": []
+  },
+  {
+    "text": "我在听，请继续。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "B_Neutral_Rest",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  },
+  {
+    "text": "我会恢复自然待机。",
+    "targets": [],
+    "actions": [
+      {
+        "action": "B_Neutral_Rest",
+        "start_unit": 0,
+        "arrival_unit": 1
+      }
+    ]
+  }
 ]

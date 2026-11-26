@@ -129,13 +129,13 @@ class Scheduler:
 
     def request_base_pose(self, reason='interaction_state_change'):
         """Request the listening pose after cancelling any speaking action."""
-        item = self.catalog.definitions.get('neutral')
-        asset = self.catalog.assets.get('neutral')
+        item = self.catalog.definitions.get('B_Neutral_Rest')
+        asset = self.catalog.assets.get('B_Neutral_Rest')
         if not item or not asset:
             raise ValueError('Scheduler base pose is unavailable')
         now = self.clock()
         if self.active and now < self.active['busy_until']:
-            return self.event('gesture.skipped', '__scheduler__', action='neutral',
+            return self.event('gesture.skipped', '__scheduler__', action='B_Neutral_Rest',
                               reason='upper_body_busy')
         if asset['metadata']['status'] != 'approved':
             raise ValueError('Scheduler base pose is not approved')
@@ -143,13 +143,13 @@ class Scheduler:
             self.event('gesture.superseded', self.active['rid'],
                        job_id=self.active['job'].id)
         self.base_pose_serial += 1
-        job = Job(f'base_pose:{self.base_pose_serial}', Plan('neutral', 0, 0, {}),
+        job = Job(f'base_pose:{self.base_pose_serial}', Plan('B_Neutral_Rest', 0, 0, {}),
                   (), 0, status='committed')
         # Leave transport margin above the native minimum 500ms transition.
         arrival = now + 2.0
         self.active = dict(rid='__scheduler__', job=job, end=None, busy_until=arrival)
         result = self.event('gesture.command', '__scheduler__', job_id=job.id,
-                            action='neutral', scheduler_managed=True, simulated=True,
+                            action='B_Neutral_Rest', scheduler_managed=True, simulated=True,
                             start_monotonic=now, arrival_monotonic=arrival,
                             compressed=False, reason=reason)
         if isinstance(result, dict) and result.get('execution_error'):
@@ -179,6 +179,7 @@ class Scheduler:
             self.event('gesture.completed', self.active['rid'], job_id=self.active['job'].id)
             self.active['job'].status = 'completed'
             self.active = None
+        self._tick_semantic(now)
         self._tick_deadlines()
         if self.immediate:
             self._tick_immediate(now)
@@ -186,7 +187,7 @@ class Scheduler:
         ready = []
         for rid, reply in self.replies.items():
             for job in reply.jobs:
-                if job.plan.end_s is not None:
+                if job.plan.end_s is not None or 'keyframes' in job.plan.parameters:
                     continue
                 if job.status not in {'waiting', 'scheduled'}:
                     continue
@@ -249,7 +250,7 @@ class Scheduler:
             if reply.playback_origin is None:
                 continue
             for job in reply.jobs:
-                if job.plan.end_s is not None:
+                if job.plan.end_s is not None or 'keyframes' in job.plan.parameters:
                     continue
                 if job.status != 'waiting':
                     continue
@@ -275,6 +276,65 @@ class Scheduler:
                     self.event('gesture.skipped', rid, job_id=job.id,
                                reason='execution_rejected', detail=result['execution_error'])
                 return
+
+    def _tick_semantic(self, now):
+        from .timing import compile_intent
+        for rid, reply in self.replies.items():
+            if reply.playback_origin is None:
+                continue
+            committed_end = max((j.timing['deadline_s'] for j in reply.jobs
+                if j.status in {'committed', 'completed'} and isinstance(j.timing, dict)), default=0.)
+            candidates = []
+            for job in reply.jobs:
+                if 'keyframes' not in job.plan.parameters or job.status not in {'waiting', 'scheduled'}:
+                    continue
+                frames = job.plan.parameters['keyframes']
+                if any(row['unit'] not in reply.anchors for row in frames):
+                    continue
+                try:
+                    timing = compile_intent(self.catalog.assets[job.plan.action], frames,
+                                            reply.anchors, job.plan.parameters['hold_s'])
+                except ValueError as error:
+                    job.status = 'skipped'
+                    job.reason = str(error)
+                    self.event('gesture.skipped', rid, job_id=job.id, reason=job.reason)
+                    continue
+                candidates.append((timing['start_s'], job, timing))
+            for start, job, timing in sorted(candidates, key=lambda row: row[0]):
+                # Resolve conflicts before submission; never cancel a running action.
+                if start < committed_end:
+                    job.status = 'skipped'
+                    job.reason = 'semantic_window_conflict'
+                    self.event('gesture.skipped', rid, job_id=job.id, reason=job.reason)
+                    continue
+                if job.timing != timing:
+                    job.timing = timing
+                    self.event('gesture.scheduled', rid, job_id=job.id, **timing)
+                job.status = 'scheduled'
+                committed_end = timing['deadline_s']
+                wall = reply.playback_origin + start
+                # Submit ahead of the target; the host executor waits until wall.
+                # This is transport lead, not extra motion/keyword time.
+                if now < wall-.25:
+                    continue
+                if now-wall > .05 or (self.active and now < self.active['busy_until']):
+                    job.status = 'skipped'
+                    job.reason = 'semantic_plan_late_or_busy'
+                    self.event('gesture.skipped', rid, job_id=job.id,
+                               reason=job.reason, lateness_s=now-wall)
+                    continue
+                job.status = 'committed'
+                end = reply.playback_origin+timing['deadline_s']
+                self.active = dict(rid=rid, job=job, end=None, busy_until=end, deadline=True)
+                result = self.event('gesture.command', rid, job_id=job.id, action=job.plan.action,
+                    start_monotonic=wall, arrival_monotonic=reply.playback_origin+timing['arrival_s'],
+                    end_monotonic=end, timing_mode='semantic_keyframes', simulated=True,
+                    transition_s=1., core_s=timing['core_s'], hold_s=timing['hold_s'])
+                if isinstance(result, dict) and result.get('execution_error'):
+                    job.status = 'skipped'
+                    self.active = None
+                    self.event('gesture.skipped', rid, job_id=job.id,
+                               reason='execution_rejected', detail=result['execution_error'])
 
     def _tick_deadlines(self):
         ready = []
@@ -334,7 +394,7 @@ class Scheduler:
 
     def planning_history(self, rid):
         reply = self.replies.get(rid)
-        return [dict(j.plan.as_dict(), status=j.status, reason=j.reason)
+        return [dict(j.plan.as_dict(), status=j.status, reason=j.reason, resolved_timing=j.timing)
                 for j in reply.jobs if j.status != 'cancelled'] if reply else []
 
     def execution_result(self, job_id, success, reason=''):

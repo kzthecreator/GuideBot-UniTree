@@ -33,6 +33,11 @@ add_executable(demo_standing_waist_gesture demo_standing_waist_gesture.cpp)
 target_link_libraries(demo_standing_waist_gesture ${UNITREE_LIBS})
 
 enable_testing()
+add_executable(test_motion_catalog tests/test_motion_catalog.cpp)
+target_link_libraries(test_motion_catalog crypto)
+add_test(NAME motion_catalog COMMAND test_motion_catalog
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../assets/motion/config/motion_catalog.json)
+
 add_executable(test_standing_motion tests/test_standing_motion.cpp)
 add_test(NAME standing_motion COMMAND test_standing_motion)
 
@@ -53,3 +58,6 @@ target_link_libraries(motion_library_server ${UNITREE_LIBS} crypto)
 
 add_executable(record_motion teach_with_name.cpp)
 target_link_libraries(record_motion ${UNITREE_LIBS} crypto)
+
+add_executable(test_controller_lock tests/test_controller_lock.cpp)
+add_test(NAME controller_lock COMMAND test_controller_lock)

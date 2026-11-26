@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "01",
+      "name": "L_Forward_Point",
+      "label": "L前伸指位",
+      "group": "semantic",
+      "subcategory": "指代",
+      "description": "左臂肩pitch前伸至约45°，左肘伸直，左臂线固定于前方偏左侧。"
+    },
+    {
+      "id": "02",
+      "name": "R_Forward_Point",
+      "label": "R前伸指位",
+      "group": "semantic",
+      "subcategory": "指代",
+      "description": "右臂肩pitch前伸至约45°，右肘伸直，右臂线固定于前方偏右侧。"
+    },
+    {
+      "id": "03",
+      "name": "L_Draw_In_Hold",
+      "label": "L端臂近身",
+      "group": "semantic",
+      "subcategory": "指代",
+      "description": "左臂肩roll外展约25°，左肘屈曲至约60°，左前臂收至胸前偏左侧。"
+    },
+    {
+      "id": "04",
+      "name": "R_Draw_In_Hold",
+      "label": "R端臂近身",
+      "group": "semantic",
+      "subcategory": "指代",
+      "description": "右臂肩roll外展约25°，右肘屈曲至约60°，右前臂收至胸前偏右侧。"
+    },
+    {
+      "id": "05",
+      "name": "B_Parallel_Drop",
+      "label": "B垂臂并线",
+      "group": "semantic",
+      "subcategory": "描摹",
+      "description": "双肩pitch归零，双肘伸直，双臂与躯干平行下垂。"
+    },
+    {
+      "id": "06",
+      "name": "B_Alternating_Swing",
+      "label": "B交替小摆",
+      "group": "semantic",
+      "subcategory": "描摹",
+      "description": "双臂于体侧做缓慢小幅前后交替摆动：左臂肩pitch前10°时右臂后-5°，随后互换。"
+    },
+    {
+      "id": "07",
+      "name": "L_Upright_Split",
+      "label": "L竖臂分位",
+      "group": "semantic",
+      "subcategory": "描摹",
+      "description": "左臂肩roll外展、左肘屈曲，左前臂竖立于身体左侧，通过左肩pitch微调使左前臂在两个相近方位间切换。"
+    },
+    {
+      "id": "08",
+      "name": "R_Upright_Split",
+      "label": "R竖臂分位",
+      "group": "semantic",
+      "subcategory": "描摹",
+      "description": "右臂肩roll外展、右肘屈曲，右前臂竖立于身体右侧，通过右肩pitch微调使右前臂在两个相近方位间切换。"
+    },
+    {
+      "id": "09",
+      "name": "L_Short_Nudge",
+      "label": "L短促前送",
+      "group": "prosody",
+      "subcategory": "节拍/强调",
+      "description": "左臂肩pitch前送约10°，左肘微屈约15°，短促送出。",
+      "family": "beat"
+    },
+    {
+      "id": "10",
+      "name": "R_Short_Nudge",
+      "label": "R短促前送",
+      "group": "prosody",
+      "subcategory": "节拍/强调",
+      "description": "右臂肩pitch前送约10°，右肘微屈约15°，短促送出。",
+      "family": "beat"
+    },
+    {
+      "id": "11",
+      "name": "B_Lateral_Beat",
+      "label": "B侧展节拍",
+      "group": "prosody",
+      "subcategory": "节拍/强调",
+      "description": "双肩同步外展-内收一次，roll轴±15°，双肘保持微屈。",
+      "family": "beat"
+    },
+    {
+      "id": "12",
+      "name": "B_Sync_Push_Pull",
+      "label": "B同步推拉",
+      "group": "prosody",
+      "subcategory": "节拍/强调",
+      "description": "双肘屈曲约90°，双前臂平行指前，双肩pitch同步做±8°前后推拉。",
+      "family": "beat"
+    },
+    {
+      "id": "13",
+      "name": "L_Single_Arm_Beat",
+      "label": "L单臂点节拍",
+      "group": "prosody",
+      "subcategory": "节拍/强调",
+      "description": "左臂肩pitch做一次短促下压。",
+      "family": "beat"
+    },
+    {
+      "id": "14",
+      "name": "R_Single_Arm_Beat",
+      "label": "R单臂点节拍",
+      "group": "prosody",
+      "subcategory": "节拍/强调",
+      "description": "右臂肩pitch做一次短促下压。",
+      "family": "beat"
+    },
+    {
+      "id": "15",
+      "name": "L_Center_Rest",
+      "label": "L中线停驻",
+      "group": "prosody",
+      "subcategory": "起止/姿态管理",
+      "description": "左肘屈曲约90°、左前臂停于腹部前方中轴线上，右臂自然下垂。",
+      "family": "posture"
+    },
+    {
+      "id": "17",
+      "name": "B_Neutral_Rest",
+      "label": "B归位静止（复用 B_Neutral_Rest）",
+      "group": "prosody",
+      "subcategory": "起止/姿态管理",
+      "description": "直接复用动作库已有 B_Neutral_Rest 姿态，以其已录制关节数据为准，无需重新录制。",
+      "reuse_existing": true,
+      "family": "posture"
+    }
+  ]
+}

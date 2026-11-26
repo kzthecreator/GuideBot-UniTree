@@ -61,10 +61,10 @@
     600,
     900
   ],
-  "label": "invite_follow",
+  "label": "B_Guiding_Swing",
   "loopable": false,
   "movement_context": "stationary",
-  "name": "invite_follow",
+  "name": "B_Guiding_Swing",
   "nominal_duration_ms": 900,
   "notes": "",
   "robot_model": "G1-7DOF",

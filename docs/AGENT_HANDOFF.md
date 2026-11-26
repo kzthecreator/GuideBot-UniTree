@@ -1,3 +1,243 @@
+# 2026-11-26 流式可规划范围/对齐积压/日志修复
+
+service规划锚点改为known future+未覆盖，不再已发送末尾16单元；immediate保留旧范围。时间戳宿主pending合并文本/音频，IPC queue=1，后台flush，取消优先；worker按4秒吸收突发音频，最新回复优先。实时12秒滚动窗口+起点游标，final_repair=False，离线完整对齐不变。真实lab626回放249锚点、0.82~1.98秒计算，58.32秒整段burst最终249时间戳无warning；证据artifacts/diagnostics/streaming-fixes-20261126。stream Prompt默认单关键帧，刷新导出；宿主日志改gesture-transport.jsonl，服务独占gesture.jsonl。3秒缓存未改，未启动真机。
+
+# 2026-11-26 流式请求快照与回复时延
+
+新增ReplyLatency按轮关联speech_stopped事件接收与首次playback.started，终端及reply-latency.jsonl仅记录这一时延，明确非声学测量。GestureService后台规划请求保存input/messages/raw-response/validated-actions/result到planner-requests/<id>，Planner新增可选trace只捕获消息内容，不记录鉴权。未改Prompt/调度/缓存参数。相关35项测试通过，未启动硬件。
+
+# 2026-11-26 ROS待机后连接拒绝修复
+
+foxy-wov1x58l实际原因是系统3.8缺dotenv导致gesture节点退出，前次offline验证未覆盖配置加载。runner改用stdlib读取LocalRuntime专用JSON值配置，不安装依赖。节点清单移到Implementation构造成功后，LocalRuntime须四节点清单和健康检查同时通过才返回就绪。真实配置仅待机验证成功、未调用云端或硬件；新增配置解析回归测试。
+
+# 2026-11-26 Foxy Python ABI启动修复
+
+实际GuideBot Conda为Python3.10，本机Foxy rclpy为3.8 ABI。ros_environment不再注入Conda purelib/lib，GUIDEBOT_PYTHON固定系统/usr/bin/python3；LocalRuntime启动ROS launcher及run使用该解释器，宿主语音/模型进程仍用Conda。已实际离线待机图启动/退出通过：~/.local/state/guidebot/ros2/foxy-9o1bzwuk，未激活硬件。沙箱内DDS受限，待机验证需本地网络权限。
+
+# 2026-11-26 流式测试默认时序及逐轮摘要
+
+launcher默认timing由immediate统一为aligned，显式环境覆盖仍保留。GestureService新增文本/对齐观察事件及DialogueSummary，gesture-summary.json按response_id保存请求耗时、候选、调度/修订、尝试下发、完成、跳过/取消和错误。摘要原子替换，OSError不影响调度；下发不代表物理成功。README新增当前测试命令。29项相关unittest通过；未实调API、播放或启动真机。
+
+# 2026-11-26 单命令导览素材到可演练方案
+
+新增tools/narration/prepare_plan.py，文本->TTS或--audio->本地时间戳->whole-text规划->修订后排除冲突->原生与rehearse只读检查，成功才写ready.json；materials/和plan/分开。preplan_keyframes新增--auto-prefix/--finalize-conflicts，按每轮候选反推起点补足静音（不是固定0.8），最终音频时间戳和SHA同步更新；默认旧行为不变。未实调新TTS；使用历史真实模型候选离线检查有/无补静音路径。
+
+# 2026-11-26 lab626全文动作试规划
+
+preplan_keyframes.py新增--scenario读取narration输出，保留旧默认输入。实际DeepSeek三轮结果13/3、12/3、13/1（通过/失败），最后B_Lateral_Beat与前序重叠，未自动剔除也未生成演练序列。报告artifacts/gesture-from-audio/lab626/whole-text-v1/report.md。未播放或启动机器人。
+
+# 2026-11-26 导览词素材生成工具
+
+新增tools/narration/prepare.py及README、文本模板；synthesize复用测试脚本StepFun step-tts-2（环境音色可覆盖），align使用已有本地FP32 MonotonicBackend。输出text/audio/timestamps/scenario/manifest；新目录保护、源音频及文本指纹、可选精确前置静音。soundfile+scipy解码重采样，不安装依赖。已用原自我介绍MP3真实离线对齐验证116单元/29.504秒，通过现有inputs校验；结果/tmp/guidebot-narration-smoke-20261126。TTS云端合成未实调；lab626录音尚未对齐，需要确认过的文本。preplan_keyframes仍固定旧素材，后续应接scenario。
+
+# 2026-11-26 整段表达Prompt试规划（未通过）
+
+新增prompt_preplan.md；preplan_keyframes.py --whole-text使用全文Prompt，一次不限3动作，最多两次全局修订。catalog仅whole_text_preplan分支切换Prompt，Planner该模式解除3条解析限制并提高输出预算，其他模式默认不变。实际调用DeepSeek两轮实验whole-text-expression-preplan和-v2均在修订后仍有冲突，v2/report.md保存审阅结果，不存在可演练整段序列；默认手工方案不变。未启动音频或机器人。
+
+# 2026-11-26 示例默认切换为手工逐句规划
+
+按用户要求，rehearse.py默认结果改为manual-neutral-closing（9动作），README同步起始B_Parallel_Drop和29.504秒音频。删除旧complete-unlimited-1s-replanned/report.md，旧方案其他数据保留。真机仍需--robot及Enter。
+
+# 2026-11-26 最新Prompt真实DeepSeek重新规划G1自我介绍
+
+用户要求利用最新Prompt重规划，按播放前完整预规划处理，已提前告知不是流式延迟测试。新增examples/gesture_from_audio/preplan_keyframes.py，生产Planner与精确同一System Prompt，全部原文/离线时间戳输入、每批最多3、existing_actions与未来eligible锚点衔接；固定1秒切换/验收核心下限，规划阶段排除重叠与过短关键词间隔。沿用已成功示例0.8秒静音音频和B_Parallel_Drop初态，生成独立latest-prompt-preplan，不覆写手工9动作或默认7动作。第一次网络沙箱失败保存在latest-prompt-preplan-network-failed；获准网络后真实deepseek-chat共5批15候选，10接受5拒绝，原生11steps轨迹29.204秒、音频29.504秒，rehearse只读通过。初次脚本记录拒绝候选有结构错误已修复，复用正常完成的两批原响应后继续，没有重复请求这些批次。
+
+10动作：R_Draw_In_Hold 3.399–5.150，L_Side_Present 5.310–6.810，R_Side_Present 7.050–8.550，L_Upright_Split 12.710–14.130，B_Sync_Push_Pull 15.290–17.090，L_Forward_Point 17.710–19.010，L_Short_Nudge 20.139–21.590，B_Sync_Push_Pull 21.910–23.450，R_Upright_Split 23.730–25.090，B_Neutral_Rest 27.990–28.990。静态间隙编成保持至下一动作，最后保持至29.204秒。模型未为开场和ROS2单独配动作，“我主要用来”的左前伸和“双足/全身”的左右展示是否自然待审阅，不能宣称等同手工示例。
+
+各batch保存精确messages/raw-response/编排和统计，完整报告Markdown/HTML、Prompt和描述快照、序列/动作指纹均保存。--resume已无网络复现全部5批，精确Prompt和描述核对一致；最终只读门禁通过。新增网页索引与README，未启动真机/音频；已真实调用DeepSeek，密钥只读本机配置且未输出。
+
+# 2026-11-26 按语义段组织流式Prompt协同批次
+
+用户确认仅改Prompt，不增schema或改调度。prompt_stream.md重写为规则/示例/约束：每批最多3、后续可多批，左右分侧串行，语义/韵律按语境分工且允许纯韵律，优先覆盖有表达价值段落但时间优先；抽象关系考虑形态匹配B_条目，专名按项目配拍可合并省略，按段落收束而非每动作回中性。明确多帧可对齐多词但必须真实姿态适合、统一核心缩放；完整经过所有帧、hold仅末帧后、不得左右独立叠加；输出按反推开始时间顺序，数组不是顺延队列。
+
+保留并调整原3例，新增左右分组2动作、语义展示接韵律强调2动作、双臂抽象过程、三专名两帧加后续短促节拍，共7例10动作。没有虚构R_Upright_Split.frame2或缺失Center_Rest，推拉方向未写死。备份artifacts/backups/prompt-stream-before-coordination-20261126-160244.md。刷新artifacts/gesture-prompt/stream；7例通过Catalog验证，人工充分时间窗口下编排串行无重叠，校验见coordination-example-check.json（不代表真实语音效果）。导出与生产messages完全一致，13项相关测试通过。未改用户动作描述、轨迹、验收、schema或执行代码；未调用DeepSeek/播放音频/启动真机。
+
+# 2026-11-26 用户审阅版物理描述与关键词对齐示例
+
+用户授权修改后自行审阅。prompt_descriptions.json全部24条统一为姿态/真实帧序/结束可保持状态，保留用户新增腹前/抬臂信息，具体角度模糊处理；真实帧数来自Catalog，B_Guiding_Swing明确0/2和1/3两方位交替且左臂相对稳定，B_Lateral_Beat明确展开到收拢，B_Sync_Push_Pull不虚构完整往返，Upright_Split不推定眼/嘴方向。待用户目视校正的方位在docs/experiments/gesture-description-review.md标明，附24条前后对照。
+
+prompt_stream.md补充先选词句后选动作、表达帧对齐而非关键词时才启动、整条轨迹执行、统一核心缩放、末帧hold语义；加入自指胸前/静态展示/并列双词三个方法示例，不设语义硬绑定。刷新stream、minimal、unified/minimal导出。13项相关测试通过；单独校验24条hash绑定不变，3例均通过Catalog和时序编译，导出与生产组装一致。备份artifacts/backups/gesture-description-keyframes-before-20261126/。未改动作ID/轨迹/验收/调度代码，不改写已成功演练结果，未调用API或启动音频/真机。当前描述会在后续请求中生效，用户仍待审阅校正。
+
+# 2026-11-26 同步用户修改的动作Prompt描述
+
+用户修改prompt_descriptions.json，检查24条ID/hash全部有效，无需变更元数据/验收/轨迹。每次组装minimal或semantic_keyframes请求都会重新读取覆盖描述，下次规划生效。刷新artifacts/gesture-prompt/minimal及unified/minimal；export_prompt.py新增--variant stream，导出生产流式合同、执行帧数和核心下限，生成artifacts/gesture-prompt/stream。三个导出逐条描述与源一致，流式messages与生产messages拼装完全一致，6项Prompt测试通过。原版及历史请求/演练报告保留，不改写历史。未调用API、未播放音频或启动真机。
+
+# 2026-11-26 动作ID统一为L/R/B首字母大写格式
+
+用户确认30个旧ID迁移，10个可调用旧动作含neutral→B_Neutral_Rest，其余为禁用韵律或未录制预留目录。现目录44项全部同格式，24个可调用动作数量未变。文件名、metadata.name/英文ID标签、动作/韵律注册、录制清单、Prompt覆盖、few-shots、序列、业务/ROS工具与测试同步；轨迹25份SHA256及验收参数/版本不变。语义function标签invite_follow等仍是语义枚举，未作为动作ID改写。
+
+备份artifacts/backups/action-id-unification-before.tar.gz；完整映射与校验摘要assets/motion/action-id-migration.json，说明docs/experiments/action-id-unification.md。原版Prompt/网页、archive、旧回退备份与演练日志保留原样。original_prompt_template在加载原版Prompt时转换ID，旧Prompt文件不改；导出工具同步适配。新导出在artifacts/gesture-prompt/unified/。手工生成--closing选项现用B_Neutral_Rest；现有9动作和默认7动作结果目录/演练命令不变，仅迁移ID，连续轨迹时间完全一致。
+
+207项主测试、67项驱动工具测试、6项原生CTest通过；已重编译原生工具。两个演练入口只读检查通过。使用/usr/bin/python3匹配Foxy再通过真实本机ROS→IPC→原生离线播放器，证据stream-keyframes/ros-native-unified-acceptance.json。未启动机器人、声音或云端API。正在运行的网页/会话需重启加载新ID，未自动停止任何控制进程。Python3.10/Foxy3.8既有ABI限制仍未改变。
+
+# 2026-11-26 用户批准清理过时手势草案及精简模拟请求
+
+删除已列明的manual-semantic-draft、manual-approved-timing、manual-approved-timing-padded、comparison.md、prompt_before_reserve_removal.md及旧角度措辞Prompt快照。stream-keyframes仅保留首/中/末三份请求，summary/events/report/原生及ROS验收证据保留；完整清单见artifacts/gesture-cleanup-20261126.json。同步删除README和网页首页中的旧草案指引。正式动作资产、成功9动作方案、默认7动作方案、最新流式回退备份、全部演练日志在删除前后逐文件SHA256一致；原版Prompt/网页备份及archive未删除。本轮不改规划器代码，不播放或连接真机。
+
+# 2026-11-26 真实流式改用关键词关键帧意图
+
+GestureService默认semantic_keyframes（DeepSeek action/keyframes/hold_s），Planner严格校验，不再让模型安排起止秒数。统一timing.phases固定1秒入口、验收核心下限、可按关键词延长；多关键帧按验收frame_weights或录制时间比拟合。Scheduler在下发前解决冲突，未提交随alignment修订，已提交不抢占；MotionExecutor显式transition/duration/hold并preserve_transition，不沿用旧total_ms入口比例伸缩。真实会话默认aligned并启动原FP32对齐器；首音频包默认缓存3秒，GUIDEBOT_GESTURE_STARTUP_BUFFER_S可调0～30秒，不改变PCM或时间戳，未启用手势不加延迟。新时间戳版本可触发再规划。旧合同只供显式历史调用兼容，不在默认生产流式入口使用。
+
+删除原生standing_motion.minimum_duration及手动腰部/恢复两处角差速度估时，改显式1秒；限位/制动/急停保留。原成功manual-neutral-closing不变。增加stream_keyframes.py：默认离线夹具，--live才调用真实DeepSeek SSE，不启动硬件；模拟未来时间戳提前量不等于实际在线对齐能力。规则与局限见docs/experiments/stream-keyframe-planning.md。修改前流式源文件备份artifacts/backups/stream-keyframes-before/。新增7项关键词/SSE/缓存测试；204项主测试及6项原生CTest通过。ROS Action新增timing_mode/core_s/hold_s并已构建。用/usr/bin/python3（3.8）通过tools/ros2/keyframe_acceptance.py，真实本机ROS→IPC→原生offline-server执行1.2秒延长核心并完成；证据在stream-keyframes/ros-native-acceptance.json。Conda GuideBot实际为3.10，与Foxy3.8 ABI不匹配，未替换环境；不能宣称该Conda下整合真机就绪。未现场调用API、未启动音频或机器人。
+
+# 2026-11-26 逐句方案以 neutral 收束并开放手动真机入口
+
+用户明确以已有 neutral 替代缺失 R_Center_Rest。manual_plan.py 新增 --closing neutral；独立生成 manual-neutral-closing，9动作、0.8秒前置全零PCM、总音频29.504秒。neutral 27.410秒开始切换，28.410秒到位，整条轨迹29.204秒；随后维持至音频结束。replay_ready=true、missing_assets为空，原生10 steps整段检查和rehearse只读入口均通过。3项手工方案测试通过。README和报告首页补充入口。未播放音频、未初始化真机；用户须显式 --robot --result 指定该目录，并按Enter才启动。原默认7动作结果未替换。
+
+# 2026-11-26 完全移除几何速度估时，按验收时间和前置静音重排手工方案
+
+用户明确彻底弃用关节角差/速度/加速度保守估算。complete_plan.phase_times已删除该公式和safety读取，入口固定显式时间（默认1秒），核心仅来自已验收timing_profile最短总时长×核心占比，无profile才取录制标称核心；准备起始姿态固定2秒，亦不再用角差。新增回归将关节值改成±100、移除safety，证明输出不受其影响。未移除原生关节限位、制动或状态保护。
+
+新增manual_plan.py实现用户逐句安排：输出manual-approved-timing-padded，音频前填0.8s全零PCM（WAV输出，已重新解码核对前19200样本为0），音频29.504s，时间戳全部平移。播放前起始姿态B_Parallel_Drop，动态语义关键帧按末帧对齐，自指核心0.451秒/保持0.3秒，ROS2保持0.5秒，丰富取“丰”、稳定取“定”，感知两帧按视/音0.88秒（不低于已验收0.351秒）。其余核心0.351～0.451，未短于原验收配置。前8段时间无重叠，整条9steps轨迹19.890秒通过原生解析。无LLM调用、无音频或硬件启动。
+
+仍缺R_Center_Rest收束，summary.replay_ready=false/missing_assets明确列出，rehearse.load_plan在任何SDK初始化前拒绝未完整方案，不擅自替换。未来该资产入库且启用时manual_plan可把它加入末段，保持至语音末尾前0.1s（之后仍保持姿态）。当前默认7动作快照未覆写；新的完整逐句版本仍需补录/明确替代收束后才能真机。
+
+rehearse通用initial_pose字段支持已验收B_Parallel_Drop起始，旧方案默认neutral兼容；音频路径支持summary.audio_file WAV。run.report和模拟replay支持WAV，不把WAV伪装成MP3，summary在报告生成后落盘。旧manual-semantic-draft/report.md标记为历史并指向新草案；网页首页新增草案链接，README更新规则。196项主测试全部通过（包含时间规则与2项手工方案/拒绝未完整入口测试）。暂未擅自采用新草案替换当前7动作方案。
+
+# 2026-11-26 用户逐句DeepSeek动作安排：先生成草案并披露冲突
+
+用户提供从“最后这台”到“核心载体”的手工动作安排，要求先生成规划供后续真机演练。本轮仅生成artifacts/gesture-from-audio/g1-self-introduction/manual-semantic-draft/{intent-plan.json,report.md}，不改默认7动作方案、轨迹或验收，不启用缺失资产，不播放音频/接管硬件。8个已验收动作对应8语音段，收束R_Center_Rest缺失（此前取消16号）。动态动作语义目标按末帧而非现有编译器的首帧锚点核对。
+
+按固定1秒入口和当前phase_times核心：L_Short_Nudge核心1.818秒，要在0.990秒达到末帧需从-1.828秒开始；R_Draw_In_Hold核心3.849秒，要在“我”4.050秒达到胸前末帧需从-0.799秒开始，二者重叠。丰富8.570/稳定9.230间隔0.660不足容纳现有两轨迹；视觉12.910/音13.790间隔0.880小于R_Upright_Split核心3.412。未自动把关键帧改成进入首帧，也未擅自压缩核心。
+
+草案明确replay_ready=false，故不生成可能被演练入口误当成已验证方案的summary.json/sequence.json。建议待用户决策：开场提前/取消、自指提取已录末帧作独立静态目标、密集节拍重排或重新试播更短核心、感知动作整句对应或重验内部切换、补录收束或明确替代。报告给逐项绝对时间和冲突，不静默删成另一套规划。
+
+# 2026-11-26 用户确认清理旧示例，默认采用当前7动作
+
+先列清单获用户明确同意后，删除artifacts/gesture-from-audio/g1-self-introduction下preplan、stream、stream-total3-baseline、complete、complete-unlimited、complete-unlimited-1s六个目录，complete-3-actions.manifest.json及complete-comparison.md两文件；删除examples/gesture_from_audio/rehearse_legacy_stream.py和complete_plan_before_fixed_transition.py。没有扩大删除范围。
+
+保留当前complete-unlimited-1s-replanned，16个文件在清理前后逐个SHA核对完全一致；音频/时间戳源、正式动作/验收资产、历史rehearsals日志、原版prompt/构建代码备份、原版网页/服务端备份全部保留。root/index.html改为当前方案入口，未获删除授权的旧comparison.md改为当前方案指引，不残留失效链接。
+
+rehearse.py DEFAULT_RESULT已改为当前7动作方案；不再必须指定--result。complete_plan.py要求显式--output新目录，防止重建已清理的旧默认目录或覆盖当前采用方案。README重写为当前方案使用流程，动作文档同步；通用run.py的preplan/stream工具能力仍兼容，没有删除生产相关代码。当前默认入口只读检查通过、完整规划8项定向测试通过；主项目193项回归通过，文档bash语法检查通过，操作文档/脚本无删除路径残留引用。未启动SDK、音频、机器人或云端。
+
+# 2026-11-26 固定1秒后从头重新整段规划完成
+
+用户明确不要复用旧动作/锚点。complete_plan的intent_messages/select_intents新增transition_s参数，模型选择前收到固定1秒切换规则与各动作核心/必要保持execution_timing，不再误说按关节切换距离估算。实际不传--recompile-from重新调用DeepSeek，输出独立complete-unlimited-1s-replanned，无recompile-source.json。整段数量不限，最终7动作，均1秒切换，8steps连续轨迹27.617秒与原生一致：greet_open3.05/4.05/4.55，present_center6.01/7.01/7.31，B_Lateral_Beat7.57/8.57/10.786，L_Forward_Point12.09/13.09/13.39，B_Sync_Push_Pull15.29/16.29/18.363，R_Short_Nudge19.79/20.79/22.574，L_Draw_In_Hold23.11/24.11/27.617。
+
+原3动作、旧不限数量4动作、4动作重编译1秒版都保留。新增测试证明固定切换/实际核心预算在模型选择前进入请求，完整规划8项测试通过；新结果真机入口只读检查通过，未触发SDK、音频或机械。网页index新增新方案链接，README给明确单行--robot --result .../complete-unlimited-1s-replanned命令。不带result仍旧默认3动作，避免覆盖既有默认结果。
+
+# 2026-11-26 动作之间固定1秒切换
+
+用户认为原距离/v/a切换2～4秒太慢，要求两个动作间只留约1秒。complete_plan.phase_times默认transition_s=1.0，compile_timeline/CLI新增--transition-seconds（默认1），正式动作入口不再由角差放大；核心时长及最短总时长检查保持，hold会按总下限补齐。播放前准备neutral显式transition_s=None，继续按接管姿态估计并至少2秒。旧算法完整源码备份complete_plan_before_fixed_transition.py。
+
+新增--recompile-from既有完整方案，无API复用动作/anchor并核对音频/资产SHA/version，输出新目录。已将complete-unlimited原4动作重编译为complete-unlimited-1s：4次入口均1000ms，到位锚点相同，first greet_open新窗口3.050/4.050/4.550；B_Lateral_Beat7.570/8.570/10.786；R_Forward_Point18.090/19.090/19.390；R_Upright_Split23.510/24.510/28.222。原生完整5steps28.222秒与Python一致，真机入口只读检查通过。旧结果不覆盖、不自动改变，rehearse.py不带result仍原complete3动作；新演练必须指定complete-unlimited-1s。README给单行命令避免续行复制错误，网页index增加新链接。
+
+新增固定1秒与不同关节距离不相关的回归，完整规划7项测试通过；主项目192项全部通过。未重新调用LLM、未播放音频或接管机器人。核心较慢动作仍可能慢，按本次范围未压缩核心。
+
+# 2026-11-26 不限数量整段预规划对照完成
+
+用户要求保留原完整3动作方案，新增不限选择次数但同样可执行的完整方案。complete_plan.py增加--unlimited，提示词无数量上限、允许同一ID在不同锚点复用，compile_timeline的action_limit=None/allow_repeats=True；默认仍最多3且不重复，原complete目录14文件SHA逐项确认完全未变，manifest在complete-3-actions.manifest.json。
+
+真实DeepSeek最多2轮得到16/12候选，连续姿态切换/核心/保持与最短时间约束在规划阶段各排除12/8项，最终生成complete-unlimited的4动作：greet_open 1.910/4.050/4.350，B_Lateral_Beat 5.613/8.570/10.786，R_Forward_Point 15.152/19.090/19.390，R_Upright_Split 22.737/24.510/28.222。包含neutral等待的整段轨迹28.222秒，原生5steps预检与Python总时长一致。提示词和原始候选/冲突及模型usage/finish_reason均保存；不截取未正常完成的模型输出。
+
+rehearse.py按summary.action_limit校验（旧方案默认3，新unlimited明确null），因此可演练超过3动作的完整轨迹，仍要求neutral与资产快照及原生全段检查。默认不传result继续原complete3动作。新方案只读入口已通过，真机命令需--robot --result "$HOME/GuideBot-UniTree/artifacts/gesture-from-audio/g1-self-introduction/complete-unlimited"，继续先neutral、G1扬声器SDK、一次整段下发，未运行真机。
+
+新增2项测试验证5个重复动作无数量上限、原生连续6steps通过、真机加载超过3动作且显式limit3仍拒绝，以及新旧Prompt数量策略。定向6项完整规划测试通过；主项目191项全部通过。README有生成/检查/演练命令；complete-comparison.md和网页index提供原3动作与新4动作对照。不限数量不等于强行塞更多动作，仍受真实时长和轨迹约束；自然与实机协调效果待用户现场演练。
+
+# 2026-11-26 完整可执行预规划取代逐动作截止试错
+
+用户要求时间问题在完整规划阶段解决，宁可少动作。本轮增加examples/gesture_from_audio/complete_plan.py：LLM最多两次请求仅选最多3个action/anchor_unit意图，程序从neutral计算14关节切换、动态核心及保持时长（元数据v/a作保守时长估计，非加速度连续保证），冲突反馈重选或删减，静态空隙编成保持。单一连续Sequence经原生从neutral开始整段解析，核对Python/原生总时长相等，不再逐动作从自身入口检查。
+
+真实模型本轮方案保存artifacts/gesture-from-audio/g1-self-introduction/complete：greet_open 1.910开始/4.050到位/4.350结束；present_center 8.790/11.650/11.950；present_left 14.080/17.910/18.210。含初始等待、跨动作保持和切换的连续轨迹18.210秒，与原生解析一致，音频28.704秒。原preplan/stream及rehearse_legacy_stream.py保留；对照网页index新增complete链接。未播放音频/接管硬件。
+
+原生Sequence新增可选preserve_transition=true，仅完整预规划使用：保留零位移入口时间，不注入旧0.5秒纠偏段；继承已验收内部frame_weights。默认旧序列行为不变。native状态新增commanded_arm（接管时reset自实测），started日志移至deadline检查和player.start之后。新增C++回归证明预排轨迹即使command/actual有小误差也不膨胀0.5秒。所有原生目标重编译。
+
+rehearse.py默认complete；旧stream须--legacy-stream。默认无--robot仅只读校验；--robot仍须Enter。接管后读取commanded_arm估算到已验收neutral的准备时间，先完成neutral/保持并收到native完成，再启动G1扬声器SDK。首次playback.started后只修剪初始静态等待消耗，不缩短运动，一次下发整段轨迹，以整条完成回执验证；异常终止音频和释放，而非边播边大量跳过。现有SDK零点不是DAC回执，实际语音/机械同步仍待现场验证。未恢复prompt 0.65秒约束。
+
+完整规划/单次下发4项测试、原8项SDK/演练测试通过；最终主Python189项及C++6项全部通过。C++目录测试原先写死30动作改为至少包含原30项以兼容当前44项。完整方案只读入口实际通过。README和动作文档已更新。真机命令仍为conda activate GuideBot；python "$HOME/GuideBot-UniTree/examples/gesture_from_audio/rehearse.py" --robot，默认加载complete三动作而非旧stream16动作。
+
+# 2026-11-26 真机演练入口，使用G1扬声器SDK回放stream方案
+
+用户要求真机示例使用实时规划方案，随后明确音频必须走G1扬声器SDK。新增examples/gesture_from_audio/rehearse.py，默认结果目录固定stream（16动作），拒绝preplan；默认仅只读检查MP3哈希、资产SHA/version、启用/验收、窗口与模拟执行。--robot后仍等待用户Enter，之后重新校验，再用MotionRuntime接管双臂，G1Speaker播放，MotionExecutor按缓存stream的dispatch_s/start_s/end_s下发；不重新调用LLM（不是边播边现场规划）。忙/过期/不够时长跳过，不顺延、不强行抢占；记录submitted及独立native execution回执。
+
+新增speaker_g1.py隔离SDK子进程，复用正式StreamingSpeaker/AudioClient.PlayStream、PlayStop（无麦克风、gain1）。解码为24k单声道，由正式模块转16kPCM分块；SDK进程及原生运动进程使用sdk_environment清理ROS/DDS路径混用。以首次成功音频提交后的playback.started单调时钟作为动作零点，不是本机aplay启动时刻，更不是DAC回执。播放完成沿用本地估算，留1秒尾部再关闭SDK。Ctrl+C/异常停止SDK并通过现有运动服务停止释放，音频初始化失败不会继续动作。
+
+真机命令：conda activate GuideBot；python "$HOME/GuideBot-UniTree/examples/gesture_from_audio/rehearse.py" --robot。任意目录可执行，用户先关闭导览/试播等控制器并确认现场条件，按Enter。无--robot只检查，已实际执行该只读入口确认16动作通过。日志写artifacts/gesture-from-audio/rehearsals/<时间>的events.jsonl、audio-events.jsonl、audio-stderr.log、motion-native.log。模拟replay仍为本机音频，只在专用真机入口默认SDK，README和动作文档已区分。
+
+新增8项测试涵盖禁止preplan/更改音频、按SDK播放起点计时、默认及取消不启动、播放失败释放、忙时跳过、Ctrl+C清理，以及模拟AudioClient实际经过生产PlayStream/PlayStop路径。测试未触碰真实SDK初始化或硬件；实际G1播放和机械同步效果待用户手动演练。
+
+# 2026-11-26 固定MP3/时间戳动作规划示例完成
+
+按用户确认方案增加examples/gesture_from_audio/{run.py,scenario.json,README.md}。用户两文件复制到该目录Git忽略的data/，原件未改；结构校验28.704s/24000Hz单声道/116文字单元通过，无警告。示例不依赖StepFun Key，dotenv只读DeepSeek配置，不存密钥或HTTP头；复用生产Planner SSE/Catalog/MotionExecutor模拟模式，仅示例请求附离线word_timestamps解释，未改生产提示词或协议。
+
+真实API实验：artifacts/gesture-from-audio/g1-self-introduction/preplan为1次请求约2.05s，3动作greet_open(1.4–2.4)、present_center(5.1–6.1)、emphasize_once(21–22.4)。stream最终8请求约1.4–1.8s/次，6s文字前瞻/4s请求间隔的虚拟时钟，按完整SSE动作到达时间审查，累计16动作，密度高、不能称已证明自然。最初误用整段3动作上限的8次实验保留stream-total3-baseline；已修复为生产每请求3动作、无整段3上限，并补回归测试。总共实际17次API请求，未播放音频或触发硬件。
+
+每请求保存messages.json/raw-response.txt/result.json，summary包含拒绝原因和真实耗时，motion-snapshot保存资产SHA/version/timing。原生--check-sequence静态验证preplan3/3、stream16/16，均无DDS，从动作各自入口姿态解析，不等于连续真机切换验收。report.html可手动播放音频、高亮字词和动作窗口，显示模拟事件；CLI replay待Enter后aplay播放及模拟事件（未运行），不增加sounddevice依赖。没有真机回放入口，按确认方案先完成规划/报告/模拟阶段。
+
+本机http://127.0.0.1:8767/index.html对照页已运行（工具session80772），preplan/stream两报告和音频HTTP200；Remote SSH转发8767。run.py serve用SimpleHTTPServer仅服务本机结果目录，不自动播放。可执行check、plan --mode preplan/stream --variant minimal/original、serve --output结果目录、replay --output结果目录。已有非空结果目录拒绝覆盖。5项示例定向测试通过，主项目回归176项在新增第5条上限回归前通过；报告JS及文档bash语法通过。判断自然程度仍需用户试听/观察，未伪造语义评分或真机验收。
+
+# 2026-11-26 暂停0.65秒统一执行协调余量
+
+按用户要求，删除minimal prompt额外预留0.65秒约束；catalog的EXECUTION_COORDINATION_RESERVE_S=0.0使最小预算不再加入650ms，MotionExecutor改为读取同一配置，取消固定扣650ms。保留原生motion_deadline既有50ms截止复核，因此执行时只留50ms以避免总时长恰好填满窗口而被native必然拒绝；它不属于本次取消的500+150ms协调预算。动作自身最短时长、过期/截止校验、轨迹和验收未改。minimal导出已刷新；修改前模板备份为GuideBot/gesture/prompt_before_reserve_removal.md，原版备份不变。相关Prompt6项、反馈2项、确认/动态时长9项定向测试通过。重启导览会话生效，未启动硬件或API。
+
+# 2026-11-26 保留用户Prompt描述修改并去除精确角度
+
+用户直接编辑artifacts/gesture-prompt/minimal/system-prompt.md的动作描述，要求将具体角度模糊化并解释0.65s。先备份该用户版本为同目录system-prompt.before-qualitative-20261126.md；将24条描述同步到正式GuideBot/gesture/prompt_descriptions.json并绑定当前SHA，防止仅改导出快照而运行不生效。10条含角度/归零表述改成稍外展、屈肘、向前伸出、小幅交替摆动/推拉等语言，其余14条保持用户原文。重新导出minimal快照，所有时长/轨迹/验收与原版Prompt不变。6项Prompt测试通过，核对24项无角度符号、最短时长不变。
+
+0.65秒来自执行端固定预算：历史500ms实测/指令协调加150ms IPC/tick余量；非LLM推理耗时，也不是固定sleep。当前timed total_ms路径已不追加旧500ms纠偏段，仍保守保留650ms预算，native另有50ms启动截止复核，不能宣称每次真实都花650ms。按用户本轮仅解释用途，未调整预算。
+
+# 2026-11-26 默认精简LLM动作Prompt，原版可切换
+
+用户确认直接改GuideBot项目，动作信息保留id、物理姿态/轨迹description、最短时长。已原样备份GuideBot/gesture/prompt_original.md及catalog_original_backup.py；正式prompt.md换为精简规则。messages默认minimal（固定时间窗口），GUIDEBOT_GESTURE_PROMPT=original恢复原版完整规则/注册表；旧anchor-only调用继续使用原版参数契约。未改轨迹、验收或执行下限。
+
+minimal_document只输出24个已启用动作的id/description/minimum_duration_s。最短时长取新版验收minimum_total_ms，旧动作取现有执行器入口+核心预算（扣除reserved_overhead），向上取整到毫秒；0.65秒协调余量统一写在系统规则，不重复塞进各动作。保留五字段JSON、有效文字编号、未来窗口、不重叠、每次最多3动作等接口约束，删除具体语义场景限制、分类、触发/禁用条件及历史few-shots。
+
+prompt_descriptions.json保存原有10动作去除语义用途后的物理描述，按现有轨迹核对并绑定SHA防止重录后用旧描述；新录14动作使用登记原文。新增tools/gesture/export_prompt.py，项目内artifacts/gesture-prompt/{minimal,original}/导出完整system-prompt.md、actions.json及messages.example.json（示例播报，不是现场记录）。原test导出快照未覆盖。minimal4099字符，original29649字符，均24动作。
+
+6项精简Prompt定向测试通过，覆盖字段裁剪/预算/原版恢复/过期描述/旧契约/模拟SSE规划；最终172项主测试、67项动作测试通过。旧测试对10个动作及全动作必须few-shot的假设改为兼容用户新增验收动作；未弱化运行校验。文档追加默认/恢复命令及导出用法。未请求真实LLM、未启动机器人；用户重启导览会话使用默认新版。
+
+# 2026-11-25 控制锁跨账户权限修复（旧文件待管理员chmod）
+
+用户要求修复cannot open motion controller lock。确认全机/tmp/g1_arm_motion_library.lock为nobody:nogroup 0600，kwx不能读写。sudo -n chmod 0644已尝试，但sudo要求密码，未改变旧文件；不能声称当前真机阻塞已解决。
+
+ControllerLock拆到drivers/unitree_motion/controller_lock.hpp：先O_RDONLY|O_NOFOLLOW打开已有文件，避免fs.protected_regular对外账户O_CREAT拦截；不存在时O_CREAT|O_EXCL创建并fchmod0644（不受umask077影响），继续对同一全机inode使用LOCK_EX|LOCK_NB，与旧版写打开flock互斥兼容。不删除/换名锁，不使用每账户独立锁，拒绝符号链接/多硬链接非普通文件，错误含errno。新增--check-controller-lock早退出入口，只检锁不初始化DDS。
+
+motion_library_server已重编译，test_controller_lock通过（新文件权限、排他、旧版写打开兼容、释放后重取、只读旧文件、符号链接拒绝；非root运行未执行测试内root跨UID分支）。对实际旧文件无硬件检查仍报Permission denied，符合旧权限待修复现状。用户须终端执行sudo chmod 0644 /tmp/g1_arm_motion_library.lock，再运行--check-controller-lock；随后手动网页试播。docs/setup.md追加完整步骤。没有启动机器人，也未破坏任何现存锁。
+
+# 2026-11-25 真机试播未运动：补充错误呈现与完整日志
+
+用户报告页面只显示Play-style说明但真机未动。只读GET旧8765状态为failed/success=false/planned_seconds=null，旧watch仅以最后输出为错误，stdout缓冲可能把普通说明排到stderr失败原因之后；旧版未落盘完整输出，无法从此次状态确定具体硬件拒绝原因。未擅自再次试播。保留原失败状态到 ~/.local/state/guidebot/motion-previews/previous-failed-status.json，确认旧服务空闲后关闭并重启更新网页。
+
+当前UI试播子进程加PYTHONUNBUFFERED；每次完整stdout/stderr写入 ~/.local/state/guidebot/motion-previews/<时间>.log，状态保留exit_code/recent_output/log_path，最终优先显示真正错误行而非末尾普通说明。新增缓冲乱序错误回归，9项确认测试、10项旧UI兼容测试通过。下一次需用户手动点真机试播后读日志定位实际原因；目前只修复诊断遮蔽，未宣称解决真机未动。
+
+# 2026-11-25 简化试播、最短时长与确认自动启用
+
+用户批准简化网页/确认自动启用及LLM选择韵律动作；随后明确保留最短总时长，不能固定运行时长。已将旧HTML和服务端原样备份为 tools/motion/motion_timing_ui_legacy.html/.py，可用 --port 8766运行原版。当前8765网页改为选择动作、本次总时长、最短总时长、真机试播、确认可用；不要求另填使用条件/交互函数或手动启用。未提供比例编辑，沿用原配置或默认1:2:1/单帧1:0:1，实际试播=max(请求,最短)。
+
+watch仅真机成功完成且未取消时允许确认；确认绑定sha/version/profile/requested total，修改最短时间也须重试。tools/motion/confirm_motion.py按登记锁校验并原子替换metadata及语义/韵律登记，失败回滚；自动存timing_profile和preview_confirmation收据，启用LLM条目。保留原详细动作指导；空语义条目用selection_mode=description，LLM只依名称、轨迹说明和分类选择。Catalog合并prosody_catalog.json，仍须真实资产校验和approved状态。重录清除收据及启用；手动修改比例清除收据/验收。
+
+正式fixed_deadline执行按剩余窗口扣650ms余量后total_ms伸缩（最短下限约束），使用已确认相对分配，不固定成某次试播的时长；窗口不足跳过。LLM提示提供minimum_total_ms/minimum_remaining_s。Native离线check-sequence验证相同资产请求1/4/7秒在2秒下限下为2/4/7秒。旧无收据动作保持原时序。网页确认后需结束旧导览会话、重新启动main.py加载新清单；这不是额外启用步骤，避免会话中变更硬件目录。
+
+166项主测试、66项动作测试通过，包括成功确认、取消/失败/离线拒绝、修改版本/最短时长拒绝、事务回滚、重录失效、语义/韵律可规划、动态窗口时长及真实原生离线检查。JS与文档shell语法通过。实际本机127.0.0.1:8765页面已启动（工具session 90446），HTTP验证44条目录、24条可试播，状态idle。未启动真机试播、DDS、录放音或云端，也未把用户新录动作伪造为已验收。真实效果由用户页面手动试播。
+
+# 2026-11-25 取消任务16，任务17复用neutral
+
+按用户要求，从临时任务清单移除16（R_Center_Rest，检查时尚未录制），17由B_Neutral_Return改为neutral并设reuse_existing=true。保留01～15与17编号；17的韵律姿态管理用途不改变原neutral资产或语义登记。列表中显示已有neutral实际验收状态，选择17仅显示复用提示，不启动录制；save_task拒绝覆盖复用条目，包括离线重试。原neutral已验收，未改其轨迹、metadata和登记表。新增不可覆盖测试，任务测试7项通过；未运行硬件。若列表已打开，退出重开以加载更新后的配置。
+
+# 2026-11-25 17项编号录制任务入口
+
+按用户确认方案新增 config/motion/recording_tasks.json，原样保存17项中文名、英文名、主/子分类及轨迹描述；仅任务列表，不预建正式资产。tools/motion/record_tasks.py 可从任意目录启动，输入01/1等编号，显示说明，Enter明确开始现有录制器接管。原生teach_with_name/record_motion新增 --capture-output，释放控制后仅交回采集文件；列表自动登记中文label/description、gesture_group、gesture_subcategory、recording_task_id到metadata和对应语义/韵律登记表，返回列表。韵律姿态管理family=posture，仍未接入自动调度。B_Neutral_Return独立于neutral；角度仅文字参考。
+
+进度从真实轨迹/metadata校验及验收状态读取，支持取消、覆盖确认、登记失败保留 .recording-task-* 与 --task/--recording离线重试。列表启动本身不运行原生程序，静态检查二进制是否含capture选项以拒绝老版本（老版可能忽略--help并连硬件）；仅确认开始后执行录制器。父进程采集期间接收Ctrl+C不抛KeyboardInterrupt，等待原生信号处理和释放，不由subprocess.run强杀子进程。整个任务列表用独立文件锁，登记复用写入锁和回滚机制。自由命名入口保留。
+
+原生两录制目标重编译；新增6项任务测试通过，动作全套56项通过后再补1项老二进制无执行检测并定向6项通过；主项目166项、C++5项通过。实际--list验证17项均待录制；未启动机器人、DDS、录放音或云端。文档顶部已给出任意目录启动命令与17项ID表。
+
+# 2026-11-25 放宽动作名称首字符
+
+按用户要求，动作名称统一允许 ASCII 大小写英文字母、数字、下划线任意开头（如 Wave、1_wave、_wave、123）。同步录制登记、Python物理清单和LLM动作ID校验、C++物理清单及旧动作序列解析；仍拒绝空名、空格、路径分隔符。交互功能function ID规则不变。更新提示和录制文档，原生程序重编译完成；6项登记测试、166项主项目测试通过，5项C++检查通过。未启动机器人。
+
+# 2026-11-25 本账户 AGC2／LocalVQE 资源修复
+
+用户要求修复上轮5项音频测试失败。实际 LocalVQE 原生库及模型均已在 ~/.local/share/guidebot/deps/LocalVQE，缺少 clone 的 drivers/localvqe/models 链接；AGC2 库未装入本账户。校验 /var/tmp/guidebot-runtime 的14项资源SHA256与平台后，仅复制 agc2/libguidebot_agc2.so、libwebrtc-audio-processing-1.so.3 到 ~/.local/share/guidebot/deps/webrtc-apm，保留已有LocalVQE库/模型。恢复 drivers/localvqe/models 和 drivers/timestamps/models 到本账户模型目录的Git忽略链接；ldd确认AGC2从同目录加载WebRTC库。未改Python依赖或业务加载代码。
+
+使用已有 GuideBot 环境（本账户实际为Python3.10，未执行要求3.8的整套安装或变更环境），AGC2 4项、LocalVQE 5项定向测试通过，主项目166/166全部通过，已解决下方历史5项缺资源失败。未打开音频设备、云端或机器人DDS。
+
+# 2026-11-25 自定义动作录制与分类登记
+
+按用户批准方案，teach_with_name/record_motion 结束录制并释放控制后，将采集帧交给 tools/motion/register_recording.py 交互登记。支持清单外名称，结束时选择语义／韵律；既有动作默认沿用分类/路径，覆盖需确认。新增多帧 semantic/prosody 目录，单帧沿用 poses/basic，用 gesture_group 区分用途。自动写物理清单、v3 metadata、actions.json 或 prosody_catalog.json，默认草稿/未启用；重录清除验收、停用登记。语义资料可留空，后续补齐交互函数并验收再启用；未新增韵律自动调度。
+
+登记工具仅用标准库，文件锁串行登记、逐文件原子替换、普通写入异常回滚；非断电跨文件事务。登记失败保留 .recording-* 采集文件以便重试，取消不改库。时间轴 inventory/detail 重新读清单，刷新可发现新增动作。保留本轮开始前已有韵律录制/UI未提交改动。原生全部编译完成，5项C++测试通过；新增登记与交互/网页刷新测试通过。主项目166项中161通过，5项因本机缺失 libguidebot_agc2.so / LocalVQE库和模型失败，未修改相关音频依赖。未运行真机、DDS或音频播放，尚待用户手工录制验收。使用流程见 drivers/unitree_motion/docs/motion-library.md「自定义动作名称与保存分类」。
+
 # 2026-11-25 main发布范围
 
 用户要求将当前代码推送main。本次发布包含0.3rad起步偏差阈值、WebSocket心跳诊断、固定动作截止期限与制动抢占、最低时间预算及执行失败反馈。验证为166项主Python、38项运动Python、4项C++及真实ROS→原生offline截止/抢占/结构化拒绝验收（foxy-r3f4lmip/deadline-acceptance.json），旧对齐与四组生命周期亦通过。未运行真机或云端，真实模型与关节效果仍待用户Enter验收。录音、密钥和运行产物不在提交范围。下方“未提交推送”是各实现轮次当时的历史状态；发布提交与远端状态以Git记录为准。

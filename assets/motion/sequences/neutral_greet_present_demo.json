@@ -1,10 +1,30 @@
 {
   "sequence_name": "neutral_greet_present_demo",
   "steps": [
-    {"type": "pose", "name": "neutral", "total_ms": 1000},
-    {"type": "motion", "name": "greet_open", "total_ms": 3000},
-    {"type": "pose", "name": "neutral", "total_ms": 1000},
-    {"type": "motion", "name": "present_right", "total_ms": 3000},
-    {"type": "pose", "name": "neutral", "total_ms": 1000}
+    {
+      "type": "pose",
+      "name": "B_Neutral_Rest",
+      "total_ms": 1000
+    },
+    {
+      "type": "motion",
+      "name": "B_Open_Hold",
+      "total_ms": 3000
+    },
+    {
+      "type": "pose",
+      "name": "B_Neutral_Rest",
+      "total_ms": 1000
+    },
+    {
+      "type": "motion",
+      "name": "R_Side_Present",
+      "total_ms": 3000
+    },
+    {
+      "type": "pose",
+      "name": "B_Neutral_Rest",
+      "total_ms": 1000
+    }
   ]
 }

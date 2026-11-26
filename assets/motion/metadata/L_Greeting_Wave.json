@@ -5,34 +5,34 @@
   "category": "reception",
   "description": "",
   "entry_pose": [
-    -0.163369,
-    0.249128,
-    0.527426,
-    0.186966,
-    -0.364704,
+    -0.349772,
+    0.396702,
+    0.941349,
+    -0.805795,
+    0.15788,
     0.0,
     0.0,
-    -0.169733,
-    -0.260968,
-    -0.516125,
-    0.121137,
-    0.438539,
+    0.092398,
+    -0.291085,
+    -0.062078,
+    1.005273,
+    0.006591,
     0.0,
     0.0
   ],
   "exit_pose": [
-    -0.163369,
-    0.249128,
-    0.527426,
-    0.186966,
-    -0.364704,
+    -0.273156,
+    0.318589,
+    0.99855,
+    -0.970363,
+    0.158132,
     0.0,
     0.0,
-    -0.169733,
-    -0.260968,
-    -0.516125,
-    0.121137,
-    0.438539,
+    0.094436,
+    -0.242824,
+    -0.07302,
+    1.017329,
+    0.006459,
     0.0,
     0.0
   ],
@@ -56,13 +56,15 @@
     "right_wrist_yaw"
   ],
   "keyframe_times_ms": [
-    0
+    0,
+    300,
+    600
   ],
-  "label": "greet_open",
+  "label": "L_Greeting_Wave",
   "loopable": false,
   "movement_context": "stationary",
-  "name": "greet_open",
-  "nominal_duration_ms": 0,
+  "name": "L_Greeting_Wave",
+  "nominal_duration_ms": 600,
   "notes": "",
   "robot_model": "G1-7DOF",
   "safety": {
@@ -74,20 +76,23 @@
     "reception"
   ],
   "schema_version": 3,
-  "sha256": "a8f2b0423b98a9e093bde29d95d9ef53004d29d3a240a2959881020b001cbaf1",
+  "sha256": "68148c8031afb5e45404017e041e1c1afb022122078d0d14af71c4e8dd205457",
   "source": "teach_with_name",
   "status": "approved",
   "type": "motion",
-  "verified_at": "2026-11-17T17:24:17+08:00",
+  "verified_at": "2026-11-17T17:26:40+08:00",
   "verified_by": "kwx",
-  "version": 5,
+  "version": 2,
   "timing_profile": {
     "phase_weights": {
       "transition": 1,
-      "core": 0,
-      "hold": 2
+      "core": 2,
+      "hold": 1
     },
-    "minimum_total_ms": 1500,
-    "frame_weights": []
+    "minimum_total_ms": 2000,
+    "frame_weights": [
+      1,
+      1
+    ]
   }
 }

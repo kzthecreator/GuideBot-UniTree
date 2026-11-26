@@ -11,7 +11,8 @@ from .catalog import messages, strict_json
 
 class ActionStream:
     """Decode complete action objects without guessing string/brace boundaries."""
-    def __init__(self):
+    def __init__(self, max_actions=3):
+        self.max_actions = max_actions
         self.text = ''
         self.cursor = None
         self.rows = []
@@ -60,7 +61,7 @@ class ActionStream:
                 row, end = self.decoder.raw_decode(self.text, pos)
             except json.JSONDecodeError:
                 break
-            if not isinstance(row, dict) or len(self.rows) >= 3:
+            if not isinstance(row, dict) or (self.max_actions is not None and len(self.rows) >= self.max_actions):
                 raise ValueError('Invalid action list or too many actions')
             # Re-decode with duplicate-key and nonfinite-number checks.
             row = strict_json(self.text[pos:end])
@@ -77,7 +78,7 @@ class ActionStream:
 
 class Planner:
     def __init__(self, catalog, *, api_key=None, model=None, base_url=None, timeout=20,
-                 examples_path=None, session=None):
+                 examples_path=None, session=None, trace=None):
         self.catalog = catalog
         self.api_key = api_key if api_key is not None else os.environ.get('DEEPSEEK_API_KEY', '')
         self.model = model or os.environ.get('DEEPSEEK_MODEL', 'deepseek-chat')
@@ -85,6 +86,7 @@ class Planner:
         self.timeout = timeout
         self.examples_path = examples_path
         self.session = session or requests
+        self.trace = trace
 
     def plan(self, payload, on_action, cancelled=None):
         if not self.api_key:
@@ -94,17 +96,20 @@ class Planner:
             return {'cancelled': True}
         prompt = messages(self.catalog, payload, **(
             {'examples_path': self.examples_path} if self.examples_path else {}))
+        if self.trace:
+            self.trace("messages", prompt)
         started = time.monotonic()
         stats = dict(model=self.model, first_content_seconds=None, first_action_seconds=None,
                      valid_actions=0, invalid_actions=0, invalid_reasons=[])
-        stream = ActionStream()
+        whole_text = payload.get("planning_mode") == "whole_text_preplan"
+        stream = ActionStream(max_actions=None if whole_text else 3)
         finished = False
         try:
             with self.session.post(self.base_url + '/chat/completions',
                                    headers={'Authorization': 'Bearer ' + self.api_key},
                                    json=dict(model=self.model, messages=prompt, stream=True,
                                              response_format={'type': 'json_object'},
-                                             temperature=0, max_tokens=1200),
+                                             temperature=0, max_tokens=6000 if whole_text else 1200),
                                    timeout=(5, self.timeout), stream=True) as response:
                 if response.status_code != 200:
                     raise RuntimeError(f'DeepSeek HTTP {response.status_code}')
@@ -129,12 +134,16 @@ class Planner:
                                 raise RuntimeError('DeepSeek output did not finish normally')
                             finished = True
                         content = choice.get('delta', {}).get('content') or ''
+                        if content and self.trace:
+                            self.trace('content', content)
                         if content and stats['first_content_seconds'] is None:
                             stats['first_content_seconds'] = time.monotonic() - started
                         for row in stream.feed(content):
                             try:
                                 plan = self.catalog.validate(row, payload['eligible_anchor_ids'], payload['targets'],
                                                              payload.get('interaction_context'))
+                                if payload.get('timing_contract') == 'semantic_keyframes' and 'keyframes' not in plan.parameters:
+                                    raise ValueError('Semantic keyframes required')
                                 if payload.get('timing_contract') == 'fixed_deadline' and plan.end_s is None:
                                     raise ValueError('Fixed playback start_s/end_s required')
                             except ValueError as error:

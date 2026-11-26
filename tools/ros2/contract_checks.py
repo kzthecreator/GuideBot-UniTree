@@ -39,7 +39,7 @@ def main():
     client = ActionClient(node,ExecuteGesture,'/guidebot/motion/execute_gesture')
     assert client.wait_for_server(timeout_sec=5)
     defaults = dict(session_id=args.session,generation=1,response_id='probe',
-                    job_id='probe-job',action='greet_open',start_monotonic=time.monotonic(),
+                    job_id='probe-job',action='B_Open_Hold',start_monotonic=time.monotonic(),
                     arrival_monotonic=time.monotonic()+2)
     try:
         for overrides in [dict(job_id='r1:0'),dict(session_id='wrong-session'),
@@ -47,7 +47,7 @@ def main():
             goal = resolve(node,client.send_goal_async(message(ExecuteGesture.Goal,dict(defaults,**overrides))))
             assert not goal.accepted, overrides
         # Context no longer gates action selection (2026-11-25 policy).
-        request = dict(defaults,action='present_left',job_id='context-reject',
+        request = dict(defaults,action='L_Side_Present',job_id='context-reject',
                        arrival_monotonic=time.monotonic()+2)
         goal = resolve(node,client.send_goal_async(message(ExecuteGesture.Goal,request)))
         assert goal.accepted

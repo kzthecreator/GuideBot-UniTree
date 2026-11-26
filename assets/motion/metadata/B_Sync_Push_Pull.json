@@ -1,0 +1,111 @@
+{
+  "schema_version": 3,
+  "file_format_version": 1,
+  "name": "B_Sync_Push_Pull",
+  "category": "prosody",
+  "type": "motion",
+  "label": "B同步推拉",
+  "description": "双肘屈曲约90°，双前臂平行指前，双肩pitch同步做±8°前后推拉。",
+  "robot_model": "G1-7DOF",
+  "source": "teach_with_name",
+  "version": 2,
+  "status": "approved",
+  "movement_context": "stationary",
+  "scenes": [
+    "prosody"
+  ],
+  "notes": "",
+  "sha256": "7de5a888c7f9780b13de061737a95086eeb12c84d6a23b54b1f8184e7d9c854d",
+  "verified_by": "kwx",
+  "verified_at": "2026-11-26T09:24:07+08:00",
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0,
+    300
+  ],
+  "nominal_duration_ms": 300,
+  "entry_pose": [
+    -0.227916,
+    0.355848,
+    -0.122946,
+    0.319068,
+    -1.260465,
+    0.0,
+    0.0,
+    -0.34022,
+    -0.361121,
+    0.302769,
+    0.355105,
+    1.145908,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    -0.566243,
+    0.319595,
+    0.074242,
+    0.342641,
+    -1.435674,
+    0.0,
+    0.0,
+    -0.849358,
+    -0.267236,
+    0.269357,
+    0.651618,
+    1.380559,
+    0.0,
+    0.0
+  ],
+  "loopable": false,
+  "interruptible": true,
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "safety": {
+    "max_velocity_rad_s": 0.4,
+    "max_acceleration_rad_s2": 0.8,
+    "joint_limits_profile": "config/arm_joint_limits.json"
+  },
+  "gesture_group": "prosody",
+  "gesture_subcategory": "节拍/强调",
+  "recording_task_id": "12",
+  "timing_profile": {
+    "phase_weights": {
+      "transition": 1,
+      "core": 2,
+      "hold": 1
+    },
+    "minimum_total_ms": 701,
+    "frame_weights": []
+  },
+  "preview_confirmation": {
+    "sha256": "7de5a888c7f9780b13de061737a95086eeb12c84d6a23b54b1f8184e7d9c854d",
+    "version": 2,
+    "timing_profile": {
+      "phase_weights": {
+        "transition": 1,
+        "core": 2,
+        "hold": 1
+      },
+      "minimum_total_ms": 701,
+      "frame_weights": []
+    },
+    "total_ms": 701
+  }
+}

@@ -17,9 +17,9 @@ function element(id) {
 }
 element('phaseBar').children = [new Element(), new Element(), new Element()];
 const catalog = [
-  {name:'neutral',type:'pose',profile_saved:true,minimum_total_ms:1000},
-  {name:'greet_open',type:'motion',profile_saved:true,minimum_total_ms:2000},
-  {name:'present_right',type:'motion',profile_saved:true,minimum_total_ms:2000},
+  {name:'B_Neutral_Rest',type:'pose',profile_saved:true,minimum_total_ms:1000},
+  {name:'B_Open_Hold',type:'motion',profile_saved:true,minimum_total_ms:2000},
+  {name:'R_Side_Present',type:'motion',profile_saved:true,minimum_total_ms:2000},
 ];
 const storage = new Map();
 const context = vm.createContext({
@@ -27,7 +27,7 @@ const context = vm.createContext({
   localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
   setInterval(){}, setTimeout(){},
   fetch:async path=>({ok:true,json:async()=>path==='/api/motions'?{items:catalog}:{
-    name:'neutral',type:'pose',category:'basic',frames:1,status:'draft',profile_saved:true,sha256:'fixture',version:1,
+    name:'B_Neutral_Rest',type:'pose',category:'basic',frames:1,status:'draft',profile_saved:true,sha256:'fixture',version:1,
     timing_profile:{phase_weights:{transition:1,core:0,hold:1},minimum_total_ms:1000,frame_weights:[]},
   }}),
 });
@@ -40,14 +40,14 @@ const run = code=>vm.runInContext(code, context);
   assert.equal(element('comboSteps').children.length,5);
   assert.match(element('comboSummary').textContent,/规划合计 9.000 s/);
   assert.equal(run('comboSequence().steps.map(step=>step.name).join(",")'),
-    'neutral,greet_open,neutral,present_right,neutral');
+    'B_Neutral_Rest,B_Open_Hold,B_Neutral_Rest,R_Side_Present,B_Neutral_Rest');
   run('comboSteps[0].total_ms=500; drawCombo()');
   assert.match(element('comboSummary').textContent,/请求合计 8.500 s · 规划合计 9.000 s/);
   assert.equal(run('comboSequence().steps[0].total_ms'),500);
   const first = element('comboSteps').children[0];
-  first.children[4].children[1].onclick(); // Move first neutral down.
-  assert.equal(run('comboSteps[0].name'),'greet_open');
-  assert.equal(run('comboSteps[1].name'),'neutral');
+  first.children[4].children[1].onclick(); // Move first B_Neutral_Rest down.
+  assert.equal(run('comboSteps[0].name'),'B_Open_Hold');
+  assert.equal(run('comboSteps[1].name'),'B_Neutral_Rest');
   assert.ok(storage.has('g1-combo-steps'));
   run('busy=true; comboRunning=true; comboActive=3; drawCombo()');
   assert.equal(element('comboPreview').disabled,true);

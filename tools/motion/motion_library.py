@@ -31,6 +31,7 @@ def save_timing_profile(name, profile, entries, motions, poses, metadata,
     if changed:
         meta = dict(meta, timing_profile=profile, version=meta["version"] + 1,
                     status="draft", verified_by="", verified_at="")
+        meta.pop("preview_confirmation", None)
     path = metadata / f"{name}.json"
     if confirm_by:
         meta = dict(meta, status="approved", verified_by=confirm_by,

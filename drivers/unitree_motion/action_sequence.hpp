@@ -40,9 +40,9 @@ struct Resolved {
 };
 
 inline bool valid_name(const std::string& name) {
-    if (name.empty() || name[0] < 'a' || name[0] > 'z') return false;
+    if (name.empty()) return false;
     for (const char c : name)
-        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_'))
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'))
             return false;
     return true;
 }

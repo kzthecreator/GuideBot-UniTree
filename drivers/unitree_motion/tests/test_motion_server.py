@@ -23,7 +23,7 @@ class OfflineServerTest(unittest.TestCase):
             poses = folder / "poses"
             metadata = folder / "metadata"
             metadata.mkdir()
-            names = ["neutral", "greet_open", "invite_follow", "present_center"]
+            names = ["B_Neutral_Rest", "B_Open_Hold", "B_Guiding_Swing", "R_Center_Present"]
             for name in names:
                 entry = next(item for item in catalog["actions"] if item["name"] == name)
                 root = poses if entry["type"] == "pose" else motions

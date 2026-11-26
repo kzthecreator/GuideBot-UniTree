@@ -30,9 +30,9 @@ constexpr std::array<const char*, standing_motion::kArmJoints> kJointNames{{
     "right_elbow", "right_wrist_roll", "right_wrist_pitch", "right_wrist_yaw"}};
 
 inline bool valid_name(const std::string& name) {
-    if (name.empty() || name.front() < 'a' || name.front() > 'z') return false;
+    if (name.empty()) return false;
     for (char c : name)
-        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_'))
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'))
             return false;
     return true;
 }
@@ -54,7 +54,7 @@ inline std::string required_string(const nlohmann::json& object, const char* fie
 
 class Catalog {
 public:
-    static Catalog load(const std::string& path, size_t expected_count = 22) {
+    static Catalog load(const std::string& path, size_t expected_count = 0) {
         const auto document = read_json(path);
         if (!document.is_object() || document.value("schema_version", 0) != 1 ||
             !document.contains("actions") || !document.at("actions").is_array())
@@ -68,7 +68,8 @@ public:
             if (!valid_name(entry.name) ||
                 (entry.category != "basic" && entry.category != "reception" &&
                  entry.category != "presentation" && entry.category != "interaction" &&
-                 entry.category != "elevator") ||
+                 entry.category != "elevator" && entry.category != "prosody" &&
+                 entry.category != "semantic") ||
                 (entry.priority != "P0" && entry.priority != "P1" && entry.priority != "P2") ||
                 (entry.type != "pose" && entry.type != "motion") ||
                 (entry.type == "pose" && entry.category != "basic") ||
@@ -77,7 +78,7 @@ public:
             if (!catalog.entries_.emplace(entry.name, entry).second)
                 throw std::runtime_error("duplicate catalog name: " + entry.name);
         }
-        if (catalog.entries_.size() != expected_count)
+        if (expected_count != 0 && catalog.entries_.size() != expected_count)
             throw std::runtime_error("motion catalog has unexpected action count");
         return catalog;
     }

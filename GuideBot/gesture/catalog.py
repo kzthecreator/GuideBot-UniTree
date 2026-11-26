@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import json
 import math
+import os
 from pathlib import Path
 import re
 from drivers.unitree_motion import assets as motion_library
@@ -12,6 +13,8 @@ DIRECTORY = Path(__file__).resolve().parent
 from drivers.unitree_motion.paths import ASSETS as MOTION_ROOT, LIMITS
 REGISTRY = MOTION_ROOT / 'actions.json'
 EXAMPLES = MOTION_ROOT / 'conversation-few-shots.json'
+# Temporarily disabled for prompt experiments; keep the native deadline check.
+EXECUTION_COORDINATION_RESERVE_S = 0.0
 COMMAND_FIELDS = {'action', 'start_unit', 'arrival_unit', 'response_id', 'job_id', 'request_id',
                   'monotonic', 'kind', 'simulated', 'start_audio_s', 'arrival_audio_s',
                   'start_monotonic', 'arrival_monotonic', 'compressed', 'alignment_version',
@@ -63,11 +66,31 @@ class Catalog:
         self.limits_path = Path(limits_path)
         self.library = motion_library
         entries = motion_library.catalog_entries(self.motion_root / 'config/motion_catalog.json')
+        # Prosody and semantic motions share the same planner and arm scheduler.
+        from drivers.unitree_motion.planning import description_action
+        prosody_path = self.motion_root / 'prosody_catalog.json'
+        rows = list(self.document['actions'])
+        if prosody_path.is_file():
+            prosody = strict_json(prosody_path.read_text(encoding='utf-8'))
+            if prosody.get('version') != 1 or not isinstance(prosody.get('actions'), list):
+                raise ValueError('Unsupported prosody registry')
+            for row in prosody['actions']:
+                entry = entries.get(row['id'])
+                if entry is None:
+                    raise ValueError('Unknown prosody physical motion')
+                meta_path = self.motion_root / 'metadata' / (row['id'] + '.json')
+                meta = strict_json(meta_path.read_text(encoding='utf-8')) if meta_path.is_file() else {}
+                if type(row.get('enabled', False)) is not bool:
+                    raise ValueError('Invalid prosody availability flag')
+                item = description_action(entry, meta, description=row.get('description',''),
+                                          label=row.get('label',''), enabled=row.get('enabled',False))
+                item.update(gesture_group='prosody', gesture_subcategory=row.get('gesture_subcategory',row.get('family','')))
+                rows.append(item)
         known = set()
         physical_names = set()
-        for item in self.document['actions']:
+        for item in rows:
             name = item['id']
-            if not isinstance(name, str) or not re.fullmatch(r'[a-z][a-z0-9_]*', name) or name in known:
+            if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_]+', name) or name in known:
                 raise ValueError('Invalid or duplicate action ID')
             known.add(name)
             if item['kind'] not in {'pose', 'motion'} or type(item.get('enabled', True)) is not bool:
@@ -78,6 +101,7 @@ class Catalog:
             if motion_name in physical_names or name != motion_name:
                 raise ValueError('Each physical motion needs one stable matching action ID')
             physical_names.add(motion_name)
+            simple = item.get('selection_mode') == 'description'
             selectable = item.get('llm_selectable', True)
             if type(selectable) is not bool or type(item.get('verified', False)) is not bool:
                 raise ValueError('Invalid action availability flags')
@@ -96,11 +120,11 @@ class Catalog:
                 raise ValueError('Selectable poses need explicit release conditions')
             for field in ('semantic_intents', 'example_phrases'):
                 values = item.get(field)
-                if not isinstance(values, list) or (selectable and not values) or not all(
+                if not isinstance(values, list) or (selectable and not simple and not values) or not all(
                         isinstance(value, str) and value.strip() for value in values):
                     raise ValueError('Invalid action semantics')
             functions = item.get('interaction_functions')
-            if not isinstance(functions, list) or (selectable and not functions):
+            if not isinstance(functions, list) or (selectable and not simple and not functions):
                 raise ValueError('Invalid interaction functions')
             function_ids = set()
             for function in functions:
@@ -118,7 +142,7 @@ class Catalog:
                     if not isinstance(values, list) or not values or not all(
                             isinstance(value, str) and value.strip() for value in values):
                         raise ValueError('Invalid interaction function examples or context')
-            for field in ('description', 'when_to_use', 'avoid_when'):
+            for field in (('description',) if simple else ('description', 'when_to_use', 'avoid_when')):
                 if not isinstance(item.get(field), str) or not item[field].strip():
                     raise ValueError('Missing action description')
             properties = item['parameters']
@@ -160,6 +184,14 @@ class Catalog:
     def execution_timing(self, action):
         asset = self.assets[action]
         meta = asset['metadata']
+        from drivers.unitree_motion.planning import confirmed_timing
+        confirmed = confirmed_timing(meta)
+        if confirmed:
+            return dict(recorded_core_s=confirmed['core_s'],
+                        minimum_transition_s=confirmed['transition_s'],
+                        reserved_overhead_s=EXECUTION_COORDINATION_RESERVE_S,
+                        minimum_remaining_s=confirmed['minimum_total_ms']/1000+EXECUTION_COORDINATION_RESERVE_S,
+                        minimum_total_ms=confirmed['minimum_total_ms'])
         core = meta['nominal_duration_ms']/1000. if asset['frames'] > 1 else 0.
         transition = .5
         profile = meta.get('timing_profile')
@@ -168,7 +200,7 @@ class Catalog:
             transition = max(transition, profile['minimum_total_ms']/1000. *
                              weights['transition']/sum(weights.values()))
         return dict(recorded_core_s=core, minimum_transition_s=transition,
-                    reserved_overhead_s=.65, minimum_remaining_s=core+transition+.65)
+                    reserved_overhead_s=EXECUTION_COORDINATION_RESERVE_S, minimum_remaining_s=core+transition+EXECUTION_COORDINATION_RESERVE_S)
 
     @staticmethod
     def context_allows(item, context):
@@ -179,6 +211,25 @@ class Catalog:
         if not isinstance(row, dict) or not isinstance(row.get('action'), str) or row['action'] not in self.actions:
             raise ValueError('Unknown or disabled action')
         item = self.actions[row['action']]
+        if 'keyframes' in row:
+            if set(row) - {'action', 'keyframes', 'hold_s'}:
+                raise ValueError('Unknown semantic intent fields')
+            frames = row['keyframes']
+            asset = self.assets[row['action']]
+            if not isinstance(frames, list) or not 1 <= len(frames) <= asset['frames']:
+                raise ValueError('Invalid semantic keyframes')
+            for frame in frames:
+                if (not isinstance(frame, dict) or set(frame) != {'frame', 'unit'}
+                        or type(frame['frame']) is not int or not 0 <= frame['frame'] < asset['frames']
+                        or type(frame['unit']) is not int or frame['unit'] not in eligible):
+                    raise ValueError('Invalid semantic keyframe anchor')
+            if any(b['frame'] <= a['frame'] or b['unit'] <= a['unit'] for a,b in zip(frames,frames[1:])):
+                raise ValueError('Semantic keyframes must increase')
+            hold = row.get('hold_s', 0.)
+            if type(hold) not in (int,float) or not math.isfinite(hold) or not 0 <= hold <= 30:
+                raise ValueError('Invalid semantic hold')
+            return Plan(row['action'], frames[0]['unit'], frames[-1]['unit'],
+                        dict(keyframes=frames, hold_s=hold))
         if enforce_context and not self.context_allows(item, interaction_context):
             raise ValueError('Trusted interaction context does not satisfy action trigger source')
         base = {'action', 'start_unit', 'arrival_unit'}
@@ -224,7 +275,15 @@ def make_input(response_id, text, targets=(), existing=(), eligible=None, comple
                 interaction_context=interaction_context or {'stage': 'unspecified', 'history': []})
 
 
-def messages(catalog, payload, examples_path=EXAMPLES):
+def original_prompt_template():
+    """Keep the historical file intact, translate physical IDs when using it."""
+    template = (DIRECTORY/'prompt_original.md').read_text(encoding='utf-8')
+    mapping = strict_json((MOTION_ROOT/'action-id-migration.json').read_text(encoding='utf-8'))['mapping']
+    pattern = r'(?<![A-Za-z0-9_-])('+'|'.join(map(re.escape,mapping))+r')(?![A-Za-z0-9_-])'
+    return re.sub(pattern, lambda match: mapping[match[0]], template)
+
+
+def original_messages(catalog, payload, examples_path=EXAMPLES):
     document = catalog.prompt_document()
     if payload.get('timing_contract') == 'fixed_deadline':
         document = dict(document, actions=[dict(item,
@@ -232,7 +291,7 @@ def messages(catalog, payload, examples_path=EXAMPLES):
             required=[k for k in item['required'] if k != 'duration_s'],
             **catalog.execution_timing(item['id']))
             for item in document['actions']])
-    system = (DIRECTORY / 'prompt.md').read_text(encoding='utf-8').replace(
+    system = original_prompt_template().replace(
         '{{REGISTRY}}', json.dumps(document, ensure_ascii=False))
     result = [dict(role='system', content=system)]
     for example in strict_json(Path(examples_path).read_text(encoding='utf-8')):
@@ -250,3 +309,51 @@ def messages(catalog, payload, examples_path=EXAMPLES):
                        dict(role='assistant', content=json.dumps({'actions': example['actions']}, ensure_ascii=False))])
     result.append(dict(role='user', content=json.dumps(payload, ensure_ascii=False)))
     return result
+
+
+def minimal_document(catalog):
+    """Expose only identity, physical description and the actual duration floor."""
+    path = DIRECTORY / 'prompt_descriptions.json'
+    overrides = strict_json(path.read_text(encoding='utf-8')) if path.is_file() else dict(version=1, actions={})
+    if overrides.get('version') != 1 or not isinstance(overrides.get('actions'), dict):
+        raise ValueError('Invalid physical prompt descriptions')
+    actions = []
+    for name, item in catalog.actions.items():
+        description = item['description']
+        override = overrides['actions'].get(name)
+        meta = catalog.assets[name]['metadata']
+        if override and override.get('sha256') == meta['sha256']:
+            description = override['description']
+        if not isinstance(description, str) or not description.strip():
+            raise ValueError('Missing physical action description: ' + name)
+        timing = catalog.execution_timing(name)
+        minimum = timing.get('minimum_total_ms', max(0., timing['minimum_remaining_s'] - timing['reserved_overhead_s'])*1000)/1000
+        # Round upward to milliseconds, without exposing floating point noise.
+        minimum = math.ceil(minimum*1000 - 1e-7)/1000
+        actions.append(dict(id=name, description=description, minimum_duration_s=minimum))
+    return dict(actions=actions)
+
+
+def messages(catalog, payload, examples_path=EXAMPLES, *, prompt_variant=None):
+    variant = prompt_variant or os.environ.get('GUIDEBOT_GESTURE_PROMPT', 'minimal')
+    if variant not in {'minimal', 'original'}:
+        raise ValueError('GUIDEBOT_GESTURE_PROMPT must be minimal or original')
+    if payload.get('timing_contract') == 'semantic_keyframes':
+        from .timing import phases
+        document = minimal_document(catalog)
+        for row in document['actions']:
+            row['minimum_duration_s'] = round(sum(phases(catalog.assets[row['id']])), 3)
+        prompt_file = 'prompt_preplan.md' if payload.get('planning_mode') == 'whole_text_preplan' else 'prompt_stream.md'
+        system = (DIRECTORY/prompt_file).read_text(encoding='utf-8').replace(
+            '{{REGISTRY}}', json.dumps(document, ensure_ascii=False, indent=2))
+        return [dict(role='system', content=system),
+                dict(role='user', content=json.dumps(payload, ensure_ascii=False))]
+    if variant == 'original' or payload.get('timing_contract') != 'fixed_deadline':
+        # Legacy anchor-only callers keep their original parameter contract.
+        return original_messages(catalog, payload, examples_path)
+    document = minimal_document(catalog)
+    system = (DIRECTORY/'prompt.md').read_text(encoding='utf-8').replace(
+        '{{REGISTRY}}', json.dumps(document, ensure_ascii=False, indent=2))
+    # No historical semantic few-shots in the experimental description-only prompt.
+    return [dict(role='system', content=system),
+            dict(role='user', content=json.dumps(payload, ensure_ascii=False))]

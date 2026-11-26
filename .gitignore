@@ -173,3 +173,10 @@ node_modules/
 
 # Archived demo machine-local credentials/configuration.
 /archive/doubao-demo/config.toml
+
+# Local recording transaction/recovery files.
+/assets/motion/.recording-*
+/assets/motion/.recording.lock
+
+# Local speech example assets; scripts and scenario stay tracked.
+/examples/gesture_from_audio/data/

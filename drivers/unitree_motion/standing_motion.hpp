@@ -87,10 +87,6 @@ inline std::vector<Waypoint> load_motion(const std::string& path) {
     return points;
 }
 
-inline double minimum_duration(double displacement, double velocity, double) {
-    return displacement / velocity;
-}
-
 inline Plan make_plan(const ArmPose& start, double yaw_start, double yaw_target,
                       const std::vector<Waypoint>& points) {
     if (points.empty()) throw std::runtime_error("motion must contain a waypoint");

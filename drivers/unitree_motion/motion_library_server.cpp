@@ -1,6 +1,7 @@
 #include "motion_interrupt.hpp"
 #include "sequence_library.hpp"
 #include "motion_deadline.hpp"
+#include "controller_lock.hpp"
 
 #include <array>
 #include <atomic>
@@ -90,26 +91,7 @@ void on_state(const void* raw) {
 
 void on_signal(int) { g_interrupted = 1; }
 
-class ControllerLock {
-public:
-    ControllerLock() {
-        fd_ = open("/tmp/g1_arm_motion_library.lock", O_CREAT | O_RDWR | O_CLOEXEC, 0600);
-        if (fd_ < 0) throw std::runtime_error("cannot open motion controller lock");
-        if (flock(fd_, LOCK_EX | LOCK_NB) != 0) {
-            close(fd_);
-            fd_ = -1;
-            throw std::runtime_error("another motion library controller is running");
-        }
-    }
 
-    ~ControllerLock() { if (fd_ >= 0) close(fd_); }
-
-    ControllerLock(const ControllerLock&) = delete;
-    ControllerLock& operator=(const ControllerLock&) = delete;
-
-private:
-    int fd_ = -1;
-};
 
 Snapshot snapshot() {
     std::lock_guard<std::mutex> lock(g_state_mutex);
@@ -383,6 +365,7 @@ public:
             player.state() == motion_interrupt::State::Idle)
             execution_["state"] = "completed";
         status_ = {{"state", names[static_cast<int>(player.state())]},
+                   {"commanded_arm", player.pose()},
                    {"execution", execution_},
                    {"checkpoint", checkpoint}, {"ownership", ownership_},
                    {"active_step_index", player.state() == motion_interrupt::State::Running ?
@@ -837,9 +820,7 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
                 yaw_from = yaw_command;
                 yaw_to = session_initial.yaw + command.yaw_degrees * kPi / 180.0;
                 saved_yaw_target = yaw_to;
-                yaw_duration = std::max(1.0, standing_motion::minimum_duration(
-                    std::abs(yaw_to - yaw_from), standing_motion::kMaxYawVelocity,
-                    standing_motion::kMaxYawAcceleration));
+                yaw_duration = 1.0;  // Explicit transition time; no displacement-based estimate.
                 yaw_start = now;
                 yaw_active = true;
                 yaw_braking = false;
@@ -928,9 +909,7 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
             pending_resume = false;
             yaw_from = yaw_command;
             yaw_to = saved_yaw_target;
-            yaw_duration = std::max(1.0, standing_motion::minimum_duration(
-                std::abs(yaw_to - yaw_from), standing_motion::kMaxYawVelocity,
-                standing_motion::kMaxYawAcceleration));
+            yaw_duration = 1.0;  // Explicit transition time; no displacement-based estimate.
             yaw_start = now;
             yaw_active = true;
             yaw_braking = false;
@@ -950,16 +929,17 @@ bool control_loop(ChannelPublisher<LowCmd_>& publisher, LowCmd_& cmd,
                         player.pose(), 0.0, 0.0, action.waypoints);
                     double planned_core = 0.0;
                     if (preview) planned_core = preview_core_seconds(plan, queued, library);
-                    std::cout << (preview ? "[PREVIEW] " : "[SEQUENCE] ")
-                              << queued.sequence.name << " started; "
-                              << plan.total_duration << " s planned"
-                              << (action.play_style_preview ? "; play-style linear, 2 ms commands" : "")
-                              << "\n";
                     // Log/asset work may have consumed time; validate immediately
                     // before starting, never just at socket receipt.
                     motion_deadline::check(queued.end_monotonic, plan.total_duration,
                         std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count());
                     player.start(action);
+                    std::cout << (preview ? "[PREVIEW] " : "[SEQUENCE] ")
+                              << queued.sequence.name << " started; "
+                              << plan.total_duration << " s planned"
+                              << (action.play_style_preview ? "; play-style linear, 2 ms commands" : "")
+                              << "\n";
+
                     status.execution(queued, "running");
                     play_style_active = action.play_style_preview;
                     reverse_return_active = action.play_style_preview && !queued.combo_preview;
@@ -1151,6 +1131,11 @@ Options parse_options(int argc, char** argv) {
 
 int main(int argc, char** argv) {
     try {
+        if (argc == 2 && std::string(argv[1]) == "--check-controller-lock") {
+            ControllerLock lock;
+            std::cout << "Controller lock acquired successfully; no DDS or robot connection was started.\n";
+            return 0;
+        }
         const Options options = parse_options(argc, argv);
         const motion_catalog::Library library{
             motion_catalog::Catalog::load(options.catalog), options.directory,

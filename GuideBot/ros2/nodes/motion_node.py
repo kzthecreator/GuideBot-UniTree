@@ -26,6 +26,12 @@ class MotionNode(Node):
             if goal.has_duration:
                 row['duration_s'] = goal.duration_s
             self.catalog.validate(row, [0], [], enforce_context=False)
+            if goal.timing_mode == 'semantic_keyframes':
+                from GuideBot.gesture.timing import phases
+                _, minimum, hold = phases(self.catalog.assets[goal.action])
+                if (not goal.end_monotonic or not math.isfinite(goal.core_s) or not math.isfinite(goal.hold_s)
+                        or not minimum <= goal.core_s <= 600 or not hold <= goal.hold_s <= 300):
+                    raise ValueError('Invalid semantic phases')
             with self.lock:
                 if self.goal_busy:
                     return GoalResponse.REJECT
@@ -51,6 +57,8 @@ class MotionNode(Node):
                          start_monotonic=goal.start_monotonic,
                          arrival_monotonic=goal.arrival_monotonic,
                          scheduler_managed=goal.scheduler_managed)
+            if goal.timing_mode == 'semantic_keyframes':
+                event.update(timing_mode=goal.timing_mode, core_s=goal.core_s, hold_s=goal.hold_s)
             if goal.end_monotonic:
                 event['end_monotonic'] = goal.end_monotonic
             if goal.has_duration:

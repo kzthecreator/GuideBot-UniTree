@@ -1,0 +1,110 @@
+{
+  "schema_version": 3,
+  "file_format_version": 1,
+  "name": "L_Forward_Point",
+  "category": "basic",
+  "type": "pose",
+  "label": "L前伸指位",
+  "description": "左臂肩pitch前伸至约45°，左肘伸直，左臂线固定于前方偏左侧。",
+  "robot_model": "G1-7DOF",
+  "source": "teach_with_name",
+  "version": 2,
+  "status": "approved",
+  "movement_context": "stationary",
+  "scenes": [
+    "basic"
+  ],
+  "notes": "",
+  "sha256": "59e0e9a4c32f2d5084d51384d5605b12080d0b328a0f48e160b7ed1dcb012303",
+  "verified_by": "kwx",
+  "verified_at": "2026-11-25T23:18:06+08:00",
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0
+  ],
+  "nominal_duration_ms": 0,
+  "entry_pose": [
+    -0.075381,
+    0.142984,
+    0.46168,
+    0.303524,
+    -0.626571,
+    0.0,
+    0.0,
+    0.072229,
+    -0.261112,
+    0.026078,
+    0.851108,
+    0.00574,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    -0.075381,
+    0.142984,
+    0.46168,
+    0.303524,
+    -0.626571,
+    0.0,
+    0.0,
+    0.072229,
+    -0.261112,
+    0.026078,
+    0.851108,
+    0.00574,
+    0.0,
+    0.0
+  ],
+  "loopable": false,
+  "interruptible": true,
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "safety": {
+    "max_velocity_rad_s": 0.4,
+    "max_acceleration_rad_s2": 0.8,
+    "joint_limits_profile": "config/arm_joint_limits.json"
+  },
+  "gesture_group": "semantic",
+  "gesture_subcategory": "指代",
+  "recording_task_id": "01",
+  "timing_profile": {
+    "phase_weights": {
+      "transition": 1,
+      "core": 0,
+      "hold": 1
+    },
+    "minimum_total_ms": 500,
+    "frame_weights": []
+  },
+  "preview_confirmation": {
+    "sha256": "59e0e9a4c32f2d5084d51384d5605b12080d0b328a0f48e160b7ed1dcb012303",
+    "version": 2,
+    "timing_profile": {
+      "phase_weights": {
+        "transition": 1,
+        "core": 0,
+        "hold": 1
+      },
+      "minimum_total_ms": 500,
+      "frame_weights": []
+    },
+    "total_ms": 500
+  }
+}

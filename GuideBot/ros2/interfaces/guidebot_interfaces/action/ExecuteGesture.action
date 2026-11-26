@@ -8,6 +8,9 @@ float64 arrival_monotonic
 float64 end_monotonic
 bool has_duration
 float64 duration_s
+string timing_mode
+float64 core_s
+float64 hold_s
 bool scheduler_managed
 ---
 bool success

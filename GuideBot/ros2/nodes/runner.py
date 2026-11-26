@@ -8,9 +8,10 @@ def main():
     parser.add_argument('--node', required=True, choices=('session','conversation','gesture','motion'))
     args, ros_args = parser.parse_known_args()
     config = Path(os.environ['GUIDEBOT_PLANNER_ENV']) if os.environ.get('GUIDEBOT_PLANNER_ENV') else Path('/nonexistent')
-    if args.node == 'gesture' and config.is_file():
-        from dotenv import load_dotenv
-        load_dotenv(config, override=False, interpolate=False)
+    if (args.node == 'gesture' and config.is_file()
+            and os.environ.get('GUIDEBOT_ROS_OFFLINE') != '1'):
+        from GuideBot.runtime.planner_config import load_planner_config
+        load_planner_config(config)
     rclpy.init(args=ros_args)
     if args.node == 'gesture':
         from .gesture_node import GestureNode as Implementation
@@ -22,8 +23,8 @@ def main():
         from .session_manager import SessionManager as Implementation
     manifest = Path(os.environ['GUIDEBOT_SESSION_DIR'])/('node-'+args.node+'.json')
     import sys
-    manifest.write_text(json.dumps(dict(pid=os.getpid(), python=sys.executable, version=sys.version.split()[0], role=args.node)))
     node = Implementation()
+    manifest.write_text(json.dumps(dict(pid=os.getpid(), python=sys.executable, version=sys.version.split()[0], role=args.node)))
     executor = MultiThreadedExecutor(num_threads=6)
     executor.add_node(node)
     try:

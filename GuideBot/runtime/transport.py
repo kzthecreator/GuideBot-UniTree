@@ -56,7 +56,7 @@ class ROSGestureService:
         if self.server is not None:
             raise RuntimeError('Create a new ROS session per conversation')
         self.directory.mkdir(parents=True, exist_ok=True)
-        self.log = (self.directory/'gesture.jsonl').open('w', encoding='utf-8')
+        self.log = (self.directory/'gesture-transport.jsonl').open('w', encoding='utf-8')
         self.running = True
         self.last_heartbeat = time.monotonic()
         self.server = Server(self.root/'host.sock', self._host)

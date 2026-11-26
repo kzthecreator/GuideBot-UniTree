@@ -38,14 +38,16 @@ class LocalRuntime:
             self.environment['GUIDEBOT_GESTURE_TIMING_MODE'] = self.timing
         self.log = (self.root/'ros.log').open('w')
         try:
-            self.process = subprocess.Popen([sys.executable,'-m','GuideBot.ros2.launcher'],
+            self.process = subprocess.Popen([self.environment['GUIDEBOT_PYTHON'],'-m','GuideBot.ros2.launcher'],
                 cwd=REPO, env=self.environment, stdout=self.log, stderr=subprocess.STDOUT, start_new_session=True)
             deadline = time.monotonic()+30
             while time.monotonic() < deadline:
                 if self.process.poll() is not None:
                     break
                 try:
-                    if call(self.root/'ipc/ros.sock', {'op':'health'})['ready']:
+                    if (call(self.root/'ipc/ros.sock', {'op':'health'})['ready']
+                            and all((self.root/'session'/('node-'+role+'.json')).is_file()
+                                    for role in ('session','conversation','gesture','motion'))):
                         return self
                 except (OSError,RuntimeError):
                     pass
@@ -56,7 +58,7 @@ class LocalRuntime:
             raise
 
     def run(self, *args, check=True):
-        return subprocess.run([sys.executable,*args], cwd=REPO, env=self.environment,
+        return subprocess.run([self.environment['GUIDEBOT_PYTHON'],*args], cwd=REPO, env=self.environment,
                               text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=check)
 
     def pause(self):

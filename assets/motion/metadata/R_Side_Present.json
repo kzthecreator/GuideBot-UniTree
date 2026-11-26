@@ -2,37 +2,37 @@
   "allowed_robot_modes": [
     "standing"
   ],
-  "category": "reception",
+  "category": "presentation",
   "description": "",
   "entry_pose": [
-    -0.349772,
-    0.396702,
-    0.941349,
-    -0.805795,
-    0.15788,
+    0.071786,
+    0.24793,
+    0.025227,
+    1.24781,
+    -0.00906,
     0.0,
     0.0,
-    0.092398,
-    -0.291085,
-    -0.062078,
-    1.005273,
-    0.006591,
+    -0.299126,
+    -1.57891,
+    -0.661949,
+    1.238618,
+    0.682801,
     0.0,
     0.0
   ],
   "exit_pose": [
-    -0.273156,
-    0.318589,
-    0.99855,
-    -0.970363,
-    0.158132,
+    0.071786,
+    0.24793,
+    0.025227,
+    1.24781,
+    -0.00906,
     0.0,
     0.0,
-    0.094436,
-    -0.242824,
-    -0.07302,
-    1.017329,
-    0.006459,
+    -0.299126,
+    -1.57891,
+    -0.661949,
+    1.238618,
+    0.682801,
     0.0,
     0.0
   ],
@@ -56,15 +56,13 @@
     "right_wrist_yaw"
   ],
   "keyframe_times_ms": [
-    0,
-    300,
-    600
+    0
   ],
-  "label": "greet_wave",
+  "label": "R_Side_Present",
   "loopable": false,
   "movement_context": "stationary",
-  "name": "greet_wave",
-  "nominal_duration_ms": 600,
+  "name": "R_Side_Present",
+  "nominal_duration_ms": 0,
   "notes": "",
   "robot_model": "G1-7DOF",
   "safety": {
@@ -73,26 +71,23 @@
     "max_velocity_rad_s": 0.4
   },
   "scenes": [
-    "reception"
+    "presentation"
   ],
   "schema_version": 3,
-  "sha256": "68148c8031afb5e45404017e041e1c1afb022122078d0d14af71c4e8dd205457",
+  "sha256": "b5e01218b3c31ad1bc1b37af8a8d344005b004789c10b0859294e932e32a5674",
   "source": "teach_with_name",
   "status": "approved",
   "type": "motion",
-  "verified_at": "2026-11-17T17:26:40+08:00",
+  "verified_at": "2026-11-17T17:30:48+08:00",
   "verified_by": "kwx",
-  "version": 2,
+  "version": 5,
   "timing_profile": {
     "phase_weights": {
       "transition": 1,
-      "core": 2,
-      "hold": 1
+      "core": 0,
+      "hold": 2
     },
-    "minimum_total_ms": 2000,
-    "frame_weights": [
-      1,
-      1
-    ]
+    "minimum_total_ms": 1500,
+    "frame_weights": []
   }
 }

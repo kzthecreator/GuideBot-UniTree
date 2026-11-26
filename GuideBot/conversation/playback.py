@@ -1,5 +1,6 @@
 """Streaming reply queue, SDK pacing, interruption and playback reference."""
 import audioop
+import math
 from collections import deque
 from dataclasses import dataclass, field
 import threading
@@ -65,6 +66,7 @@ class _ResponseAudio:
     data: object = field(default_factory=_PCMSpool)
     resample_state: object = None
     done: bool = False
+    buffer_until: float = 0.
     received_bytes: int = 0
     submitted_bytes: int = 0
 
@@ -72,9 +74,12 @@ class StreamingSpeaker:
     """Serialize SDK calls and discard interrupted responses, including PC1's FIFO."""
 
     def __init__(self, stopping, on_error, chunk_ms=1000, gain=1.5, on_event=None,
-                 on_reference=None):
+                 on_reference=None, startup_buffer_s=0.):
         if not 200 <= chunk_ms <= 3000 or not 0 < gain <= 4:
             raise ValueError("Speaker chunk must be 200..3000 ms and gain in (0, 4]")
+        if type(startup_buffer_s) not in (int,float) or not math.isfinite(startup_buffer_s) or not 0 <= startup_buffer_s <= 30:
+            raise ValueError('Startup buffer must be 0..30 seconds')
+        self.startup_buffer_s = startup_buffer_s
         self.stopping, self.on_error = stopping, on_error
         self.on_event = on_event
         self.on_reference = on_reference
@@ -131,7 +136,7 @@ class StreamingSpeaker:
         with self.condition:
             entry = self.responses.get(response_id)
             if entry is None:
-                entry = _ResponseAudio(response_id)
+                entry = _ResponseAudio(response_id, buffer_until=time.monotonic()+self.startup_buffer_s)
                 self.pending.append(entry)
                 self.responses[response_id] = entry
             converted, entry.resample_state = audioop.ratecv(
@@ -216,7 +221,7 @@ class StreamingSpeaker:
             if self.on_event is None:
                 print("G1 speaker volume (requested 100%):", volume, flush=True)
             else:
-                self._emit("playback.ready", volume=volume)
+                self._emit("playback.ready", volume=volume, startup_buffer_s=self.startup_buffer_s)
             self.ready.set()
             generation = self.generation
             playback_until = 0.0
@@ -232,6 +237,9 @@ class StreamingSpeaker:
                     else:
                         entry = self.pending[0]
                         now = time.monotonic()
+                        if entry.submitted_bytes == 0 and now < entry.buffer_until:
+                            self.condition.wait(min(.2, entry.buffer_until-now))
+                            continue
                         # Keep at most roughly one chunk queued on PC1.
                         if playback_until > now + 0.2:
                             self.condition.wait(min(0.2, playback_until - now - 0.2))

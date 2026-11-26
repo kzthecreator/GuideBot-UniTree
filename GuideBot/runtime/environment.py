@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-import sysconfig
 
 REPO = Path(__file__).resolve().parents[2]
 FOXY = Path('/opt/ros/foxy')
@@ -20,7 +19,7 @@ def _clean_ros_base():
 
 
 def ros_environment(*, install=None, domain=None):
-    """Read ROS setup with a clean shell; run nodes with the explicit Conda Python."""
+    """Read ROS setup with a clean shell and the system Foxy Python ABI."""
     install = Path(install or os.environ.get('GUIDEBOT_ROS_INSTALL', DEFAULT_INSTALL))
     scripts = [FOXY/'setup.bash', install/'local_setup.bash']
     for script in scripts:
@@ -32,15 +31,15 @@ def ros_environment(*, install=None, domain=None):
                'guidebot-env', *map(str, scripts)]
     raw = subprocess.check_output(command, env=_clean_ros_base())
     environment = dict(item.decode().split('=',1) for item in raw.split(b'\0') if b'=' in item)
-    environment['PYTHONPATH'] = os.pathsep.join([str(REPO), sysconfig.get_paths()['purelib'], environment.get('PYTHONPATH',''), '/usr/lib/python3/dist-packages'])
-    environment['LD_LIBRARY_PATH'] = os.pathsep.join(filter(None,[environment.get('LD_LIBRARY_PATH',''), str(Path(sys.prefix)/'lib')]))
+    environment['PYTHONPATH'] = os.pathsep.join([str(REPO), environment.get('PYTHONPATH',''), '/usr/lib/python3/dist-packages'])
+    # Never inject Conda binary packages/libraries into the system Foxy interpreter.
     # Internal localhost graph only; separate account defaults avoid joining
     # another user's graph and exhausting the same DDS participant range.
     default_domain = 50 + os.getuid() % 40
     environment.update(ROS_DOMAIN_ID=str(domain if domain is not None else
                                         os.environ.get('GUIDEBOT_ROS_DOMAIN_ID', default_domain)),
                        ROS_LOCALHOST_ONLY='1', RMW_IMPLEMENTATION='rmw_cyclonedds_cpp',
-                       GUIDEBOT_PYTHON=sys.executable, PYTHONNOUSERSITE='1')
+                       GUIDEBOT_PYTHON='/usr/bin/python3', PYTHONNOUSERSITE='1')
     return environment
 
 

@@ -5,7 +5,7 @@
 ```json
 {
   "标签": "展示墙讲解",
-  "动作": {"a": "present_center", "b": "present_left", "c": "present_right", "d": "neutral"},
+  "动作": {"a": "R_Center_Present", "b": "L_Side_Present", "c": "R_Side_Present", "d": "B_Neutral_Rest"},
   "时间": {"a": 2.0, "b": 3.0, "c": 2.5, "d": 2.0}
 }
 ```
@@ -42,6 +42,6 @@ python3 tools/motion_ctl.py status
 
 `status` 返回 `state` 和 `checkpoint`；旧四段接口使用 `phase`，新 Sequence 还返回 `step_index` 和 `step_name`。检查点只表示手臂动作进度。讲解文本、TTS 音频断点、问答内容、访客对话上下文必须由上层讲解控制器保存和恢复；这里尚未实现整段讲解词的无重复续讲，也尚未联调真实机器人中断时的减速度和避碰效果。
 
-服务端默认处于 `ownership=released`。停稳后必须等待 `acquire` 完成且 `status` 显示 `owned`，才可发送动作；导航前必须等待 `release` 完成且显示 `released`。`neutral` 是另外录制的静态姿态，不能代替控制权释放。
+服务端默认处于 `ownership=released`。停稳后必须等待 `acquire` 完成且 `status` 显示 `owned`，才可发送动作；导航前必须等待 `release` 完成且显示 `released`。`B_Neutral_Rest` 是另外录制的静态姿态，不能代替控制权释放。
 
 服务端发送腰部角度时以启动 yaw 为零点，限幅 +/-15 度、绝对 yaw +/-0.40 rad。腰部可在手势播放时单独更新；中断时腰轨迹一起减速，恢复后重新向上次目标规划。服务端监测遥控器 R1+R2、状态超时和跟踪误差。正式使用前须由现场人员测试硬件急停和安全距离，不要并行启动任何其他 `rt/arm_sdk` 发布进程。

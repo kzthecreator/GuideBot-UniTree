@@ -2,6 +2,8 @@
 """Local timing editor and supervised one-shot preview launcher."""
 
 import argparse
+from collections import deque
+from datetime import datetime
 import errno
 import getpass
 import json
@@ -35,8 +37,29 @@ class App:
                       "planned_core_seconds": None, "requested_core_seconds": None,
                       "message": "", "success": False, "eligible": False}
         self.tested = None
+        self.cancelled = False
+
+    def inventory(self):
+        self.entries = library.catalog_entries(ROOT / "config/motion_catalog.json")
+        items = []
+        for name, entry in self.entries.items():
+            path = library.asset_path(entry, ROOT / "motions", ROOT / "poses")
+            item = {"name": name, "type": entry["type"], "category": entry["category"],
+                    "recorded": path.is_file(), "available": False, "profile_saved": False}
+            if item["recorded"]:
+                try:
+                    detail = self.detail(name)
+                    item.update(available=True, profile_saved=detail["profile_saved"],
+                                minimum_total_ms=detail["timing_profile"]["minimum_total_ms"])
+                except (OSError, ValueError) as error:
+                    item["error"] = str(error)
+            else:
+                item["error"] = "未录制：动作文件不存在，请先使用 teach_with_name 录制"
+            items.append(item)
+        return items
 
     def detail(self, name):
+        self.entries = library.catalog_entries(ROOT / "config/motion_catalog.json")
         if type(name) is not str or name not in self.entries:
             raise ValueError("动作名不在清单中")
         result, errors, warnings = library.inspect(
@@ -56,7 +79,10 @@ class App:
                 "sha256": meta["sha256"], "version": meta["version"], "frames": len(points),
                 "timing_profile": profile, "profile_saved": "timing_profile" in meta,
                 "intervals_ms": intervals, "nominal_ms": sum(intervals),
-                "warnings": warnings}
+                "warnings": warnings, "label": meta.get("label", name),
+                "description": meta.get("description", ""),
+                "gesture_group": meta.get("gesture_group", "prosody" if self.entries[name]["category"]=="prosody" else "semantic"),
+                "confirmed_total_ms": meta.get("preview_confirmation", {}).get("total_ms")}
 
     def preview(self, payload):
         name = payload.get("name")
@@ -80,6 +106,39 @@ class App:
         requested_core = max(total, profile["minimum_total_ms"]) / 1000 * \
             profile["phase_weights"]["core"] / sum(profile["phase_weights"].values())
         self.launch(cmd, signature, offline, requested_core=requested_core)
+
+    def simple_payload(self, payload):
+        detail = self.detail(payload.get("name"))
+        # Keep the phase/frame distribution and the user-selected lower bound.
+        # Runtime may stretch it to fit the planned speech window.
+        profile = json.loads(json.dumps(detail["timing_profile"]))
+        profile["minimum_total_ms"] = self.check_int(payload.get("minimum_total_ms", profile["minimum_total_ms"]), 1, 600000, "最短总时长")
+        return dict(payload, timing_profile=profile)
+
+    def simple_preview(self, payload):
+        self.preview(self.simple_payload(payload))
+
+    def confirm_available(self, payload):
+        payload = self.simple_payload(payload)
+        name = payload.get("name")
+        detail = self.detail(name)
+        total = self.check_int(payload.get("total_ms"), 1, 600000, "本次试播总时长")
+        profile = library.validate_timing_profile(payload["timing_profile"], detail["frames"])
+        signature = (name, payload.get("sha256"), payload.get("version"), profile, total)
+        with self.lock:
+            if (self.stopping or self.state["running"] or self.cancelled
+                    or not self.state.get("eligible") or self.tested != signature):
+                raise ValueError("请先按当前动作和时长完成真机试播，再确认可用")
+            # Confirm this lower bound/distribution, without fixing runtime duration.
+            saved_profile = json.loads(json.dumps(profile))
+            actual_total = max(total, profile["minimum_total_ms"])
+            from tools.motion.confirm_motion import confirm
+            meta = confirm(ROOT, self.entries, name, payload.get("sha256"),
+                           payload.get("version"), saved_profile, actual_total, getpass.getuser())
+            self.tested = None
+            self.state["eligible"] = False
+        return {"confirmed": True, "enabled": True, "status": meta["status"],
+                "message": "已确认可用，自动加入 LLM 动作列表"}
 
     def combo_plan(self, payload):
         steps = payload.get("steps")
@@ -134,23 +193,33 @@ class App:
             if self.state["running"]:
                 raise ValueError("已有试播正在执行")
             self.tested = None
+            self.cancelled = False
             self.state = {"running": True, "phase": "starting", "planned_seconds": None,
                           "planned_core_seconds": None,
                           "requested_core_seconds": requested_core,
                           "mode": mode, "steps": steps or [], "active_step_index": None,
                           "message": "正在启动试播", "success": False, "eligible": False}
+            log_dir = Path.home()/".local/state/guidebot/motion-previews"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = log_dir/(datetime.now().strftime("%Y%m%d-%H%M%S-%f")+".log")
+            self.state["log_path"] = str(log_path)
             try:
                 self.process = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT, text=True,
-                                                bufsize=1, start_new_session=True)
+                                                bufsize=1, start_new_session=True,
+                                                env=dict(os.environ, PYTHONUNBUFFERED="1"))
             except OSError:
                 self.state["running"] = False
                 raise
-            threading.Thread(target=self.watch, args=(self.process, signature, offline, cleanup_path), daemon=True).start()
+            threading.Thread(target=self.watch, args=(self.process, signature, offline, cleanup_path, log_path), daemon=True).start()
 
-    def watch(self, process, signature, offline, cleanup_path=None):
-        lines = []
+    def watch(self, process, signature, offline, cleanup_path=None, log_path=None):
+        lines = deque(maxlen=40)
+        log = Path(log_path).open("w", encoding="utf-8") if log_path else None
         for line in process.stdout:
+            if log is not None:
+                log.write(line)
+                log.flush()
             line = line.strip()
             if not line:
                 continue
@@ -170,12 +239,20 @@ class App:
                     lines.append(line)
                     self.state["message"] = line
         code = process.wait()
+        if log is not None:
+            log.write(f"\n[EXIT] code={code}\n")
+            log.close()
+        errors = [line for line in lines if any(marker in line.lower() for marker in
+                  ("试播失败", "error:", "runtimeerror", "traceback", "[rejected]", "[error]", "failed to"))]
+        failure = errors[-1] if errors else (lines[-1] if lines else "未收到执行状态")
         with self.lock:
-            success = code == 0 and self.state["phase"] == "completed"
+            self.state["exit_code"] = code
+            self.state["recent_output"] = list(lines)
+            success = code == 0 and self.state["phase"] == "completed" and not self.cancelled
             self.state.update(running=False, success=success, eligible=success and not offline and signature is not None,
                               phase="completed" if success else "failed",
                               message="试播完成，控制权已释放" if success else
-                                      (lines[-1] if lines else f"试播失败，退出码 {code}"))
+                                      (f"试播失败（退出码 {code}）：{failure}"))
             if success and not offline and signature is not None:
                 self.tested = signature
             self.process = None
@@ -186,6 +263,7 @@ class App:
         with self.lock:
             if not self.state["running"] or self.process is None:
                 return
+            self.cancelled = True
             os.killpg(self.process.pid, signal.SIGINT)
             self.state["message"] = "正在取消并释放控制权"
             self.state["eligible"] = False
@@ -240,19 +318,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(body)
             elif url.path == "/api/motions":
-                items = []
-                for name, entry in APP.entries.items():
-                    path = library.asset_path(entry, ROOT / "motions", ROOT / "poses")
-                    if path.is_file():
-                        item = {"name": name, "type": entry["type"], "category": entry["category"]}
-                        try:
-                            detail = APP.detail(name)
-                            item.update(profile_saved=detail["profile_saved"],
-                                        minimum_total_ms=detail["timing_profile"]["minimum_total_ms"])
-                        except (OSError, ValueError) as error:
-                            item.update(profile_saved=False, error=str(error))
-                        items.append(item)
-                self.reply(200, {"items": items})
+                self.reply(200, {"items": APP.inventory()})
             elif url.path == "/api/motion":
                 self.reply(200, APP.detail(parse_qs(url.query).get("name", [""])[0]))
             elif url.path == "/api/status":
@@ -278,7 +344,12 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length))
             if not isinstance(payload, dict):
                 raise ValueError("请求必须是对象")
-            if self.path == "/api/preview":
+            if self.path == "/api/simple-preview":
+                APP.simple_preview(payload)
+                result = {"started": True}
+            elif self.path == "/api/confirm":
+                result = APP.confirm_available(payload)
+            elif self.path == "/api/preview":
                 APP.preview(payload)
                 result = {"started": True}
             elif self.path == "/api/combo-plan":
@@ -307,7 +378,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="本机动作帧间比例编辑窗口")
+    parser = argparse.ArgumentParser(description="本机动作试播与确认窗口")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     try:

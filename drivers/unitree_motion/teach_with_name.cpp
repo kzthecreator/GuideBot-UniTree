@@ -2,7 +2,7 @@
  * teach_with_name.cpp — G1 Arm7 Kinesthetic Teaching with motion name
  * =====================================================================
  * 同 teach.cpp，区别：
- *   - 保存时询问清单中的动作名
+ *   - 保存时支持自定义动作名，并选择语义或韵律分类
  *   - 静态姿态保存到 poses/basic，动态轨迹保存到 motions/<category>
  *   - 文件每行 = [duration_sec] [14 joint angles]，首帧时长仅供旧播放器兼容
  *   - 已存在同名文件时提示是否覆盖
@@ -13,6 +13,7 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -23,6 +24,9 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <cerrno>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -192,7 +196,22 @@ static bool file_exists(const std::string& path) {
     return stat(path.c_str(), &st) == 0;
 }
 
-int main() {
+int main(int argc, char** argv) {
+    std::string capture_output;
+    if (argc == 2 && std::string(argv[1]) == "--help") {
+        std::cout << "Usage: teach_with_name [--capture-output FILE]\n";
+        return 0;
+    }
+    if (argc == 3 && std::string(argv[1]) == "--capture-output") {
+        capture_output = argv[2];
+        if (capture_output.empty() || file_exists(capture_output)) {
+            std::cerr << "[ERROR] Capture destination must be a new file\n";
+            return 1;
+        }
+    } else if (argc != 1) {
+        std::cerr << "[ERROR] Usage: teach_with_name [--capture-output FILE]\n";
+        return 1;
+    }
     motion_catalog::Catalog catalog;
     try { catalog = motion_catalog::Catalog::load("config/motion_catalog.json"); }
     catch (const std::exception& error) {
@@ -224,7 +243,7 @@ int main() {
     std::cout << "===========================================\n"
               << "  G1 Arm7 - 教学模式 (带命名)\n"
               << "  腰部全程锁定，手臂可自由拖动\n"
-              << "  首帧=入口姿态，末帧=出口姿态；无需补neutral\n"
+              << "  首帧=入口姿态，末帧=出口姿态；无需补B_Neutral_Rest\n"
               << "  Enter = 记录    q = 命名保存并退出    c = 取消且不保存\n"
               << "===========================================\n\n";
 
@@ -309,117 +328,46 @@ int main() {
         return 0;
     }
 
-    if (!ensure_dir(MOTIONS_DIR)) {
-        std::cerr << "[ERROR] 无法创建目录 " << MOTIONS_DIR << "\n";
+    // Stage captured data only. The Python authoring tool owns prompts and the
+    // rollback-protected update of the asset, metadata and registration files.
+    char pending[] = ".recording-XXXXXX";
+    const int fd = mkstemp(pending);
+    if (fd < 0) { std::cerr << "[ERROR] Cannot stage recording\n"; return 1; }
+    close(fd);
+    std::ofstream output(pending);
+    output << waypoints.size() << "\n" << N_ARM << "\n";
+    for (size_t i = 0; i < waypoints.size(); ++i) {
+        output << std::fixed << std::setprecision(6) << intervals[i];
+        for (double angle : waypoints[i]) output << " " << angle;
+        output << "\n";
+    }
+    output.close();
+    if (!output) { std::cerr << "[ERROR] Staging failed: " << pending << "\n"; return 1; }
+    if (!capture_output.empty()) {
+        if (std::rename(pending, capture_output.c_str()) != 0) {
+            std::cerr << "[ERROR] Cannot move capture; retained: " << pending << "\n";
+            return 1;
+        }
+        std::cout << "[CAPTURED] " << capture_output << "\n";
+        return 0;
+    }
+    const pid_t child = fork();
+    if (child == 0) {
+        execlp("python3", "python3", "../../tools/motion/register_recording.py",
+               "--root", ".", "--recording", pending, static_cast<char*>(nullptr));
+        _exit(127);
+    }
+    int status = 0;
+    if (child < 0) { std::cerr << "[ERROR] Cannot start registration; retained " << pending << "\n"; return 1; }
+    while (waitpid(child, &status, 0) < 0) {
+        if (errno == EINTR) continue;
+        std::cerr << "[ERROR] Cannot wait for registration; retained " << pending << "\n";
         return 1;
     }
-
-    std::string name;
-    while (true) {
-        std::cout << "动作名 (小写字母开头，可用数字和下划线，如 point_wall): " << std::flush;
-        if (!std::getline(std::cin, name)) return 0;
-        motion_catalog::Entry entry;
-        try { entry = catalog.at(name); }
-        catch (const std::exception&) {
-            std::cout << "[WARN] 动作名不在清单中，请重输\n"; continue;
-        }
-        if (entry.type == "pose" && waypoints.size() != 1) {
-            std::cout << "[WARN] pose必须恰好1帧；本次请重新录制\n";
-            return 1;
-        }
-        const std::string folder = std::string(entry.type == "pose" ? "poses" : MOTIONS_DIR) +
-                                   "/" + entry.category;
-        if (!ensure_dir(folder)) {
-            std::cerr << "[ERROR] 无法创建目录 " << folder << "\n";
-            return 1;
-        }
-        std::string path = folder + "/" + name + ".dat";
-        if (file_exists(path)) {
-            std::cout << "[WARN] " << path << " 已存在，覆盖？[y/N]: " << std::flush;
-            std::string ans; std::getline(std::cin, ans);
-            if (ans != "y" && ans != "Y") continue;
-        }
-        const std::string metadata_path = "metadata/" + name + ".json";
-        nlohmann::json old = nlohmann::json::object();
-        try {
-            if (file_exists(metadata_path)) {
-                old = motion_catalog::read_json(metadata_path);
-                if (!old.is_object()) throw std::runtime_error("old metadata is not an object");
-                old.value("version", 0);
-                old.value("label", std::string());
-                old.value("description", std::string());
-                old.value("scenes", nlohmann::json::array());
-                old.value("notes", std::string());
-                old.value("loopable", false);
-                old.value("interruptible", true);
-            }
-        } catch (const std::exception& error) {
-            std::cerr << "[ERROR] 旧元数据损坏，已保留原动作文件: "
-                      << error.what() << "\n";
-            return 1;
-        }
-        std::ofstream f(path);
-        if (!f) { std::cerr << "[ERROR] 无法写入 " << path << "\n"; return 1; }
-        f << waypoints.size() << "\n" << N_ARM << "\n";
-        for (size_t waypoint = 0; waypoint < waypoints.size(); ++waypoint) {
-            const auto& wp = waypoints[waypoint];
-            f << std::fixed << std::setprecision(6) << intervals[waypoint];
-            for (int i = 0; i < N_ARM; ++i) f << " " << wp[i];
-            f << "\n";
-        }
-        f.close();
-        if (!f) { std::cerr << "[ERROR] 动作文件写入失败: " << path << "\n"; return 1; }
-        try {
-            if (!ensure_dir("metadata")) throw std::runtime_error("cannot create metadata directory");
-            const auto recorded = standing_motion::load_motion(path);
-            nlohmann::json times = nlohmann::json::array({0});
-            int total_ms = 0;
-            for (size_t i = 1; i < recorded.size(); ++i) {
-                total_ms += static_cast<int>(std::lround(recorded[i].requested_duration * 1000));
-                times.push_back(total_ms);
-            }
-            nlohmann::json entry_pose = nlohmann::json::array();
-            nlohmann::json exit_pose = nlohmann::json::array();
-            for (size_t i = 0; i < standing_motion::kArmJoints; ++i) {
-                entry_pose.push_back(recorded.front().arm[i]);
-                exit_pose.push_back(recorded.back().arm[i]);
-            }
-            nlohmann::json meta = {
-                {"schema_version", 3}, {"file_format_version", 1},
-                {"name", name}, {"category", entry.category}, {"type", entry.type},
-                {"label", old.value("label", name)},
-                {"description", old.value("description", std::string())},
-                {"robot_model", "G1-7DOF"}, {"source", "teach_with_name"},
-                {"version", old.value("version", 0) + 1}, {"status", "draft"},
-                {"movement_context", "stationary"},
-                {"scenes", old.value("scenes", nlohmann::json::array({entry.category}))},
-                {"notes", old.value("notes", std::string())},
-                {"sha256", motion_catalog::sha256_file(path)},
-                {"verified_by", ""}, {"verified_at", ""},
-                {"joint_count", static_cast<int>(standing_motion::kArmJoints)},
-                {"joint_names", motion_catalog::kJointNames},
-                {"keyframe_times_ms", times}, {"nominal_duration_ms", total_ms},
-                {"entry_pose", entry_pose}, {"exit_pose", exit_pose},
-                {"loopable", old.value("loopable", false)},
-                {"interruptible", old.value("interruptible", true)},
-                {"allowed_robot_modes", nlohmann::json::array({"standing"})},
-                {"safety", {{"max_velocity_rad_s", standing_motion::kMaxArmVelocity},
-                            {"max_acceleration_rad_s2", standing_motion::kMaxArmAcceleration},
-                            {"joint_limits_profile", "config/arm_joint_limits.json"}}}
-            };
-            std::ofstream metadata(metadata_path);
-            if (!metadata) throw std::runtime_error("cannot write metadata: " + metadata_path);
-            metadata << meta.dump(2) << "\n";
-            metadata.close();
-            if (!metadata) throw std::runtime_error("metadata write failed: " + metadata_path);
-        } catch (const std::exception& error) {
-            std::cerr << "[ERROR] 动作已保存但元数据生成失败，播放门禁将拒绝: "
-                      << error.what() << "\n";
-            return 1;
-        }
-        std::cout << "[SAVED] " << waypoints.size() << " waypoints -> " << path
-                  << "\n下一步运行: python3 ../../tools/motion/motion_ctl.py preview " << name << "\n";
-        break;
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        std::cerr << "[ERROR] Registration incomplete; captured data retained: " << pending << "\n";
+        return 1;
     }
+    unlink(pending);
     return 0;
 }

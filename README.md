@@ -1,5 +1,25 @@
 # GuideBot-UniTree
 
+## 流式手势测试（当前入口）
+
+默认时序统一为`aligned`。模拟手势的真实语音对话：
+
+```bash
+conda activate GuideBot
+python main.py --gestures --timestamps
+```
+
+真机对话（先关闭其他双臂控制程序）：
+
+```bash
+python main.py --gesture-backend unitree --timestamps
+```
+
+均需Enter开始。流式使用`GuideBot/gesture/prompt_stream.md`，不使用整段`prompt_preplan.md`；启用手势时默认3秒启动缓存。可显式设置`GUIDEBOT_GESTURE_TIMING_MODE=immediate`回到旧时序。
+
+启动时打印Session logs目录；手势服务日志所在目录新增`gesture-summary.json`，按response_id实时更新每轮回复文本、模型请求与耗时、候选动作、调度/修订、下发、完成、跳过和取消原因，以及收到的对齐锚点数量与版本。原始事件仍在同目录`gesture.jsonl`。通过job_id可关联候选与跳过项；通过request_id可关联请求及耗时。`dispatched`仅表示尝试下发，不保证执行成功，需同时查看execution、errors、skipped及completed；对齐状态不能证明实际出声同步，仍需现场观察。
+
+
 宇树 G1 导览机器人：StepFun 实时语音、G1 SDK 音频播放、单通道麦克风、
 LocalVQE 与 AGC2 增强、知识检索，以及可选的文字时间戳、动作规划和真实上肢执行。
 
@@ -46,13 +66,13 @@ python main.py --gesture-backend unitree
 LLM 使用相对于本条回复播放起点的固定 `start_s/end_s`，不因规划延迟重新计时。
 过期或剩余时间不足则丢弃；新动作先制动取消旧动作，再检查能否在原期限内完成。
 动态核心保持录制时长，不按模型 duration_s 续时或强行压缩；固定期限不依赖文字对齐。
-10个有效资产均可供LLM选择，包括neutral。
-本地状态分为倾听和说话：倾听请求neutral，播放开始后才执行LLM队列。
-确认打断或预计播完时取消当前队列并回neutral；云端response.done不结束说话。
+10个有效资产均可供LLM选择，包括B_Neutral_Rest。
+本地状态分为倾听和说话：倾听请求B_Neutral_Rest，播放开始后才执行LLM队列。
+确认打断或预计播完时取消当前队列并回B_Neutral_Rest；云端response.done不结束说话。
 文本可提前规划，但播放前不执行；过期回复和迟到结果不能恢复动作。
 播完沿用播放时长估计，SDK没有设备结束回执。
 
-序列起步时，14个手臂关节最大实测／指令偏差超过0.3rad才拒绝，包括neutral。
+序列起步时，14个手臂关节最大实测／指令偏差超过0.3rad才拒绝，包括B_Neutral_Rest。
 此前现场约0.0357rad偏差现可通过此检查；实际动作效果仍待真机验收。
 
 不加参数仍是原来的纯语音，`--gestures` 为模拟动作。
@@ -146,3 +166,25 @@ python main.py --gesture-backend unitree
 GestureService保留调度线程、输入队列和规划线程池；ROS回调不执行阻塞式模型请求。
 StepFun仍提供端到端实时语音，音频16ms流水线留在隔离的Runtime资源进程。
 四个ROS节点不代表系统只有四个进程。结构与验收见[四节点收敛](docs/experiments/four-core-nodes-20261125.md)。
+
+### 流式请求与回复时延诊断
+
+语音会话目录新增`reply-latency.jsonl`，终端也打印`reply.latency`。只统计本机收到云端`speech_stopped`到该轮首次`playback.started`的间隔；按用户轮次与回复ID关联，重复开始事件不重复计数。该值不含结束事件到达前的检测/传输时间，也不是实际声学停声到出声测量。
+
+在手势日志目录的`planner-requests/<request_id>/`中，每次规划保存：
+
+- `input.json`：累计回复文字与实际payload，包括可选锚点、对齐、播放进度、上下文和动作历史。
+- `messages.json`：实际发送的System/User消息（包含动作描述，不含鉴权头）。
+- `raw-response.txt`：模型返回的原始JSON文本，保留无效动作以供检查。
+- `validated-actions.json`：通过格式/资产校验的候选动作，仍可能在调度时跳过。
+- `result.json`：耗时、无效计数及原因，或请求失败信息。
+
+通过请求编号与`gesture-summary.json`、`gesture.jsonl`关联，检查模型当时看见什么，以及候选为何未执行。若取消或网络失败，原始响应可能不完整；无返回内容时相应文件可能不存在。
+
+### 流式修复后的调度与日志
+
+新动作只引用已收到时间戳、尚有规划准备时间且未被已有动作覆盖的文字。模型看过的文字仍可在后续对齐到达时补规划，不再仅保留文本末尾16单元。播放后的候选预留约2秒规划提前量及1秒入口时间。
+
+在线对齐采用12秒滚动窗口、起点游标和有限增量处理；关闭结束时全前缀修复，最终仍是暂定边界。文本快照合并、音频完整合并传递、取消优先处理。离线导览素材的完整音频对齐不变。当前3秒播放缓存保持不变，真机同步和时间戳精度仍需重新实测。
+
+`gesture.jsonl`仅由手势服务写入，宿主ROS传输事件单独保存为`gesture-transport.jsonl`；旧会话的损坏日志不会自动修复。

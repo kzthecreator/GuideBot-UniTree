@@ -36,12 +36,12 @@ int main() {
     require(mkdir((root + "/motions").c_str(), 0700) == 0);
     require(mkdir((root + "/motions/reception").c_str(), 0700) == 0);
     {
-        std::ofstream file(root + "/poses/basic/neutral.dat");
+        std::ofstream file(root + "/poses/basic/B_Neutral_Rest.dat");
         file << "1\n14\n";
         write_frame(file, 0.3, 0);
     }
     {
-        std::ofstream file(root + "/motions/reception/greet_open.dat");
+        std::ofstream file(root + "/motions/reception/B_Open_Hold.dat");
         file << "3\n14\n";
         write_frame(file, 0.3, 0.02);
         write_frame(file, 0.5, 0.04);
@@ -49,7 +49,7 @@ int main() {
     }
     {
         std::ofstream file(root + "/catalog.json");
-        file << R"({"schema_version":1,"actions":[{"name":"neutral","category":"basic","priority":"P0","type":"pose"},{"name":"greet_open","category":"reception","priority":"P0","type":"motion"}]})";
+        file << R"({"schema_version":1,"actions":[{"name":"B_Neutral_Rest","category":"basic","priority":"P0","type":"pose"},{"name":"B_Open_Hold","category":"reception","priority":"P0","type":"motion"}]})";
     }
     const motion_catalog::Library library{
         motion_catalog::Catalog::load(root + "/catalog.json", 2),
@@ -60,9 +60,9 @@ int main() {
     const auto definition = sequence_library::parse(nlohmann::json::parse(R"({
       "sequence_name":"greet_guest",
       "steps":[
-        {"type":"pose","name":"neutral","hold_ms":300},
-        {"type":"motion","name":"greet_open","duration_ms":1200,"hold_ms":800,"transition_ms":400},
-        {"type":"pose","name":"neutral","hold_ms":300,"transition_ms":500}
+        {"type":"pose","name":"B_Neutral_Rest","hold_ms":300},
+        {"type":"motion","name":"B_Open_Hold","duration_ms":1200,"hold_ms":800,"transition_ms":400},
+        {"type":"pose","name":"B_Neutral_Rest","hold_ms":300,"transition_ms":500}
       ]})"));
     standing_motion::ArmPose actual{};
     const auto resolved = sequence_library::resolve(definition, library, limits, actual);
@@ -87,9 +87,29 @@ int main() {
     }
     require(std::abs(standing_motion::sample(plan, plan.total_duration).arm[0]) < 1e-9);
 
+    // A compiled timeline keeps even zero-displacement entry intervals and
+    // does not inject the legacy 0.5s correction into its prepared B_Neutral_Rest start.
+    auto complete = sequence_library::parse(nlohmann::json::parse(R"({
+      "sequence_name":"complete_timeline", "preserve_transition":true,
+      "steps":[{"type":"pose","name":"B_Neutral_Rest","transition_ms":200,"hold_ms":300},
+               {"type":"motion","name":"B_Open_Hold","transition_ms":400,
+                "duration_ms":1200,"hold_ms":600}]
+    })"));
+    auto measured_gap = actual;
+    measured_gap[0] = 0.01;
+    const auto continuous = sequence_library::resolve(complete, library, limits, actual, measured_gap);
+    const auto continuous_plan = standing_motion::make_plan(actual, 0, 0, continuous.waypoints);
+    require(std::abs(continuous_plan.total_duration - 2.7) < 1e-9);
+    require(std::abs(continuous.waypoints.front().requested_duration - 0.2) < 1e-9);
+    bool bad_flag_rejected = false;
+    try { sequence_library::parse(nlohmann::json::parse(
+        R"({"sequence_name":"bad","preserve_transition":1,"steps":[{"type":"pose","name":"B_Neutral_Rest"}]})")); }
+    catch (const std::runtime_error&) { bad_flag_rejected = true; }
+    require(bad_flag_rejected);
+
     auto weighted = sequence_library::parse(nlohmann::json::parse(R"({
       "sequence_name":"timing_preview",
-      "steps":[{"type":"motion","name":"greet_open","duration_ms":4000}]
+      "steps":[{"type":"motion","name":"B_Open_Hold","duration_ms":4000}]
     })"));
     weighted.steps.front().preview_weights = {1.0, 3.0};
     const auto weighted_action = sequence_library::resolve(weighted, library, limits, actual);
@@ -145,7 +165,7 @@ int main() {
         constrained_plan.segments.front().duration * 0.25).arm[0] - 0.005) < 1e-12);
     bool mixed_rejected = false;
     try { sequence_library::parse(nlohmann::json::parse(R"({
-      "sequence_name":"mixed","steps":[{"type":"motion","name":"greet_open",
+      "sequence_name":"mixed","steps":[{"type":"motion","name":"B_Open_Hold",
       "total_ms":6000,"duration_ms":1000}]})")); }
     catch (const std::runtime_error&) { mixed_rejected = true; }
     require(mixed_rejected);
@@ -203,22 +223,22 @@ int main() {
     player.interrupt();
     player.tick(player.brake_duration());
     require(player.state() == motion_interrupt::State::Paused);
-    require(player.checkpoint().step_name == "greet_open");
+    require(player.checkpoint().step_name == "B_Open_Hold");
     player.resume();
     player.tick(30);
     require(player.state() == motion_interrupt::State::Idle);
 
     {
-        std::ofstream file(root + "/motions/reception/greet_open.dat");
+        std::ofstream file(root + "/motions/reception/B_Open_Hold.dat");
         file << "1\n14\n";
         write_frame(file, 0.3, 0.08);
     }
     auto target = sequence_library::parse(nlohmann::json::parse(R"({
       "sequence_name":"point_target",
-      "steps":[{"type":"motion","name":"greet_open","duration_ms":1200,
+      "steps":[{"type":"motion","name":"B_Open_Hold","duration_ms":1200,
                 "transition_ms":400,"hold_ms":300}]
     })"));
-    const auto target_asset = library.load_asset("greet_open", true);
+    const auto target_asset = library.load_asset("B_Open_Hold", true);
     require(target_asset.nominal_duration_ms == 0);
     require(target_asset.keyframe_times_ms == std::vector<int>({0}));
     const auto target_action = sequence_library::resolve(target, library, limits, actual);
@@ -229,7 +249,7 @@ int main() {
     require(std::abs(standing_motion::sample(target_plan, target_plan.total_duration).arm[0] - 0.08) < 1e-9);
     auto default_target = sequence_library::parse(nlohmann::json::parse(R"({
       "sequence_name":"point_default",
-      "steps":[{"type":"motion","name":"greet_open","hold_ms":300}]
+      "steps":[{"type":"motion","name":"B_Open_Hold","hold_ms":300}]
     })"));
     require(sequence_library::resolve(default_target, library, limits, actual).waypoints.size() == 2);
     const auto already_there = target_asset.waypoints.front().arm;

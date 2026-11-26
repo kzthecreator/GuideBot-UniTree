@@ -67,13 +67,16 @@ class RealtimeSession:
         self.started_at = time.monotonic()
         self.current_turn = self.committed_turn = 0
         self.user_turns = {}
+        from .latency import ReplyLatency
+        self.reply_latency = ReplyLatency()
         self.confirmed_interruptions = set()
         self.response_turns = {}
         self.response_numbers = {}
         self.input_queue = queue.Queue(maxsize=100)
         self.speaker = StreamingSpeaker(self.stopping, self.fail, chunk_ms, gain,
                                         self._playback_event,
-                                        self._speaker_reference if diagnose_audio or aec else None)
+                                        self._speaker_reference if diagnose_audio or aec else None,
+                                        startup_buffer_s=float(os.environ.get('GUIDEBOT_GESTURE_STARTUP_BUFFER_S', '3')) if gestures else 0.)
         self.active, self.discarded = set(), set()
         self.workers = []
         self.errors = []
@@ -97,7 +100,7 @@ class RealtimeSession:
         self.gesture_enabled = bool(gestures)
         self.gesture_startup_status = 'pending' if gestures else 'not_requested'
         timing_mode = os.environ.get('GUIDEBOT_GESTURE_TIMING_MODE',
-                                     'immediate' if execution_mode == 'robot' else 'aligned')
+                                     'aligned')
         gesture_alignment = gestures and timing_mode == 'aligned'
         options = backend_options = None
         if gestures:
@@ -213,6 +216,13 @@ class RealtimeSession:
         rid = details.get("response_id")
         if kind == "playback.started":
             self.playback_starts[rid] = time.monotonic()
+            latency = self.reply_latency.playback_start(rid, self.response_turns.get(rid), self.playback_starts[rid])
+            if latency is not None:
+                turn = latency.pop('turn'); latency.pop('response_id')
+                self.report('reply.latency', f"用户结束事件到回复提交：{latency['latency_seconds']:.3f}s", turn=turn, response_id=rid, **latency)
+                with self.log_lock:
+                    with (self.directory/'reply-latency.jsonl').open('a', encoding='utf-8') as output:
+                        output.write(json.dumps(dict(latency, turn=turn, response_id=rid), ensure_ascii=False)+'\n')
             if self.gestures is not None:
                 self.gestures.submit('playback', rid, origin=self.playback_starts[rid])
         if kind in {'playback.discard_requested', 'playback.stopped', 'playback.drained_estimated'} and self.gestures is not None:
@@ -505,6 +515,7 @@ class RealtimeSession:
                             turn=self.user_turns.get(event.get("item_id"), self.current_turn))
             elif kind == "input_audio_buffer.speech_stopped":
                 self.stats["speech_stops"] += 1
+                self.reply_latency.speech_end(self.user_turns.get(event.get("item_id"), self.current_turn), time.monotonic())
                 self.report("VAD-end", "云端检测到停顿，等待回复", turn=self.user_turns.get(event.get("item_id"), self.current_turn))
             elif kind == "input_audio_buffer.committed":
                 self.committed_turn = self.user_turns.get(event.get("item_id"), self.current_turn)

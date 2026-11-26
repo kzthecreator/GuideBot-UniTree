@@ -1,27 +1,283 @@
 {
   "schema_version": 1,
   "actions": [
-    {"name":"neutral","category":"basic","priority":"P0","type":"pose"},
-    {"name":"greet_open","category":"reception","priority":"P0","type":"motion"},
-    {"name":"greet_wave","category":"reception","priority":"P1","type":"motion"},
-    {"name":"invite_follow","category":"reception","priority":"P0","type":"motion"},
-    {"name":"invite_question","category":"reception","priority":"P1","type":"motion"},
-    {"name":"present_center","category":"presentation","priority":"P0","type":"motion"},
-    {"name":"present_left","category":"presentation","priority":"P1","type":"motion"},
-    {"name":"present_right","category":"presentation","priority":"P1","type":"motion"},
-    {"name":"indicate_forward","category":"presentation","priority":"P0","type":"motion"},
-    {"name":"indicate_left","category":"presentation","priority":"P1","type":"motion"},
-    {"name":"indicate_right","category":"presentation","priority":"P1","type":"motion"},
-    {"name":"acknowledge_question","category":"interaction","priority":"P0","type":"motion"},
-    {"name":"answer_open","category":"interaction","priority":"P0","type":"motion"},
-    {"name":"please_wait","category":"interaction","priority":"P1","type":"motion"},
-    {"name":"request_repeat","category":"interaction","priority":"P1","type":"motion"},
-    {"name":"refer_staff","category":"interaction","priority":"P0","type":"motion"},
-    {"name":"emphasize_once","category":"interaction","priority":"P1","type":"motion"},
-    {"name":"emphasize_twice","category":"interaction","priority":"P1","type":"motion"},
-    {"name":"thanks","category":"interaction","priority":"P1","type":"motion"},
-    {"name":"elevator_indicate_panel","category":"elevator","priority":"P2","type":"motion"},
-    {"name":"elevator_button_prepose","category":"elevator","priority":"P2","type":"motion"},
-    {"name":"elevator_boarding_invite","category":"elevator","priority":"P2","type":"motion"}
+    {
+      "name": "B_Neutral_Rest",
+      "category": "basic",
+      "priority": "P0",
+      "type": "pose"
+    },
+    {
+      "name": "B_Open_Hold",
+      "category": "reception",
+      "priority": "P0",
+      "type": "motion"
+    },
+    {
+      "name": "L_Greeting_Wave",
+      "category": "reception",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Guiding_Swing",
+      "category": "reception",
+      "priority": "P0",
+      "type": "motion"
+    },
+    {
+      "name": "B_Question_Invite",
+      "category": "reception",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "R_Center_Present",
+      "category": "presentation",
+      "priority": "P0",
+      "type": "motion"
+    },
+    {
+      "name": "L_Side_Present",
+      "category": "presentation",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "R_Side_Present",
+      "category": "presentation",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Forward_Indicate",
+      "category": "presentation",
+      "priority": "P0",
+      "type": "motion"
+    },
+    {
+      "name": "L_Side_Indicate",
+      "category": "presentation",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "R_Side_Indicate",
+      "category": "presentation",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Question_Acknowledge",
+      "category": "interaction",
+      "priority": "P0",
+      "type": "motion"
+    },
+    {
+      "name": "B_Answer_Open",
+      "category": "interaction",
+      "priority": "P0",
+      "type": "motion"
+    },
+    {
+      "name": "L_Front_Hold",
+      "category": "interaction",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "R_Head_Side_Hold",
+      "category": "interaction",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Staff_Refer",
+      "category": "interaction",
+      "priority": "P0",
+      "type": "motion"
+    },
+    {
+      "name": "B_Single_Emphasis",
+      "category": "interaction",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Double_Emphasis",
+      "category": "interaction",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Thanks",
+      "category": "interaction",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "R_Elevator_Panel_Indicate",
+      "category": "elevator",
+      "priority": "P2",
+      "type": "motion"
+    },
+    {
+      "name": "R_Elevator_Button_Prepose",
+      "category": "elevator",
+      "priority": "P2",
+      "type": "motion"
+    },
+    {
+      "name": "B_Elevator_Boarding_Invite",
+      "category": "elevator",
+      "priority": "P2",
+      "type": "motion"
+    },
+    {
+      "name": "B_Down_Beat",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Double_Beat",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "R_Single_Beat",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Open_Accent",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Forward_Accent",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Arc_Flow",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "R_Sweep_Flow",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "B_Lower_Cadence",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion"
+    },
+    {
+      "name": "L_Draw_In_Hold",
+      "category": "semantic",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "R_Draw_In_Hold",
+      "category": "semantic",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "L_Short_Nudge",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "prosody"
+    },
+    {
+      "name": "R_Short_Nudge",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "prosody"
+    },
+    {
+      "name": "L_Forward_Point",
+      "category": "basic",
+      "priority": "P1",
+      "type": "pose",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "R_Forward_Point",
+      "category": "basic",
+      "priority": "P1",
+      "type": "pose",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "B_Parallel_Drop",
+      "category": "basic",
+      "priority": "P1",
+      "type": "pose",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "B_Alternating_Swing",
+      "category": "semantic",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "L_Upright_Split",
+      "category": "semantic",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "R_Upright_Split",
+      "category": "semantic",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "B_Lateral_Beat",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "prosody"
+    },
+    {
+      "name": "B_Sync_Push_Pull",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "prosody"
+    },
+    {
+      "name": "L_Single_Arm_Beat",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "prosody"
+    },
+    {
+      "name": "R_Single_Arm_Beat",
+      "category": "prosody",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "prosody"
+    }
   ]
 }

@@ -136,10 +136,35 @@ python tools/ros2/lifecycle_acceptance.py
 离线验收不连接机器人、音频或云端。模型测试可能需要安装上述权重。
 `preflight` 还要求本账户已配置密钥和完成知识同步；缺少它们会明确失败。
 
-四节点与倾听／说话模式已实现。倾听请求 neutral，播放期间执行 LLM 队列。
-LLM动作使用固定播放起止窗口：过期／来不及则丢弃，新动作先制动取消旧动作，再评估剩余窗口。
-本次ExecuteGesture增加end_monotonic，更新旧checkout后需重新运行python tools/ros2/build.py并重编译原生服务；完整install会构建两者。
-当前起步检查阈值为 0.3 rad：14 个手臂关节最大实测／指令差超过该值，会拒绝包括 neutral 在内的新动作。
+四节点与倾听／说话模式已实现。倾听请求 B_Neutral_Rest，播放期间执行 LLM 队列。
+LLM流式动作现使用关键词关键帧：固定1秒切换，核心不短于验收值并可按关键词间隔延长；下发前排除冲突，已提交动作不抢占。开场播放缓存默认3秒，GUIDEBOT_GESTURE_STARTUP_BUFFER_S可调。
+ExecuteGesture包含end_monotonic及timing_mode/core_s/hold_s，更新旧checkout后需重新运行python tools/ros2/build.py并重编译原生服务；完整install会构建两者。当前本机Conda GuideBot若为Python3.10，无法加载Foxy3.8扩展，应先恢复匹配的Python3.8运行环境；离线ROS关键词验收可用/usr/bin/python3 tools/ros2/keyframe_acceptance.py，不连接设备。
+当前起步检查阈值为 0.3 rad：14 个手臂关节最大实测／指令差超过该值，会拒绝包括 B_Neutral_Rest 在内的新动作。
 此前左肩约 0.0357 rad 偏差现可通过此检查；实际动作效果仍待真机验收。
 这项限制随当前代码保留；部署成功不表示该真机问题已修复。
 运行边界与后续工作以 `docs/AGENT_HANDOFF.md` 开头为准。
+
+
+## 共享运动控制锁的旧权限修复
+
+如果真机试播日志显示 `cannot open motion controller lock` 且路径为
+`/tmp/g1_arm_motion_library.lock`，先检查所属账户和权限。旧版以0600创建，
+其他账户无法打开；更新后的服务使用0644权限和只读flock，保留全机互斥，
+且避免在已有外账户文件上使用O_CREAT。
+
+对于已经由其他账户创建的0600旧文件，需要管理员执行一次：
+
+```bash
+sudo chmod 0644 /tmp/g1_arm_motion_library.lock
+```
+
+该命令仅修改权限，保留原inode及任何正在持有的锁。不要删除或重命名锁文件，
+也不要改成每个账户各自一个锁。更新程序已提供无硬件检查入口：
+
+```bash
+"${GUIDEBOT_MOTION_BUILD_DIR:-$HOME/.local/share/guidebot/deps/motion/build-guidebot-fork-layout}/motion_library_server" --check-controller-lock
+```
+
+成功会显示已取得锁，随后自动释放；该入口不初始化DDS、不连接机器人。
+如果提示another motion library controller is running，说明确有进程持锁，
+请正常结束对应运动会话后再检查，不通过删除文件绕过互斥。

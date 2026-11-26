@@ -22,13 +22,36 @@ class PlanningReply:
     submitted_text: str = None
     submitted_complete: bool = False
     in_flight: bool = False
+    submitted_version: int = -1
+    submitted_at: float = 0.
     cancelled: threading.Event = field(default_factory=threading.Event)
 
+
+
+def planning_anchors(reply, now, lead_s=2.):
+    """Only known future anchors; keep unscheduled middle text eligible."""
+    elapsed = max(0., now-reply.playback_origin) if reply.playback_origin is not None else 0.
+    # One second entry plus planning lead after playback starts. Before playback,
+    # the startup buffer supplies planning time, but cannot fix negative starts.
+    earliest = elapsed + (lead_s+1. if reply.playback_origin is not None else 1.)
+    covered = set()
+    occupied = []
+    for job in reply.jobs:
+        if job.status in {'waiting', 'scheduled', 'committed', 'completed'}:
+            covered.update(range(job.plan.start_unit, job.plan.arrival_unit+1))
+            timing = getattr(job, 'timing', None)
+            if isinstance(timing, dict):
+                occupied.append((timing['start_s'], timing['deadline_s']+1.))
+    return [i for i, anchor in sorted(reply.anchors.items())
+            if i < len(reply.units) and anchor['start'] >= earliest and i not in covered
+            and not any(start <= anchor['start'] < end for start, end in occupied)]
 
 class GestureService:
     def __init__(self, directory, on_event=None, *, catalog=None, planner=None, targets=(),
                  debounce=.18, max_wait=.4, interaction_context=None, execution_mode=None, executor=None):
         self.directory = Path(directory)
+        from .diagnostics import DialogueSummary
+        self.diagnostics = DialogueSummary(self.directory)
         self.catalog = catalog or Catalog()
         self.planner = planner or Planner(self.catalog)
         self.targets = list(targets)
@@ -43,7 +66,7 @@ class GestureService:
         self.executor = executor
         execution_mode = execution_mode or os.getenv('GUIDEBOT_GESTURE_EXECUTION_MODE', 'simulation')
         timing_mode = os.getenv('GUIDEBOT_GESTURE_TIMING_MODE',
-                                'immediate' if execution_mode == 'robot' else 'aligned')
+                                'aligned')
         if timing_mode not in {'immediate', 'aligned'}:
             raise ValueError('Invalid gesture timing mode')
         self.scheduler = Scheduler(self.catalog, self._emit, immediate=timing_mode == 'immediate')
@@ -142,6 +165,10 @@ class GestureService:
         if self.log is not None:
             self.log.write(json.dumps(value, ensure_ascii=False) + '\n')
             self.log.flush()
+            try:
+                self.diagnostics.observe(value)
+            except OSError:
+                pass
         if self.on_event:
             try:
                 self.on_event(kind, **details)
@@ -197,7 +224,9 @@ class GestureService:
                         self.scheduler.text(rid, state.text)
                         if not state.changed_at:
                             state.changed_at = time.monotonic()
+                    self._emit('gesture.text', response_id=rid, text=state.text, complete=state.complete)
                 elif kind == 'alignment':
+                    self._emit('gesture.alignment_snapshot', response_id=rid, anchor_count=len(value.get('anchors', [])), version=value.get('version'))
                     self.scheduler.alignment(rid, value)
                 elif kind == 'playback':
                     if self.speaking_response is not None and self.speaking_response != rid:
@@ -246,8 +275,12 @@ class GestureService:
         for rid, state in list(self.replies.items()):
             if state.in_flight or not units_for(state.text):
                 continue
-            if state.text == state.submitted_text and state.complete == state.submitted_complete:
+            reply = self.scheduler.reply(rid)
+            if reply is None:
                 continue
+            if state.text == state.submitted_text and state.complete == state.submitted_complete:
+                if reply.version <= state.submitted_version or now-state.submitted_at < 1.:
+                    continue
             age = now - state.changed_at if state.changed_at else 0
             boundary = re.search(r'[，。！？；：,.!?;:]\s*$', state.text)
             if not state.complete and not (age >= self.max_wait or (boundary and age >= self.debounce)):
@@ -256,16 +289,30 @@ class GestureService:
             if reply is None:
                 continue
             existing = self.scheduler.planning_history(rid)
-            # Keep a short overlap for a lead-in whose object arrived later.
-            first = max(0, len(units_for(state.submitted_text or '')) - 16)
+            # Text sent is not text planned: revisit newly aligned, unspoken units.
+            eligible = (list(range(len(reply.units))) if self.scheduler.immediate else planning_anchors(reply, now))
+            if not eligible:
+                continue
+            signature = (state.text, state.complete, tuple(eligible),
+                         tuple((a['action'], a['status'], str(a.get('keyframes'))) for a in existing))
+            if signature == getattr(state, 'eligibility_signature', None):
+                continue
+            state.eligibility_signature = signature
             payload = make_input(rid, state.text, self.targets, existing,
-                                 range(first, len(reply.units)), state.complete,
-                                 self.interaction_context)
-            payload['timing_contract'] = 'fixed_deadline'
+                                 eligible, state.complete, self.interaction_context)
+            payload['timing_contract'] = 'semantic_keyframes'
+            from .timing import phases
+            payload['execution_timing'] = [dict(id=name, transition_s=1.,
+                minimum_core_s=phases(asset)[1], minimum_hold_s=phases(asset)[2],
+                keyframe_count=asset['frames'])
+                for name,asset in self.catalog.assets.items() if name in self.catalog.actions]
+            payload['alignment_anchors'] = list(reply.anchors.values())
             payload['playback_elapsed_s'] = (max(0., now-reply.playback_origin)
                                              if reply.playback_origin is not None else 0.)
             payload['playback_started'] = reply.playback_origin is not None
             payload['suggested_planning_lead_s'] = 2.
+            state.submitted_version = reply.version
+            state.submitted_at = now
             state.in_flight = True
             state.submitted_text, state.submitted_complete = state.text, state.complete
             state.changed_at = 0
@@ -279,13 +326,36 @@ class GestureService:
 
     def _request(self, rid, text, payload, request_id, cancelled):
         try:
+            directory = self.directory/'planner-requests'/('%06d' % request_id)
+            directory.mkdir(parents=True, exist_ok=False)
+            def save(name, value):
+                (directory/name).write_text(json.dumps(value, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+            save('input.json', dict(response_id=rid, request_id=request_id, text=text, payload=payload))
+            returned=[]
+            def trace(kind, value):
+                if kind == 'messages':save('messages.json', value)
+                elif kind == 'content':
+                    with (directory/'raw-response.txt').open('a', encoding='utf-8') as output:output.write(value)
+            planner=self.planner
+            if isinstance(planner, Planner):
+                planner=Planner(self.catalog, api_key=planner.api_key, model=planner.model,
+                    base_url=planner.base_url, timeout=planner.timeout, examples_path=planner.examples_path,
+                    session=planner.session, trace=trace)
             def action(plan):
+                returned.append(plan.as_dict())
+                save('validated-actions.json', returned)
                 self.submit('action', rid, plan=plan, text=text, units=payload['units'], request_id=request_id)
-            stats = self.planner.plan(payload, action, cancelled)
+            stats = planner.plan(payload, action, cancelled)
+            save('result.json', stats)
             self.submit('result', rid, request_id=request_id, **stats)
         except Exception as error:
             # Only known, sanitized client errors can be logged verbatim.
             message = str(error) if type(error) is RuntimeError else type(error).__name__
+            if 'directory' in locals() and directory.is_dir():
+                try:
+                    save('result.json', dict(error=message))
+                except OSError:
+                    pass
             self.submit('result', rid, request_id=request_id, error=message)
 
     def close(self, *, wait=True):

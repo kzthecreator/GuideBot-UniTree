@@ -39,7 +39,7 @@ def main():
                   native_test_request=native.call if native else None)
         proxy.start()
         proxy.request_base_pose('session_started')
-        until(lambda: any(e['kind']=='gesture.execution_result' and e.get('action')=='neutral'
+        until(lambda: any(e['kind']=='gesture.execution_result' and e.get('action')=='B_Neutral_Rest'
                           and e.get('success') for e in events))
         proxy.submit('text', 'r1', text='欢迎参观。')
         proxy.submit('done', 'r1')

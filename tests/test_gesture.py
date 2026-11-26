@@ -18,7 +18,7 @@ class GestureTests(unittest.TestCase):
         self.text = '请注意这里的沙盘'
         self.units = units_for(self.text)
         self.targets = [{'id': 'sand_table'}]
-        self.row = dict(action='present_right', start_unit=0, arrival_unit=3)
+        self.row = dict(action='R_Side_Present', start_unit=0, arrival_unit=3)
 
     def plan(self, **changes):
         return self.catalog.validate({**self.row, **changes}, range(len(self.units)), self.targets,
@@ -26,11 +26,11 @@ class GestureTests(unittest.TestCase):
                                                 'target_id': 'sand_table'}})
 
     def test_registry_drives_new_actions_without_prompt_code_changes(self):
-        self.assertEqual(len(self.catalog.actions), 10)
-        self.assertIn('neutral', self.catalog.actions)
+        self.assertGreaterEqual(len(self.catalog.actions), 10)
+        self.assertIn('B_Neutral_Rest', self.catalog.actions)
         examples = json.loads(EXAMPLES.read_text())
         shown = {a['action'] for e in examples for a in e['actions']}
-        self.assertEqual(shown, set(self.catalog.actions))
+        self.assertTrue(shown <= set(self.catalog.actions))
         with tempfile.TemporaryDirectory() as tmp:
             document = json.loads(REGISTRY.read_text())
             document['actions'][1]['description'] = '自定义欢迎描述'
@@ -40,10 +40,10 @@ class GestureTests(unittest.TestCase):
             catalog = Catalog(path)
             prompt = messages(catalog, make_input('r', self.text))
             self.assertIn('自定义欢迎描述', prompt[0]['content'])
-            self.assertNotIn('"action": "neutral"', ''.join(m['content'] for m in prompt))
-            plan = catalog.validate(dict(action='greet_open', start_unit=0, arrival_unit=1), range(8), [],
+            self.assertNotIn('"action": "B_Neutral_Rest"', ''.join(m['content'] for m in prompt))
+            plan = catalog.validate(dict(action='B_Open_Hold', start_unit=0, arrival_unit=1), range(8), [],
                                     {'stage': 'welcome'})
-            self.assertEqual(plan.action, 'greet_open')
+            self.assertEqual(plan.action, 'B_Open_Hold')
 
     def test_registry_rejects_duplicate_ids_and_pose_duration(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -77,7 +77,7 @@ class GestureTests(unittest.TestCase):
                               clock=lambda: self.now, pose_max_hold_s=4)
         text = '大家还有什么问题吗？'
         units = units_for(text)
-        plan = self.catalog.validate(dict(action='greet_open', start_unit=0, arrival_unit=1),
+        plan = self.catalog.validate(dict(action='B_Open_Hold', start_unit=0, arrival_unit=1),
                                      range(len(units)), [], {'stage': 'qa_invitation'})
         scheduler.text('release', text)
         scheduler.add('release', plan, units)
@@ -87,7 +87,7 @@ class GestureTests(unittest.TestCase):
              'start': start} for i, start in ((0, 1), (1, 2))]})
         self.now = 100.98
         scheduler.tick()
-        self.assertEqual(scheduler.active['job'].plan.action, 'greet_open')
+        self.assertEqual(scheduler.active['job'].plan.action, 'B_Open_Hold')
         self.assertTrue(scheduler.release_active('visitor_responded'))
         self.assertIsNone(scheduler.active)
 
@@ -105,7 +105,7 @@ class GestureTests(unittest.TestCase):
                 self.plan(**bad)
         for value in [True, float('nan'), float('inf'), -1, 10]:
             with self.subTest(value=value), self.assertRaises(ValueError):
-                self.catalog.validate(dict(action='greet_wave', start_unit=0, arrival_unit=1, duration_s=value), range(8), [])
+                self.catalog.validate(dict(action='L_Greeting_Wave', start_unit=0, arrival_unit=1, duration_s=value), range(8), [])
 
     def test_stream_decoder_handles_arbitrary_chunks_and_quoted_braces(self):
         value = {'actions': [self.row, dict(action='test', note='逗号, 括号{}与引号"') ]}
@@ -218,7 +218,7 @@ class GestureTests(unittest.TestCase):
 
     def test_motion_conflict_is_skipped_and_pose_can_be_superseded(self):
         scheduler = self.scheduler()
-        wave = self.catalog.validate(dict(action='greet_wave', start_unit=0, arrival_unit=1, duration_s=2), range(8), [])
+        wave = self.catalog.validate(dict(action='L_Greeting_Wave', start_unit=0, arrival_unit=1, duration_s=2), range(8), [])
         scheduler.replies['r'].jobs.clear()
         scheduler.add('r', wave, self.units)
         scheduler.add('r', self.plan(), self.units)
@@ -235,7 +235,7 @@ class GestureTests(unittest.TestCase):
         self.alignment(scheduler)
         self.now = 100.98
         scheduler.tick()
-        other = self.catalog.validate(dict(action='please_wait',start_unit=1,arrival_unit=2), range(8), [],
+        other = self.catalog.validate(dict(action='L_Front_Hold',start_unit=1,arrival_unit=2), range(8), [],
                                       {'task': {'status': 'running'}})
         scheduler.add('r', other, self.units)
         scheduler.alignment('r', dict(version=2, anchors=[
@@ -251,7 +251,7 @@ class GestureTests(unittest.TestCase):
         self.alignment(scheduler)
         self.now = 100.98
         scheduler.tick()
-        other = self.catalog.validate(dict(action='please_wait',start_unit=4,arrival_unit=5), range(8), [],
+        other = self.catalog.validate(dict(action='L_Front_Hold',start_unit=4,arrival_unit=5), range(8), [],
                                       {'task': {'status': 'running'}})
         scheduler.add('r', other, self.units)
         rows = [dict(index=i,text=u['text'],text_offset=u['text_offset'],start=t)
@@ -278,7 +278,7 @@ class GestureTests(unittest.TestCase):
         plans = []
         context = {'scene': {'confirmed': True, 'direction': 'right', 'target_id': 'sand_table'}}
         stats = planner.plan(make_input('r',self.text,self.targets,interaction_context=context), plans.append)
-        self.assertEqual([p.action for p in plans], ['present_right'])
+        self.assertEqual([p.action for p in plans], ['R_Side_Present'])
         self.assertEqual(stats['invalid_actions'], 1)
         response.status_code = 401
         response.text = 'private-server-response'
@@ -318,11 +318,11 @@ class GestureTests(unittest.TestCase):
                 service.submit('playback', 'r', origin=time.monotonic())
                 self.wait_for(lambda: len(commands()) == 1)
                 self.assertEqual(service.mode, 'speaking')
-                self.assertEqual(commands()[-1]['action'], 'present_right')
+                self.assertEqual(commands()[-1]['action'], 'R_Side_Present')
                 service.submit('cancel', 'r', reason='playback.drained_estimated')
                 self.wait_for(lambda: len(commands()) == 2)
                 self.assertEqual(service.mode, 'listening')
-                self.assertEqual(commands()[-1]['action'], 'neutral')
+                self.assertEqual(commands()[-1]['action'], 'B_Neutral_Rest')
                 service.submit('action', 'r', plan=self.plan(), text=self.text,
                                units=self.units, request_id=2)
                 service.submit('playback', 'r', origin=time.monotonic())
@@ -337,8 +337,8 @@ class GestureTests(unittest.TestCase):
                 self.assertEqual(len(commands()), 2)
                 service.submit('cancel', 'new', reason='confirmed_interrupt')
                 self.wait_for(lambda: service.mode == 'listening')
-                # The prior neutral is already active; no second motion is needed.
-                self.assertEqual(service.scheduler.active['job'].plan.action, 'neutral')
+                # The prior B_Neutral_Rest is already active; no second motion is needed.
+                self.assertEqual(service.scheduler.active['job'].plan.action, 'B_Neutral_Rest')
             finally:
                 service.close()
 
@@ -359,6 +359,7 @@ class GestureTests(unittest.TestCase):
             try:
                 service.start()
                 service.submit('text','r',text=self.text)
+                service.submit('alignment','r',version=1,anchors=[dict(index=i,text=u['text'],text_offset=u['text_offset'],start=3.+i*.3) for i,u in enumerate(self.units)])
                 service.submit('done','r')
                 self.assertTrue(entered.wait(1))
                 started = time.monotonic()
@@ -390,12 +391,13 @@ class GestureTests(unittest.TestCase):
             try:
                 service.start()
                 service.submit('text','r',text=self.text)
+                service.submit('alignment','r',version=1,anchors=[dict(index=i,text=u['text'],text_offset=u['text_offset'],start=3.+i*.3) for i,u in enumerate(self.units)])
                 service.submit('done','r')
                 self.assertTrue(entered.wait(1))
                 service.submit('playback','r',origin=time.monotonic())
                 rows = [dict(index=i, text=u['text'], text_offset=u['text_offset'], start=.1 if i==0 else .8)
                         for i,u in enumerate(self.units) if i in (0,3)]
-                service.submit('alignment','r',version=1,anchors=rows)
+                service.submit('alignment','r',version=2,anchors=rows)
                 service.submit('action','r',plan=plan,text=self.text,units=self.units,request_id=99)
                 self.wait_for(lambda: any(e['kind']=='gesture.command' for e in events))
                 self.assertFalse(release.is_set())

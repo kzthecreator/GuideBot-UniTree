@@ -79,6 +79,7 @@ struct Step {
 struct Definition {
     std::string name;
     std::vector<Step> steps;
+    bool preserve_transition = false;
 };
 
 inline int integer_field(const nlohmann::json& object, const char* key,
@@ -97,10 +98,14 @@ inline Definition parse(const nlohmann::json& input) {
         !input.contains("steps") || !input.at("steps").is_array() ||
         input.at("steps").empty() || input.at("steps").size() > 64)
         throw std::runtime_error("sequence needs sequence_name and 1..64 steps");
-    if (input.size() != 2)
-        throw std::runtime_error("unknown sequence fields");
+    for (auto it = input.begin(); it != input.end(); ++it)
+        if (it.key() != "sequence_name" && it.key() != "steps" && it.key() != "preserve_transition")
+            throw std::runtime_error("unknown sequence fields");
+    if (input.contains("preserve_transition") && !input.at("preserve_transition").is_boolean())
+        throw std::runtime_error("preserve_transition must be boolean");
     Definition definition;
     definition.name = motion_catalog::required_string(input, "sequence_name");
+    definition.preserve_transition = input.value("preserve_transition", false);
     if (!motion_catalog::valid_name(definition.name))
         throw std::runtime_error("invalid sequence_name");
     for (const auto& item : input.at("steps")) {
@@ -182,7 +187,8 @@ inline action_sequence::Resolved resolve(const Definition& definition,
             " actual_rad=" + std::to_string(actual[tracking_joint]) +
             " commanded_rad=" + std::to_string(commanded[tracking_joint]) +
             " limit_rad=0.300000");
-    const bool timed_entry = !definition.steps.empty() && definition.steps.front().total_ms > 0;
+    const bool timed_entry = definition.preserve_transition ||
+                             (!definition.steps.empty() && definition.steps.front().total_ms > 0);
     if (tracking_gap > 1e-6 && !result.play_style_preview && !timed_entry) {
         result.waypoints.push_back({0.5, actual});
     }
@@ -211,12 +217,16 @@ inline action_sequence::Resolved resolve(const Definition& definition,
         const bool target_motion = step.type == "motion" && asset.waypoints.size() == 1;
         if (step.type == "motion" && !target_motion && core_ms <= 0)
             throw std::runtime_error("motion has no nominal duration: " + step.name);
-        if (!step.preview_weights.empty() &&
-            step.preview_weights.size() != asset.waypoints.size() - 1)
+        // Complete preplanned sequences preserve the approved internal frame ratios.
+        std::vector<double> core_weights = step.preview_weights;
+        if (core_weights.empty() && definition.preserve_transition && asset.timing_profile.enabled)
+            core_weights = asset.timing_profile.frame_weights;
+        if (!core_weights.empty() &&
+            core_weights.size() != asset.waypoints.size() - 1)
             throw std::runtime_error("preview weight count does not match motion segments");
         const double preview_weight_total = std::accumulate(
-            step.preview_weights.begin(), step.preview_weights.end(), 0.0);
-        if (!step.preview_weights.empty() &&
+            core_weights.begin(), core_weights.end(), 0.0);
+        if (!core_weights.empty() &&
             (!std::isfinite(preview_weight_total) || preview_weight_total <= 0))
             throw std::runtime_error("invalid preview weights");
         const size_t step_start = result.waypoints.size();
@@ -226,7 +236,7 @@ inline action_sequence::Resolved resolve(const Definition& definition,
             double displacement = 0;
             for (size_t joint = 0; joint < standing_motion::kArmJoints; ++joint)
                 displacement = std::max(displacement, std::abs(anchor[joint] - previous[joint]));
-            if (displacement > 1e-6) {
+            if (displacement > 1e-6 || definition.preserve_transition) {
                 const int transition_ms = target_motion && step.duration_ms > 0 ?
                     step.duration_ms : step.transition_ms;
                 if (transition_ms == 0)
@@ -241,8 +251,8 @@ inline action_sequence::Resolved resolve(const Definition& definition,
                 const int interval = asset.keyframe_times_ms[i] - asset.keyframe_times_ms[i - 1];
                 double duration = static_cast<double>(core_ms) * interval /
                                   asset.nominal_duration_ms / 1000.0;
-                if (!step.preview_weights.empty()) {
-                    duration = core_ms * step.preview_weights[i - 1] /
+                if (!core_weights.empty()) {
+                    duration = core_ms * core_weights[i - 1] /
                                preview_weight_total / 1000.0;
                 }
                 result.waypoints.push_back({duration, frame});

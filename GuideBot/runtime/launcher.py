@@ -60,7 +60,7 @@ def main(argv=None):
     if gestures and not os.environ.get('DEEPSEEK_API_KEY', '').strip():
         raise ValueError('DEEPSEEK_API_KEY is required for gestures')
     mode = 'robot' if args.gesture_backend == 'unitree' else 'simulation' if gestures else 'voice'
-    runtime = LocalRuntime(timing=os.environ.get('GUIDEBOT_GESTURE_TIMING_MODE', 'immediate'))
+    runtime = LocalRuntime(timing=os.environ.get('GUIDEBOT_GESTURE_TIMING_MODE', 'aligned'))
     session_id = uuid.uuid4().hex
     child = None
     activated = False

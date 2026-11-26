@@ -1,0 +1,110 @@
+{
+  "schema_version": 3,
+  "file_format_version": 1,
+  "name": "B_Parallel_Drop",
+  "category": "basic",
+  "type": "pose",
+  "label": "B垂臂并线",
+  "description": "双肩pitch归零，双肘伸直，双臂与躯干平行下垂。",
+  "robot_model": "G1-7DOF",
+  "source": "teach_with_name",
+  "version": 2,
+  "status": "approved",
+  "movement_context": "stationary",
+  "scenes": [
+    "basic"
+  ],
+  "notes": "",
+  "sha256": "e5f7aaa7f4ba95643677250d6105572cc35217e93e7f9663bc12949be9a1cecb",
+  "verified_by": "kwx",
+  "verified_at": "2026-11-25T23:19:32+08:00",
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0
+  ],
+  "nominal_duration_ms": 0,
+  "entry_pose": [
+    0.121796,
+    0.331879,
+    0.277039,
+    -0.013698,
+    0.006651,
+    0.0,
+    0.0,
+    0.027024,
+    -0.334815,
+    -0.190489,
+    0.019402,
+    0.004003,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    0.121796,
+    0.331879,
+    0.277039,
+    -0.013698,
+    0.006651,
+    0.0,
+    0.0,
+    0.027024,
+    -0.334815,
+    -0.190489,
+    0.019402,
+    0.004003,
+    0.0,
+    0.0
+  ],
+  "loopable": false,
+  "interruptible": true,
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "safety": {
+    "max_velocity_rad_s": 0.4,
+    "max_acceleration_rad_s2": 0.8,
+    "joint_limits_profile": "config/arm_joint_limits.json"
+  },
+  "gesture_group": "semantic",
+  "gesture_subcategory": "描摹",
+  "recording_task_id": "05",
+  "timing_profile": {
+    "phase_weights": {
+      "transition": 1,
+      "core": 0,
+      "hold": 1
+    },
+    "minimum_total_ms": 701,
+    "frame_weights": []
+  },
+  "preview_confirmation": {
+    "sha256": "e5f7aaa7f4ba95643677250d6105572cc35217e93e7f9663bc12949be9a1cecb",
+    "version": 2,
+    "timing_profile": {
+      "phase_weights": {
+        "transition": 1,
+        "core": 0,
+        "hold": 1
+      },
+      "minimum_total_ms": 701,
+      "frame_weights": []
+    },
+    "total_ms": 701
+  }
+}

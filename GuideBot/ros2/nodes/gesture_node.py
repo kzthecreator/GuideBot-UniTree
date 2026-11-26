@@ -11,7 +11,7 @@ class OfflinePlanner:
     def plan(self, payload, on_action, cancelled):
         if cancelled.is_set():
             return {'cancelled': True}
-        row = {'action':'greet_open', 'start_unit':0, 'arrival_unit':len(payload['units'])-1}
+        row = {'action':'B_Open_Hold', 'start_unit':0, 'arrival_unit':len(payload['units'])-1}
         # The explicit offline alignment harness still exercises legacy anchors.
         if os.environ.get('GUIDEBOT_GESTURE_TIMING_MODE') != 'aligned':
             row.update(start_s=payload.get('playback_elapsed_s', 0.),
@@ -34,7 +34,8 @@ class ROSMotionExecutor:
         self.on_result = on_result
 
     def handle(self, kind, event):
-        if kind == 'gesture.reset' or (kind == 'gesture.command' and event.get('end_monotonic')):
+        if kind == 'gesture.reset' or (kind == 'gesture.command' and event.get('end_monotonic')
+                                     and event.get('timing_mode') != 'semantic_keyframes'):
             with self.lock:
                 goal, self.active = self.active, None
             if goal is not None:
@@ -63,6 +64,8 @@ class ROSMotionExecutor:
                       action=event['action'], start_monotonic=event['start_monotonic'],
                       arrival_monotonic=event['arrival_monotonic'],
                       end_monotonic=event.get('end_monotonic', 0.),
+                      timing_mode=event.get('timing_mode', ''),
+                      core_s=float(event.get('core_s', 0.)), hold_s=float(event.get('hold_s', 0.)),
                       has_duration='duration_s' in event, duration_s=float(event.get('duration_s', 0)),
                       scheduler_managed=event.get('scheduler_managed', False))
         request = message(ExecuteGesture.Goal, fields)

@@ -52,7 +52,7 @@ def probe(session):
             plan = catalog.validate(dict(action=action, start_unit=0, arrival_unit=1,
                                          start_s=start, end_s=end), [0, 1], [])
             scheduler.add('deadline-probe', plan, scheduler.replies['deadline-probe'].units)
-        add('greet_wave', 0., 8.)
+        add('L_Greeting_Wave', 0., 8.)
         scheduler.tick()
         until = origin+3
         while shared.host({'op':'motion_status'})['state'] != 'running':
@@ -61,7 +61,7 @@ def probe(session):
         # B becomes due while A is running; use the real cancel/result/idle path.
         b_start = time.monotonic()-origin
         b_end = b_start+5.
-        add('present_left', b_start, b_end)
+        add('L_Side_Present', b_start, b_end)
         scheduler.tick()
         deadline = origin+b_end+1
         while time.monotonic() < deadline:
@@ -83,14 +83,14 @@ def probe(session):
                    for e in events if e['kind']=='gesture.execution_result'), events
         assert time.monotonic() <= origin+b_end, 'B finished after original deadline'
         # A late plan is discarded before it can send a goal.
-        add('present_right', 0., .01)
+        add('R_Side_Present', 0., .01)
         scheduler.tick()
         assert len([e for e in events if e['kind']=='gesture.command']) == 2
         assert any(e.get('reason')=='end_deadline_passed' for e in events)
         # A live but infeasible window must retain its typed rejection through
         # the real host IPC -> Motion result, rather than becoming RuntimeError.
         now = time.monotonic()
-        executor.handle('gesture.command', dict(action='please_wait', job_id='timing-feedback',
+        executor.handle('gesture.command', dict(action='L_Front_Hold', job_id='timing-feedback',
             response_id='deadline-probe', start_monotonic=now,
             arrival_monotonic=now+.5, end_monotonic=now+.5))
         until = time.monotonic()+3
@@ -142,8 +142,8 @@ def main():
         report = json.loads(result.stdout)
         # Bypass the Python feasibility check to exercise the native final gate.
         native.call({'序列':dict(sequence_name='deadline_reject', steps=[dict(
-            type=Catalog().actions['present_right']['asset_type'],
-            name='present_right', transition_ms=2000)]),
+            type=Catalog().actions['R_Side_Present']['asset_type'],
+            name='R_Side_Present', transition_ms=2000)]),
             'job_id':'native-deadline-reject', 'end_monotonic':time.monotonic()+.1})
         until = time.monotonic()+2
         while time.monotonic() < until:

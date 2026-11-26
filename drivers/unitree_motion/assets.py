@@ -5,7 +5,7 @@ import math
 import re
 from pathlib import Path
 
-NAME_RE = re.compile(r"[a-z][a-z0-9_]*\Z")
+NAME_RE = re.compile(r"[A-Za-z0-9_]+\Z")
 JOINT_NAMES = (
     "left_shoulder_pitch", "left_shoulder_roll", "left_shoulder_yaw",
     "left_elbow", "left_wrist_roll", "left_wrist_pitch", "left_wrist_yaw",
@@ -27,13 +27,11 @@ def catalog_entries(path):
             raise ValueError("动作清单条目不是对象")
         name, category, priority, kind = (entry.get(key) for key in ("name", "category", "priority", "type"))
         if (type(name) is not str or not NAME_RE.fullmatch(name) or type(category) is not str
-                or category not in {"basic", "reception", "presentation", "interaction", "elevator"}
+                or category not in {"basic", "reception", "presentation", "interaction", "elevator", "prosody", "semantic"}
                 or priority not in {"P0", "P1", "P2"} or kind not in {"pose", "motion"}
                 or (kind == "pose") != (category == "basic") or name in entries):
             raise ValueError(f"动作清单条目无效或重复: {name}")
         entries[name] = entry
-    if len(entries) != 22:
-        raise ValueError(f"预期22个动作，实际{len(entries)}个")
     return entries
 
 
@@ -169,6 +167,12 @@ def validate_metadata(path, entry, asset, points):
                     errors.append(f"{key}必须在(0,{ceiling}]内")
             if safety.get("joint_limits_profile") != "config/arm_joint_limits.json":
                 errors.append("joint_limits_profile无效")
+    if "preview_confirmation" in meta and not errors:
+        from .planning import confirmed_timing
+        try:
+            confirmed_timing(meta)
+        except (ValueError, KeyError, TypeError) as error:
+            errors.append(f"试播确认记录无效: {error}")
     return meta, errors
 
 

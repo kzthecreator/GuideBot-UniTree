@@ -6,7 +6,7 @@
 `--gestures` 或 `--gesture-backend simulated` 使用模拟动作；`--gesture-backend unitree` 使用真机上肢。
 两种动作模式均使用真实 StepFun 语音和 DeepSeek 规划；离线验收工具使用显式固定规划器。
 
-- 10 个录制动作全部可供 LLM 选择，包括 neutral。
+- 10 个录制动作全部可供 LLM 选择，包括 B_Neutral_Rest。
 - 动作声明在 `assets/motion/actions.json`；旧 `conversation-few-shots.json` 保留给历史锚点测试，不注入固定期限规划请求。
 - 上下文作为语义建议，不作为动作选择的前置门禁；来源、版本和 TTL 校验仍保留。
 - Gesture 节点内部调用 `GestureService → Planner / Scheduler`，规划不再使用 ROS Action。
@@ -14,11 +14,11 @@
 
 ## 倾听与说话
 
-模式由本地播放事件决定。初始倾听，音频资源就绪后请求 neutral。
+模式由本地播放事件决定。初始倾听，音频资源就绪后请求 B_Neutral_Rest。
 `playback.started` 进入说话，才允许 LLM 队列执行；文本可提前规划。
 正式 LLM 计划采用固定播放期限，不等待字级对齐；模拟与真机使用相同期限语义。
 旧 immediate/aligned 调度仅保留兼容测试，不能覆盖新计划的结束期限。
-确认打断、停止或 `playback.drained_estimated` 会取消当前回复并请求 neutral。
+确认打断、停止或 `playback.drained_estimated` 会取消当前回复并请求 B_Neutral_Rest。
 `response.done` 仅表示云端生成结束。播完为时长估计，没有设备结束回执。
 旧回复的停止和迟到规划不能恢复旧动作或打断新回复。
 
@@ -38,20 +38,20 @@ B需要执行而A仍活跃时，取消A并等待结果及原生idle，再检查B
 原生拒绝带job_id返回Motion，不再把固定期限请求的原生拒绝拖到通用完成超时。
 
 截止针对指令轨迹，不保证实测关节严格准时到位，也不提供任意运动状态下的无缝轨迹接续。
-pose到位后可静态保持至下一动作或倾听复位；end_s不要求自动回neutral。
+pose到位后可静态保持至下一动作或倾听复位；end_s不要求自动回B_Neutral_Rest。
 离线完整验收：`python tools/ros2/deadline_acceptance.py`。实现与证据见 `docs/experiments/fixed-action-deadlines-20261125.md`。
 
 ## 执行边界与已知问题
 
 资产批准、格式、参数、时长、会话 fence、控制权、执行互斥和关节限位仍保留。
-原生序列开始前，14 个手臂关节最大实测／指令差大于 0.3 rad 时拒绝，包括 neutral。
+原生序列开始前，14 个手臂关节最大实测／指令差大于 0.3 rad 时拒绝，包括 B_Neutral_Rest。
 此前现场左肩约 0.0357 rad 偏差现可通过此检查；实际动作效果仍待真机验收。
 原生 idle 与 ROS accepted 不代表实测关节已经到位。
 
 接管前静止等待、腿／臂／gyro速度、腰绝对角及渐入后姿态偏差门禁已取消。
 普通持有控制期间不再因腿速或腰／臂跟踪偏差自动撤权。
 lowstate 新鲜度、有限姿态、R1+R2、信号中断、循环延迟、服务健康仍检查。
-正常释放回位还保留腿速与腰／臂跟踪偏差检查，不等同于 neutral 请求。
+正常释放回位还保留腿速与腰／臂跟踪偏差检查，不等同于 B_Neutral_Rest 请求。
 所有真机运行须由用户 Enter 开始和结束。
 
 最新状态见 `docs/AGENT_HANDOFF.md`，四节点验收见 `docs/experiments/four-core-nodes-20261125.md`。

@@ -1,0 +1,111 @@
+{
+  "schema_version": 3,
+  "file_format_version": 1,
+  "name": "B_Alternating_Swing",
+  "category": "semantic",
+  "type": "motion",
+  "label": "B交替小摆",
+  "description": "双臂于体侧做缓慢小幅前后交替摆动：左臂肩pitch前10°时右臂后-5°，随后互换。",
+  "robot_model": "G1-7DOF",
+  "source": "teach_with_name",
+  "version": 2,
+  "status": "approved",
+  "movement_context": "stationary",
+  "scenes": [
+    "semantic"
+  ],
+  "notes": "",
+  "sha256": "aa1706f351757b124e7f76802eee3488e967d66b9cd3f8fe17ba347bff3f0d41",
+  "verified_by": "kwx",
+  "verified_at": "2026-11-25T23:20:28+08:00",
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0,
+    300
+  ],
+  "nominal_duration_ms": 300,
+  "entry_pose": [
+    -0.044306,
+    0.246408,
+    0.153985,
+    0.767817,
+    -0.001486,
+    0.0,
+    0.0,
+    0.322352,
+    -0.364932,
+    -0.016011,
+    0.944764,
+    0.00616,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    0.379888,
+    0.278274,
+    0.152931,
+    0.974437,
+    0.006759,
+    0.0,
+    0.0,
+    -0.060029,
+    -0.300325,
+    -0.074146,
+    0.786249,
+    0.006555,
+    0.0,
+    0.0
+  ],
+  "loopable": false,
+  "interruptible": true,
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "safety": {
+    "max_velocity_rad_s": 0.4,
+    "max_acceleration_rad_s2": 0.8,
+    "joint_limits_profile": "config/arm_joint_limits.json"
+  },
+  "gesture_group": "semantic",
+  "gesture_subcategory": "描摹",
+  "recording_task_id": "06",
+  "timing_profile": {
+    "phase_weights": {
+      "transition": 1,
+      "core": 2,
+      "hold": 1
+    },
+    "minimum_total_ms": 801,
+    "frame_weights": []
+  },
+  "preview_confirmation": {
+    "sha256": "aa1706f351757b124e7f76802eee3488e967d66b9cd3f8fe17ba347bff3f0d41",
+    "version": 2,
+    "timing_profile": {
+      "phase_weights": {
+        "transition": 1,
+        "core": 2,
+        "hold": 1
+      },
+      "minimum_total_ms": 801,
+      "frame_weights": []
+    },
+    "total_ms": 801
+  }
+}

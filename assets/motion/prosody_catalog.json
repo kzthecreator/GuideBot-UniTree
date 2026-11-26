@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "actions": [
+    {
+      "id": "B_Down_Beat",
+      "family": "beat",
+      "description": "双臂同步短促下压一次",
+      "enabled": false
+    },
+    {
+      "id": "B_Double_Beat",
+      "family": "beat",
+      "description": "双臂连续两次短促下压",
+      "enabled": false
+    },
+    {
+      "id": "R_Single_Beat",
+      "family": "beat",
+      "description": "右臂单次小幅节奏强调",
+      "enabled": false
+    },
+    {
+      "id": "B_Open_Accent",
+      "family": "accent",
+      "description": "双臂从身体前方向外展开，强调重要内容",
+      "enabled": false
+    },
+    {
+      "id": "B_Forward_Accent",
+      "family": "accent",
+      "description": "双臂向前做一次短促强调，不要求精确指向",
+      "enabled": false
+    },
+    {
+      "id": "B_Arc_Flow",
+      "family": "flow",
+      "description": "双臂连续弧线展开，用于连续讲解",
+      "enabled": false
+    },
+    {
+      "id": "R_Sweep_Flow",
+      "family": "flow",
+      "description": "右臂平滑向侧方扫动，用于解释和展示",
+      "enabled": false
+    },
+    {
+      "id": "B_Lower_Cadence",
+      "family": "cadence",
+      "description": "双臂自然向下收拢，用于表达段落结束",
+      "enabled": false
+    },
+    {
+      "id": "L_Short_Nudge",
+      "family": "beat",
+      "label": "L短促前送",
+      "description": "左臂肩pitch前送约10°，左肘微屈约15°，短促送出。",
+      "enabled": true,
+      "recording_task_id": "09",
+      "gesture_subcategory": "节拍/强调",
+      "verified": true,
+      "llm_selectable": true,
+      "selection_mode": "description"
+    },
+    {
+      "id": "R_Short_Nudge",
+      "family": "beat",
+      "label": "R短促前送",
+      "description": "右臂肩pitch前送约10°，右肘微屈约15°，短促送出。",
+      "enabled": true,
+      "recording_task_id": "10",
+      "gesture_subcategory": "节拍/强调",
+      "verified": true,
+      "llm_selectable": true,
+      "selection_mode": "description"
+    },
+    {
+      "id": "B_Lateral_Beat",
+      "family": "beat",
+      "description": "双肩同步外展-内收一次，roll轴±15°，双肘保持微屈。",
+      "enabled": true,
+      "recording_task_id": "11",
+      "gesture_subcategory": "节拍/强调",
+      "label": "B侧展节拍",
+      "verified": true,
+      "llm_selectable": true,
+      "selection_mode": "description"
+    },
+    {
+      "id": "B_Sync_Push_Pull",
+      "family": "beat",
+      "description": "双肘屈曲约90°，双前臂平行指前，双肩pitch同步做±8°前后推拉。",
+      "enabled": true,
+      "recording_task_id": "12",
+      "gesture_subcategory": "节拍/强调",
+      "label": "B同步推拉",
+      "verified": true,
+      "llm_selectable": true,
+      "selection_mode": "description"
+    },
+    {
+      "id": "L_Single_Arm_Beat",
+      "family": "beat",
+      "description": "左臂肩pitch做一次短促下压。",
+      "enabled": true,
+      "recording_task_id": "13",
+      "gesture_subcategory": "节拍/强调",
+      "label": "L单臂点节拍",
+      "verified": true,
+      "llm_selectable": true,
+      "selection_mode": "description"
+    },
+    {
+      "id": "R_Single_Arm_Beat",
+      "family": "beat",
+      "description": "右臂肩pitch做一次短促下压。",
+      "enabled": true,
+      "recording_task_id": "14",
+      "gesture_subcategory": "节拍/强调",
+      "label": "R单臂点节拍",
+      "verified": true,
+      "llm_selectable": true,
+      "selection_mode": "description"
+    }
+  ]
+}

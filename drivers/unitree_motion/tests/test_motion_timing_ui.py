@@ -25,32 +25,78 @@ class TimingProfileTest(unittest.TestCase):
             "phase_weights": {"transition": 1, "core": 4, "hold": 1},
             "minimum_total_ms": 12000, "frame_weights": [1, 3],
         }
-        self.path = self.root / "motions/reception/greet_open.dat"
+        self.path = self.root / "motions/reception/B_Open_Hold.dat"
         self.path.parent.mkdir(parents=True)
         row = "0.3 " + " ".join(["0"] * 14) + "\n"
         self.path.write_text("3\n14\n" + row * 3)
         points, errors, _ = library.parse_motion(self.path)
         self.assertFalse(errors)
-        self.meta_path = self.root / "metadata/greet_open.json"
+        self.meta_path = self.root / "metadata/B_Open_Hold.json"
         library.write_meta(self.meta_path, library.metadata_for(
-            self.entries["greet_open"], self.path, points))
+            self.entries["B_Open_Hold"], self.path, points))
         self.root_patch = patch.object(timing_ui, "ROOT", self.root)
         self.root_patch.start()
         self.addCleanup(self.root_patch.stop)
         self.app = timing_ui.App()
 
     def payload(self):
-        detail = self.app.detail("greet_open")
-        return {"name": "greet_open", "sha256": detail["sha256"],
+        detail = self.app.detail("B_Open_Hold")
+        return {"name": "B_Open_Hold", "sha256": detail["sha256"],
                 "version": detail["version"], "timing_profile": copy.deepcopy(self.profile),
                 "total_ms": 6000, "offline": False}
+
+    def test_unrecorded_prosody_visible_but_preview_save_and_combo_rejected(self):
+        items = {item["name"]: item for item in self.app.inventory()}
+        prosody = [item for item in items.values() if item["category"] == "prosody"]
+        self.assertEqual(len(prosody), sum(e["category"]=="prosody" for e in self.entries.values()))
+        self.assertTrue(items["B_Open_Hold"]["available"])
+        for item in prosody:
+            self.assertFalse(item["recorded"])
+            self.assertFalse(item["available"])
+            self.assertFalse(item["profile_saved"])
+            with self.assertRaisesRegex(ValueError, "动作文件不存在"):
+                self.app.detail(item["name"])
+            with self.assertRaises(ValueError):
+                self.app.preview({"name": item["name"]})
+            with self.assertRaises(ValueError):
+                self.app.save({"name": item["name"]})
+            with self.assertRaises(ValueError):
+                self.app.combo_plan({"steps": [{"name": item["name"], "total_ms": 6000}]})
+
+    def test_recorded_prosody_metadata_timing_and_existing_preview_command(self):
+        name = "B_Down_Beat"
+        path = self.root / "motions/prosody" / (name + ".dat")
+        path.parent.mkdir(parents=True)
+        path.write_bytes(self.path.read_bytes())
+        item = next(item for item in self.app.inventory() if item["name"] == name)
+        self.assertTrue(item["recorded"])
+        self.assertFalse(item["available"])  # Metadata is still missing.
+        points, _, _ = library.parse_motion(path)
+        library.write_meta(self.root / "metadata" / (name + ".json"),
+                           library.metadata_for(self.entries[name], path, points))
+        detail = self.app.detail(name)
+        self.assertEqual(detail["category"], "prosody")
+        self.assertEqual(detail["frames"], 3)
+        payload = dict(self.payload(), name=name, sha256=detail["sha256"], version=detail["version"])
+        before = path.read_bytes()
+        self.app.save(payload)
+        detail = self.app.detail(name)
+        self.assertEqual(detail["timing_profile"], self.profile)
+        self.assertEqual(path.read_bytes(), before)
+        payload["version"] = detail["version"]
+        with patch.object(Path, "is_file", return_value=True), patch.object(self.app, "launch") as launch:
+            self.app.preview(payload)
+        command = launch.call_args[0][0]
+        self.assertIn("motion_ctl.py", command[1])
+        self.assertEqual(command[2:4], ["preview", name])
+        self.assertTrue(next(item for item in self.app.inventory() if item["name"] == name)["available"])
 
     def test_save_reload_preserves_exact_ratios_and_does_not_change_recording(self):
         before = self.path.read_bytes()
         result = self.app.save(self.payload())
         self.assertTrue(result["changed"])
         self.assertFalse(result["confirmed"])
-        detail = self.app.detail("greet_open")
+        detail = self.app.detail("B_Open_Hold")
         self.assertEqual(detail["timing_profile"], self.profile)
         self.assertEqual(detail["version"], 2)
         self.assertEqual(detail["status"], "draft")
@@ -59,7 +105,7 @@ class TimingProfileTest(unittest.TestCase):
 
     def test_profile_edit_invalidates_approval_and_stale_save_is_rejected(self):
         payload = self.payload()
-        self.app.tested = ("greet_open", payload["sha256"], payload["version"],
+        self.app.tested = ("B_Open_Hold", payload["sha256"], payload["version"],
                            payload["timing_profile"], payload["total_ms"])
         self.assertTrue(self.app.save(payload)["confirmed"])
         with self.assertRaises(ValueError):
@@ -73,7 +119,7 @@ class TimingProfileTest(unittest.TestCase):
 
     def test_modified_profile_cannot_reuse_previous_physical_confirmation(self):
         payload = self.payload()
-        self.app.tested = ("greet_open", payload["sha256"], payload["version"],
+        self.app.tested = ("B_Open_Hold", payload["sha256"], payload["version"],
                            copy.deepcopy(payload["timing_profile"]), payload["total_ms"])
         payload["timing_profile"]["phase_weights"]["hold"] = 2
         self.assertFalse(self.app.save(payload)["confirmed"])
@@ -105,8 +151,8 @@ class TimingProfileTest(unittest.TestCase):
         self.app.save(self.payload())
         before = self.meta_path.read_bytes()
         plan = self.app.combo_plan({"steps": [
-            {"name": "greet_open", "total_ms": 6000},
-            {"name": "greet_open", "total_ms": 24000},
+            {"name": "B_Open_Hold", "total_ms": 6000},
+            {"name": "B_Open_Hold", "total_ms": 24000},
         ]})
         self.assertEqual([step["planned_ms"] for step in plan["steps"]], [12000, 24000])
         self.assertEqual(plan["requested_ms"], 30000)
@@ -115,26 +161,26 @@ class TimingProfileTest(unittest.TestCase):
         self.assertEqual(self.meta_path.read_bytes(), before)
 
     def test_combo_rejects_empty_oversized_unknown_and_unsaved_actions(self):
-        for steps in ([], [{"name": "greet_open", "total_ms": 1}] * 65,
-                      [{"name": "greet_open", "total_ms": 6000}],
+        for steps in ([], [{"name": "B_Open_Hold", "total_ms": 1}] * 65,
+                      [{"name": "B_Open_Hold", "total_ms": 6000}],
                       [{"name": "missing", "total_ms": 6000}]):
             with self.assertRaises(ValueError):
                 self.app.combo_plan({"steps": steps})
         self.app.save(self.payload())
         for duration in (True, 0, 600001, 1.5):
             with self.assertRaises(ValueError):
-                self.app.combo_plan({"steps": [{"name": "greet_open", "total_ms": duration}]})
+                self.app.combo_plan({"steps": [{"name": "B_Open_Hold", "total_ms": duration}]})
 
     def test_combo_launch_uses_one_sequence_and_does_not_confirm_individual_actions(self):
         self.app.save(self.payload())
         with patch.object(self.app, "launch") as launch:
-            self.app.preview_combo({"steps": [{"name": "greet_open", "total_ms": 6000}], "offline": True})
+            self.app.preview_combo({"steps": [{"name": "B_Open_Hold", "total_ms": 6000}], "offline": True})
         args, kwargs = launch.call_args
         self.assertIsNone(args[1])
         self.assertEqual(kwargs["mode"], "combo")
         path = kwargs["cleanup_path"]
         self.addCleanup(path.unlink, missing_ok=True)
-        self.assertEqual(json.loads(path.read_text())["steps"][0]["name"], "greet_open")
+        self.assertEqual(json.loads(path.read_text())["steps"][0]["name"], "B_Open_Hold")
         self.assertIn("--offline", args[0])
         self.assertIn("--sequence-file", args[0])
         class Finished:

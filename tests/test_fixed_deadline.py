@@ -23,7 +23,7 @@ class FixedDeadlineTests(unittest.TestCase):
             self.now += .6
         return dict(mode='robot', accepted=True)
 
-    def add(self, action='greet_open', start=1., end=3.):
+    def add(self, action='B_Open_Hold', start=1., end=3.):
         plan = self.catalog.validate(dict(action=action, start_unit=0, arrival_unit=1,
                                           start_s=start, end_s=end), [0, 1], [])
         self.scheduler.add('r', plan, self.scheduler.replies['r'].units)
@@ -47,7 +47,7 @@ class FixedDeadlineTests(unittest.TestCase):
         self.now = 101.
         self.add(end=8.)
         self.scheduler.tick()
-        self.add('present_left', start=2., end=5.)
+        self.add('L_Side_Present', start=2., end=5.)
         self.now = 102.
         self.scheduler.tick()
         commands = [e for e in self.events if e['kind'] == 'gesture.command']
@@ -59,7 +59,7 @@ class FixedDeadlineTests(unittest.TestCase):
         self.now = 101.
         self.add(end=8.)
         self.scheduler.tick()
-        self.add('present_left', start=2., end=2.5)
+        self.add('L_Side_Present', start=2., end=2.5)
         self.now = 102.
         self.scheduler.tick()
         self.assertEqual(len([e for e in self.events if e['kind'] == 'gesture.command']), 1)
@@ -68,12 +68,12 @@ class FixedDeadlineTests(unittest.TestCase):
     def test_worker_uses_remaining_window_and_recorded_core(self):
         executor = MotionExecutor(self.catalog, clock=lambda: self.now)
         self.now = 102.
-        event = dict(action='emphasize_once', job_id='job', start_monotonic=101.,
+        event = dict(action='B_Single_Emphasis', job_id='job', start_monotonic=101.,
                      arrival_monotonic=106., end_monotonic=106., duration_s=10.)
         payload = executor.sequence(event)
         self.assertEqual(payload['end_monotonic'], 106.)
         self.assertEqual(payload['序列']['steps'][0]['duration_ms'],
-                         self.catalog.assets['emphasize_once']['metadata']['nominal_duration_ms'])
+                         self.catalog.assets['B_Single_Emphasis']['metadata']['nominal_duration_ms'])
         self.now = 105.9
         with self.assertRaisesRegex(ValueError, 'deadline|remaining|Remaining|Insufficient'):
             executor.sequence(event)
@@ -82,22 +82,22 @@ class FixedDeadlineTests(unittest.TestCase):
         for fields in [dict(start_s=1), dict(start_s=3, end_s=1),
                        dict(start_s=0, end_s=float('nan'))]:
             with self.assertRaises(ValueError):
-                self.catalog.validate(dict(action='greet_open', start_unit=0, arrival_unit=1,
+                self.catalog.validate(dict(action='B_Open_Hold', start_unit=0, arrival_unit=1,
                                            **fields), [0, 1], [])
 
     def test_backlog_dispatches_only_newest_due_action(self):
         self.add(start=0., end=8.)
-        self.add('present_left', start=1., end=7.)
+        self.add('L_Side_Present', start=1., end=7.)
         self.now = 102.
         self.scheduler.tick()
         commands = [e for e in self.events if e['kind'] == 'gesture.command']
-        self.assertEqual([e['action'] for e in commands], ['present_left'])
+        self.assertEqual([e['action'] for e in commands], ['L_Side_Present'])
 
     def test_old_completion_cannot_release_replacement(self):
         self.now = 101.
         self.add(end=8.)
         self.scheduler.tick()
-        self.add('present_left', start=2., end=7.)
+        self.add('L_Side_Present', start=2., end=7.)
         self.now = 102.
         self.scheduler.tick()
         self.scheduler.execution_result('r:0', False)
@@ -107,9 +107,9 @@ class FixedDeadlineTests(unittest.TestCase):
 
     def test_late_older_window_cannot_preempt_newer_action(self):
         self.now = 103.
-        self.add('present_left', start=3., end=9.)
+        self.add('L_Side_Present', start=3., end=9.)
         self.scheduler.tick()
-        self.add('greet_open', start=1., end=8.)
+        self.add('B_Open_Hold', start=1., end=8.)
         self.scheduler.tick()
         self.assertFalse(any(e['kind'] == 'gesture.reset' for e in self.events))
         self.assertEqual(self.events[-1]['reason'], 'older_window_superseded')
@@ -118,8 +118,8 @@ class FixedDeadlineTests(unittest.TestCase):
         response = Mock(status_code=200)
         response.__enter__ = Mock(return_value=response)
         response.__exit__ = Mock(return_value=False)
-        rows = [dict(action='greet_open', start_unit=0, arrival_unit=1),
-                dict(action='emphasize_once', start_unit=0, arrival_unit=1, start_s=1., end_s=5.)]
+        rows = [dict(action='B_Open_Hold', start_unit=0, arrival_unit=1),
+                dict(action='B_Single_Emphasis', start_unit=0, arrival_unit=1, start_s=1., end_s=5.)]
         packet = dict(choices=[dict(delta=dict(content=json.dumps(dict(actions=rows))), finish_reason='stop')])
         response.iter_lines.return_value = ['data: '+json.dumps(packet), 'data: [DONE]']
         http = Mock()
@@ -130,7 +130,8 @@ class FixedDeadlineTests(unittest.TestCase):
         plans = []
         stats = planner.plan(payload, plans.append)
         self.assertEqual(stats['invalid_actions'], 1)
-        self.assertEqual([plan.action for plan in plans], ['emphasize_once'])
+        self.assertEqual([plan.action for plan in plans], ['B_Single_Emphasis'])
         prompt = http.post.call_args.kwargs['json']['messages']
         self.assertEqual(len(prompt), 2)  # No contradictory legacy few-shots.
-        self.assertIn('recorded_core_s', prompt[0]['content'])
+        self.assertIn('minimum_duration_s', prompt[0]['content'])
+        self.assertNotIn('recorded_core_s', prompt[0]['content'])

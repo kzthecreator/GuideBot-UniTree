@@ -36,7 +36,7 @@ class SequenceCliTest(unittest.TestCase):
         self.limits = self.root / "limits.json"
         self.sequence = self.root / "sequence.yaml"
         entries = motion_library.catalog_entries(self.catalog)
-        for name, values in (("neutral", (0,)), ("greet_open", (0.02, 0.04, 0.02))):
+        for name, values in (("B_Neutral_Rest", (0,)), ("B_Open_Hold", (0.02, 0.04, 0.02))):
             entry = entries[name]
             path = motion_library.asset_path(entry, self.motions, self.poses)
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -61,10 +61,10 @@ class SequenceCliTest(unittest.TestCase):
         self.sequence.write_text(yaml.safe_dump({
             "sequence_name": "greet_guest",
             "steps": [
-                {"type": "pose", "name": "neutral", "hold_ms": 300},
-                {"type": "motion", "name": "greet_open", "duration_ms": 1200,
+                {"type": "pose", "name": "B_Neutral_Rest", "hold_ms": 300},
+                {"type": "motion", "name": "B_Open_Hold", "duration_ms": 1200,
                  "hold_ms": 800, "transition_ms": 400},
-                {"type": "pose", "name": "neutral", "hold_ms": 300,
+                {"type": "pose", "name": "B_Neutral_Rest", "hold_ms": 300,
                  "transition_ms": 500},
             ],
         }), encoding="utf-8")
@@ -77,7 +77,7 @@ class SequenceCliTest(unittest.TestCase):
             "--metadata", str(self.metadata),
         ], cwd=ROOT, capture_output=True, text=True, check=False)
 
-    def check_preview(self, name="neutral"):
+    def check_preview(self, name="B_Neutral_Rest"):
         return subprocess.run([
             str(BUILD / "motion_library_server"), "--check-preview", name,
             "--limits", str(self.limits), "--catalog", str(self.catalog),
@@ -86,7 +86,7 @@ class SequenceCliTest(unittest.TestCase):
         ], cwd=ROOT, capture_output=True, text=True, check=False)
 
     def test_preview_validates_draft_hash_and_joint_limits(self):
-        path = self.metadata / "neutral.json"
+        path = self.metadata / "B_Neutral_Rest.json"
         meta = json.loads(path.read_text())
         meta["status"] = "draft"
         meta["verified_by"] = meta["verified_at"] = ""
@@ -105,14 +105,31 @@ class SequenceCliTest(unittest.TestCase):
         self.assertNotEqual(self.check_preview().returncode, 0)
         profile["max_rad"] = [1] * 14
         self.limits.write_text(json.dumps(profile))
-        (self.poses / "basic" / "neutral.dat").write_text("1\n14\n0.5 " + " ".join(["0.01"] * 14) + "\n")
+        (self.poses / "basic" / "B_Neutral_Rest.dat").write_text("1\n14\n0.5 " + " ".join(["0.01"] * 14) + "\n")
         self.assertNotEqual(self.check_preview().returncode, 0)
+
+    def test_all_eight_prosody_assets_use_native_preview_validation(self):
+        entries = motion_library.catalog_entries(self.catalog)
+        source = self.motions / "reception/B_Open_Hold.dat"
+        for name, entry in entries.items():
+            if entry["category"] != "prosody":
+                continue
+            self.assertNotEqual(self.check_preview(name).returncode, 0)
+            path = motion_library.asset_path(entry, self.motions, self.poses)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(source.read_bytes())
+            points, errors, _ = motion_library.parse_motion(path)
+            self.assertFalse(errors)
+            motion_library.write_meta(self.metadata / (name + ".json"),
+                                      motion_library.metadata_for(entry, path, points))
+            result = self.check_preview(name)
+            self.assertEqual(result.returncode, 0, (name, result.stderr))
 
     def test_preview_check_uses_trial_duration(self):
         plans = []
         for duration in (1000, 5000):
             result = subprocess.run([
-                sys.executable, str(TOOL), "preview", "greet_open", "--check",
+                sys.executable, str(TOOL), "preview", "B_Open_Hold", "--check",
                 "--duration-ms", str(duration), "--weights-json", "[1, 1]",
                 "--limits", str(self.limits), "--catalog", str(self.catalog),
                 "--dir", str(self.motions), "--poses", str(self.poses),
@@ -125,7 +142,7 @@ class SequenceCliTest(unittest.TestCase):
         self.assertIn("core planned 5 s", plans[1])
 
     def test_total_ms_uses_saved_profile_and_user_minimum(self):
-        path = self.metadata / "greet_open.json"
+        path = self.metadata / "B_Open_Hold.json"
         meta = json.loads(path.read_text())
         meta["timing_profile"] = {
             "phase_weights": {"transition": 1, "core": 4, "hold": 1},
@@ -135,13 +152,13 @@ class SequenceCliTest(unittest.TestCase):
         for total, expected in ((6000, 12), (24000, 24)):
             self.sequence.write_text(yaml.safe_dump({
                 "sequence_name": "timed", "steps": [
-                    {"type": "motion", "name": "greet_open", "total_ms": total}],
+                    {"type": "motion", "name": "B_Open_Hold", "total_ms": total}],
             }))
             checked = self.check()
             self.assertEqual(checked.returncode, 0, checked.stderr)
             self.assertIn(f"{expected} s", checked.stdout)
             preview = subprocess.run([
-                sys.executable, str(TOOL), "preview", "greet_open", "--check",
+                sys.executable, str(TOOL), "preview", "B_Open_Hold", "--check",
                 "--total-ms", str(total), "--limits", str(self.limits),
                 "--catalog", str(self.catalog), "--dir", str(self.motions),
                 "--poses", str(self.poses), "--metadata", str(self.metadata),
@@ -151,8 +168,8 @@ class SequenceCliTest(unittest.TestCase):
 
     def test_total_ms_requires_profile_and_rejects_mixed_phase_times(self):
         for step in (
-            {"type": "motion", "name": "greet_open", "total_ms": 6000},
-            {"type": "motion", "name": "greet_open", "total_ms": 6000, "hold_ms": 100},
+            {"type": "motion", "name": "B_Open_Hold", "total_ms": 6000},
+            {"type": "motion", "name": "B_Open_Hold", "total_ms": 6000, "hold_ms": 100},
         ):
             self.sequence.write_text(yaml.safe_dump({"sequence_name": "invalid", "steps": [step]}))
             self.assertNotEqual(self.check().returncode, 0)
@@ -161,7 +178,7 @@ class SequenceCliTest(unittest.TestCase):
         profile = {"phase_weights": {"transition": 1, "core": 2, "hold": 1},
                    "minimum_total_ms": 1000, "frame_weights": [1, 1]}
         result = subprocess.run([
-            sys.executable, str(TOOL), "preview", "greet_open", "--offline", "--json-events",
+            sys.executable, str(TOOL), "preview", "B_Open_Hold", "--offline", "--json-events",
             "--total-ms", "100", "--timing-profile-json", json.dumps(profile),
             "--limits", str(self.limits), "--catalog", str(self.catalog),
             "--dir", str(self.motions), "--poses", str(self.poses),
@@ -174,29 +191,29 @@ class SequenceCliTest(unittest.TestCase):
         self.assertAlmostEqual(running["planned_seconds"], 1)
         self.assertAlmostEqual(running["planned_core_seconds"], running["planned_seconds"] / 2)
         self.assertEqual(events[-1]["ownership"], "released")
-        self.assertNotIn("timing_profile", json.loads((self.metadata / "greet_open.json").read_text()))
+        self.assertNotIn("timing_profile", json.loads((self.metadata / "B_Open_Hold.json").read_text()))
 
     def combo_fixture(self):
         entries = motion_library.catalog_entries(self.catalog)
-        path = motion_library.asset_path(entries["present_right"], self.motions, self.poses)
+        path = motion_library.asset_path(entries["R_Side_Present"], self.motions, self.poses)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("1\n14\n0.3 0.03 " + " ".join(["0"] * 13) + "\n")
         points, errors, _ = motion_library.parse_motion(path)
         self.assertFalse(errors)
-        motion_library.write_meta(self.metadata / "present_right.json", motion_library.metadata_for(
-            entries["present_right"], path, points))
-        for name in ("neutral", "greet_open", "present_right"):
+        motion_library.write_meta(self.metadata / "R_Side_Present.json", motion_library.metadata_for(
+            entries["R_Side_Present"], path, points))
+        for name in ("B_Neutral_Rest", "B_Open_Hold", "R_Side_Present"):
             meta_path = self.metadata / f"{name}.json"
             meta = json.loads(meta_path.read_text())
             meta.update(status="draft", verified_by="", verified_at="")
             meta["timing_profile"] = {
-                "phase_weights": {"transition": 1, "core": 2 if name == "greet_open" else 0, "hold": 1},
-                "minimum_total_ms": 200, "frame_weights": [1, 3] if name == "greet_open" else [],
+                "phase_weights": {"transition": 1, "core": 2 if name == "B_Open_Hold" else 0, "hold": 1},
+                "minimum_total_ms": 200, "frame_weights": [1, 3] if name == "B_Open_Hold" else [],
             }
             meta_path.write_text(json.dumps(meta))
         sequence = {"sequence_name": "fixture_combo", "steps": [
             {"type": entries[name]["type"], "name": name, "total_ms": 100}
-            for name in ("neutral", "greet_open", "neutral", "present_right", "neutral")
+            for name in ("B_Neutral_Rest", "B_Open_Hold", "B_Neutral_Rest", "R_Side_Present", "B_Neutral_Rest")
         ]}
         self.sequence.write_text(json.dumps(sequence))
 
@@ -228,7 +245,7 @@ class SequenceCliTest(unittest.TestCase):
 
     def test_combo_rejects_missing_profile_before_any_execution(self):
         self.combo_fixture()
-        path = self.metadata / "present_right.json"
+        path = self.metadata / "R_Side_Present.json"
         meta = json.loads(path.read_text())
         del meta["timing_profile"]
         path.write_text(json.dumps(meta))
@@ -277,20 +294,20 @@ class SequenceCliTest(unittest.TestCase):
             ] + (["--interpolation", interpolation] if interpolation is not None else []),
                 cwd=ROOT, capture_output=True, text=True, check=False)
 
-        removed = check("greet_open", "quintic")
-        linear = check("greet_open", "linear")
+        removed = check("B_Open_Hold", "quintic")
+        linear = check("B_Open_Hold", "linear")
         self.assertNotEqual(removed.returncode, 0)
         self.assertEqual(linear.returncode, 0, linear.stderr)
         self.assertIn("core requested 0.02 s, core planned 0.02 s", linear.stdout)
         self.assertIn("Play-style linear preview: 2 ms commands", linear.stdout)
-        default = check("greet_open")
+        default = check("B_Open_Hold")
         self.assertEqual(default.returncode, 0, default.stderr)
         self.assertEqual(default.stdout, linear.stdout)
-        neutral = check("neutral", "linear")
-        self.assertEqual(neutral.returncode, 0, neutral.stderr)
+        B_Neutral_Rest = check("B_Neutral_Rest", "linear")
+        self.assertEqual(B_Neutral_Rest.returncode, 0, B_Neutral_Rest.stderr)
 
     def test_preview_one_command_completes_offline(self):
-        meta_path = self.metadata / "neutral.json"
+        meta_path = self.metadata / "B_Neutral_Rest.json"
         meta = json.loads(meta_path.read_text())
         meta["status"] = "draft"
         meta["verified_by"] = meta["verified_at"] = ""
@@ -299,19 +316,19 @@ class SequenceCliTest(unittest.TestCase):
         profile["verified"] = False
         self.limits.write_text(json.dumps(profile))
         result = subprocess.run([
-            sys.executable, str(TOOL), "preview", "neutral", "--offline",
+            sys.executable, str(TOOL), "preview", "B_Neutral_Rest", "--offline",
             "--limits", str(self.limits), "--catalog", str(self.catalog),
             "--dir", str(self.motions), "--poses", str(self.poses),
             "--metadata", str(self.metadata),
         ], cwd=ROOT, capture_output=True, text=True, check=False, timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("试播完成：neutral", result.stdout)
+        self.assertIn("试播完成：B_Neutral_Rest", result.stdout)
         self.assertIn("joint limits unverified", result.stderr)
         self.assertEqual(json.loads(meta_path.read_text())["status"], "draft")
 
     def test_preview_status_reports_planned_core_seconds(self):
         result = subprocess.run([
-            sys.executable, str(TOOL), "preview", "greet_open", "--offline",
+            sys.executable, str(TOOL), "preview", "B_Open_Hold", "--offline",
             "--no-confirm", "--json-events", "--duration-ms", "3000",
             "--hold-ms", "100", "--limits", str(self.limits),
             "--catalog", str(self.catalog), "--dir", str(self.motions),
@@ -327,7 +344,7 @@ class SequenceCliTest(unittest.TestCase):
 
     def test_linear_preview_reports_linear_core_and_releases_offline(self):
         result = subprocess.run([
-            sys.executable, str(TOOL), "preview", "greet_open", "--offline",
+            sys.executable, str(TOOL), "preview", "B_Open_Hold", "--offline",
             "--no-confirm", "--json-events", "--duration-ms", "20",
             "--interpolation", "linear", "--hold-ms", "100",
             "--limits", str(self.limits), "--catalog", str(self.catalog),
@@ -343,34 +360,34 @@ class SequenceCliTest(unittest.TestCase):
         self.assertIn("上半身控制权已释放", result.stdout)
 
     def test_single_frame_motion_sequence_and_offline_preview(self):
-        path = self.motions / "reception" / "greet_open.dat"
+        path = self.motions / "reception" / "B_Open_Hold.dat"
         path.write_text("1\n14\n0.3 0.08 " + " ".join(["0"] * 13) + "\n")
-        entry = motion_library.catalog_entries(self.catalog)["greet_open"]
+        entry = motion_library.catalog_entries(self.catalog)["B_Open_Hold"]
         points, errors, _ = motion_library.parse_motion(path)
         self.assertFalse(errors)
         meta = motion_library.metadata_for(entry, path, points)
         meta.update(status="approved", verified_by="offline fixture",
                     verified_at="2026-11-12T10:00:00+08:00")
-        (self.metadata / "greet_open.json").write_text(json.dumps(meta))
-        self.assertEqual(self.check_preview("greet_open").returncode, 0)
+        (self.metadata / "B_Open_Hold.json").write_text(json.dumps(meta))
+        self.assertEqual(self.check_preview("B_Open_Hold").returncode, 0)
         self.assertEqual(self.check().returncode, 0)
         result = subprocess.run([
-            sys.executable, str(TOOL), "preview", "greet_open", "--offline",
+            sys.executable, str(TOOL), "preview", "B_Open_Hold", "--offline",
             "--no-confirm", "--transition-ms", "500", "--hold-ms", "100",
             "--limits", str(self.limits), "--catalog", str(self.catalog),
             "--dir", str(self.motions), "--poses", str(self.poses),
             "--metadata", str(self.metadata),
         ], cwd=ROOT, capture_output=True, text=True, check=False, timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("试播完成：greet_open", result.stdout)
+        self.assertIn("试播完成：B_Open_Hold", result.stdout)
 
     def test_playback_confirmation_records_approval(self):
-        meta_path = self.metadata / "neutral.json"
+        meta_path = self.metadata / "B_Neutral_Rest.json"
         meta = json.loads(meta_path.read_text())
         meta["status"] = "draft"
         meta["verified_by"] = meta["verified_at"] = ""
         meta_path.write_text(json.dumps(meta))
-        args = SimpleNamespace(name="neutral", dir=self.motions, poses=self.poses,
+        args = SimpleNamespace(name="B_Neutral_Rest", dir=self.motions, poses=self.poses,
                                metadata=self.metadata, catalog=self.catalog)
         motion_ctl.confirm_preview(args)
         confirmed = json.loads(meta_path.read_text())
@@ -390,12 +407,12 @@ class SequenceCliTest(unittest.TestCase):
         self.assertNotEqual(self.check().returncode, 0)
         profile["verified"] = True
         self.limits.write_text(json.dumps(profile))
-        path = self.motions / "reception" / "greet_open.dat"
+        path = self.motions / "reception" / "B_Open_Hold.dat"
         path.write_text(path.read_text().replace("0.04", "0.05"))
         self.assertNotEqual(self.check().returncode, 0)
 
     def test_anchor_mismatch_and_disallowed_repeat_are_rejected(self):
-        path = self.metadata / "greet_open.json"
+        path = self.metadata / "B_Open_Hold.json"
         meta = json.loads(path.read_text())
         meta["entry_pose"][0] = 0.4
         path.write_text(json.dumps(meta))
@@ -448,7 +465,7 @@ class SequenceCliTest(unittest.TestCase):
         while send({"状态": True})["status"]["ownership"] != "owned":
             self.assertLess(time.monotonic(), deadline)
             time.sleep(0.02)
-        self.assertFalse(send({"试播": "neutral"})["ok"])
+        self.assertFalse(send({"试播": "B_Neutral_Rest"})["ok"])
         self.assertTrue(send({"序列": request})["ok"])
         deadline = time.monotonic() + 2
         while send({"状态": True})["status"]["state"] != "running":
@@ -463,7 +480,7 @@ class SequenceCliTest(unittest.TestCase):
                 break
             self.assertLess(time.monotonic(), deadline)
             time.sleep(0.02)
-        self.assertEqual(status["checkpoint"]["step_name"], "greet_open")
+        self.assertEqual(status["checkpoint"]["step_name"], "B_Open_Hold")
         self.assertTrue(send({"恢复": True})["ok"])
         deadline = time.monotonic() + 2
         while send({"状态": True})["status"]["state"] != "running":
@@ -479,7 +496,7 @@ class SequenceCliTest(unittest.TestCase):
         self.assertEqual(process.returncode, 0)
 
     def test_preview_socket_plays_one_draft_pose_and_auto_releases(self):
-        path = self.metadata / "neutral.json"
+        path = self.metadata / "B_Neutral_Rest.json"
         meta = json.loads(path.read_text())
         meta["status"] = "draft"
         meta["verified_by"] = meta["verified_at"] = ""
@@ -519,14 +536,14 @@ class SequenceCliTest(unittest.TestCase):
             except OSError:
                 self.assertLess(time.monotonic(), deadline)
                 time.sleep(0.02)
-        self.assertFalse(send({"试播": "neutral"})["ok"])
+        self.assertFalse(send({"试播": "B_Neutral_Rest"})["ok"])
         self.assertTrue(send({"接管": True})["ok"])
         deadline = time.monotonic() + 2
         while send({"状态": True})["status"]["ownership"] != "owned":
             self.assertLess(time.monotonic(), deadline)
             time.sleep(0.02)
         self.assertFalse(send({"腰部角度": 0})["ok"])
-        response = send({"试播": "neutral"})
+        response = send({"试播": "B_Neutral_Rest"})
         self.assertTrue(response["ok"])
         self.assertIn("joint limits unverified", response["warning"])
         deadline = time.monotonic() + 3
@@ -543,7 +560,7 @@ class SequenceCliTest(unittest.TestCase):
         while send({"状态": True})["status"]["ownership"] != "owned":
             self.assertLess(time.monotonic(), deadline)
             time.sleep(0.02)
-        self.assertFalse(send({"试播": "neutral"})["ok"])
+        self.assertFalse(send({"试播": "B_Neutral_Rest"})["ok"])
         self.assertTrue(send({"退出": True})["ok"])
         process.wait(timeout=3)
         self.assertEqual(process.returncode, 0)
