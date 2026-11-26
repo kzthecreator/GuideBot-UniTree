@@ -24,6 +24,32 @@ class RegistrationTests(unittest.TestCase):
     def read(self, path):
         return json.loads((self.root / path).read_text())
 
+    def test_overwrite_inherits_prompt_and_requires_web_review(self):
+        from tools.motion.descriptions import effective,save_review
+        from tools.motion.confirm_motion import confirm
+        recording.register(self.root,self.source,'Custom','semantic','初始任务描述')
+        old=self.read('metadata/Custom.json')
+        (self.root/'prompt_descriptions.json').write_text(json.dumps(dict(version=1,actions={
+            'Custom':dict(description='人工润色的两帧动作',sha256=old['sha256'])})))
+        self.capture(3)
+        recording.register(self.root,self.source,'Custom','semantic','不应覆盖的任务文字',overwrite=True,task_id='01')
+        meta=self.read('metadata/Custom.json')
+        self.assertEqual(meta['description'],'人工润色的两帧动作')
+        self.assertTrue(meta['description_review']['pending'])
+        self.assertEqual(meta['description_review']['previous_frames'],2)
+        self.assertEqual(meta['description_review']['new_frames'],3)
+        entries=assets.catalog_entries(self.root/'config/motion_catalog.json')
+        with self.assertRaisesRegex(ValueError,'待校对'):
+            confirm(self.root,entries,'Custom',meta['sha256'],meta['version'],{},3000,'test')
+        with self.assertRaises(ValueError):
+            save_review(self.root,'Custom',meta['sha256'],meta['version'],'新描述',False)
+        reviewed=save_review(self.root,'Custom',meta['sha256'],meta['version'],'校对后的三帧轨迹',True)
+        self.assertFalse(reviewed['description_review']['pending'])
+        self.assertEqual(effective(self.root,'Custom',reviewed),'校对后的三帧轨迹')
+        self.assertEqual(reviewed['status'],'draft')
+        with self.assertRaisesRegex(ValueError,'已变化'):
+            save_review(self.root,'Custom',meta['sha256'],meta['version'],'过期窗口',True)
+
     def test_semantic_draft_is_valid_and_not_selectable(self):
         path = recording.register(self.root, self.source, 'custom_wave', 'semantic', '挥动')
         entries = assets.catalog_entries(self.root / 'config/motion_catalog.json')

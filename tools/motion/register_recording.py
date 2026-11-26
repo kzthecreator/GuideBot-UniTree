@@ -88,7 +88,14 @@ def register(root, recording, name, group, description='', family='beat',
     if (path.exists() or meta_path.exists()) and not overwrite:
         raise ValueError('动作已存在，需要明确确认覆盖')
     old = json.loads(meta_path.read_text()) if meta_path.exists() else {}
+    from tools.motion.descriptions import effective
+    inherited = effective(root,name,old) if old else ''
+    if inherited:
+        description = inherited
     meta = metadata_for(entry, recording, points, old)
+    if old:
+        meta['description_review'] = dict(pending=True, previous_sha256=old.get('sha256'),
+            previous_frames=len(old.get('keyframe_times_ms',[])), new_frames=len(points))
     meta.update(gesture_group=group, description=description or old.get('description', ''))
     if label:
         meta['label'] = label

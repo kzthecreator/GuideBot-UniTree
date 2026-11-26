@@ -1,0 +1,88 @@
+{
+  "schema_version": 3,
+  "file_format_version": 1,
+  "name": "B_Forearm_Converge",
+  "category": "semantic",
+  "type": "motion",
+  "label": "B双前臂汇合",
+  "description": "双肩pitch前送约10°、双肩roll略内收，双肘屈曲约70°，双前臂由两侧向中线汇合并拢。描摹“汇合/连接/支撑”关系。",
+  "robot_model": "G1-7DOF",
+  "source": "teach_with_name",
+  "version": 1,
+  "status": "draft",
+  "movement_context": "stationary",
+  "scenes": [
+    "semantic"
+  ],
+  "notes": "",
+  "sha256": "163b00fcc791187ee206ad055a1aced646b1db013858451dbac222a7bc4c0f09",
+  "verified_by": "",
+  "verified_at": "",
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0,
+    300
+  ],
+  "nominal_duration_ms": 300,
+  "entry_pose": [
+    -0.4464,
+    0.338147,
+    0.405918,
+    -0.419819,
+    -1.578826,
+    0.0,
+    0.0,
+    -0.418094,
+    -0.43136,
+    -0.450427,
+    -0.449516,
+    1.458552,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    -0.311865,
+    0.101998,
+    -0.217921,
+    -0.61672,
+    -1.696942,
+    0.0,
+    0.0,
+    -0.297269,
+    -0.144038,
+    0.312489,
+    -0.64559,
+    1.809714,
+    0.0,
+    0.0
+  ],
+  "loopable": false,
+  "interruptible": true,
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "safety": {
+    "max_velocity_rad_s": 0.4,
+    "max_acceleration_rad_s2": 0.8,
+    "joint_limits_profile": "config/arm_joint_limits.json"
+  },
+  "gesture_group": "semantic",
+  "gesture_subcategory": "描摹",
+  "recording_task_id": "18"
+}

@@ -22,6 +22,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import motion_library as library
+from tools.motion.descriptions import effective
 
 from drivers.unitree_motion.paths import ASSETS as ROOT, BUILD, LIMITS
 PAGE = Path(__file__).with_suffix(".html")
@@ -80,7 +81,8 @@ class App:
                 "timing_profile": profile, "profile_saved": "timing_profile" in meta,
                 "intervals_ms": intervals, "nominal_ms": sum(intervals),
                 "warnings": warnings, "label": meta.get("label", name),
-                "description": meta.get("description", ""),
+                "description": effective(ROOT,name,meta),
+                "description_review": meta.get("description_review", {}),
                 "gesture_group": meta.get("gesture_group", "prosody" if self.entries[name]["category"]=="prosody" else "semantic"),
                 "confirmed_total_ms": meta.get("preview_confirmation", {}).get("total_ms")}
 
@@ -117,6 +119,19 @@ class App:
 
     def simple_preview(self, payload):
         self.preview(self.simple_payload(payload))
+
+    def save_description(self, payload):
+        name=payload.get('name')
+        self.detail(name)
+        from tools.motion.descriptions import save_review
+        with self.lock:
+            if self.stopping or self.state['running']:
+                raise ValueError('请先停止试播')
+            meta=save_review(ROOT,name,payload.get('sha256'),payload.get('version'),
+                             payload.get('description'),payload.get('description_reviewed'))
+            self.tested=None
+            self.state['eligible']=False
+        return dict(saved=True,version=meta['version'])
 
     def confirm_available(self, payload):
         payload = self.simple_payload(payload)
@@ -347,6 +362,8 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/simple-preview":
                 APP.simple_preview(payload)
                 result = {"started": True}
+            elif self.path == "/api/description":
+                result = APP.save_description(payload)
             elif self.path == "/api/confirm":
                 result = APP.confirm_available(payload)
             elif self.path == "/api/preview":

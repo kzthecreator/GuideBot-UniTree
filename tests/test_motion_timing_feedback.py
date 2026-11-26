@@ -40,7 +40,7 @@ class TimingFeedbackTests(unittest.TestCase):
         history = scheduler.planning_history('r')
         self.assertEqual(history[0]['status'], 'skipped')
         self.assertEqual(history[0]['reason'], 'insufficient_remaining_time')
-        payload = dict(make_input('r', '请稍等。', existing=history), timing_contract='fixed_deadline')
+        payload = dict(make_input('r', '请稍等。', existing=history), timing_contract='semantic_keyframes')
         prompt = messages(self.catalog, payload)
         self.assertIn('minimum_duration_s', prompt[0]['content'])
         self.assertNotIn('minimum_remaining_s', prompt[0]['content'])

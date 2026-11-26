@@ -175,7 +175,8 @@ class Catalog:
                 self.assets[name] = dict(entry=entries[motion_name], metadata=meta,
                                          frames=len(points), points=points)
             if (item.get('enabled', True) and item['verified'] and selectable and name in self.assets
-                    and self.assets[name]['metadata']['status'] == 'approved'):
+                    and self.assets[name]['metadata']['status'] == 'approved'
+                    and not self.assets[name]['metadata'].get('description_review',{}).get('pending')):
                 self.actions[name] = item
 
     def prompt_document(self):
@@ -275,42 +276,6 @@ def make_input(response_id, text, targets=(), existing=(), eligible=None, comple
                 interaction_context=interaction_context or {'stage': 'unspecified', 'history': []})
 
 
-def original_prompt_template():
-    """Keep the historical file intact, translate physical IDs when using it."""
-    template = (DIRECTORY/'prompt_original.md').read_text(encoding='utf-8')
-    mapping = strict_json((MOTION_ROOT/'action-id-migration.json').read_text(encoding='utf-8'))['mapping']
-    pattern = r'(?<![A-Za-z0-9_-])('+'|'.join(map(re.escape,mapping))+r')(?![A-Za-z0-9_-])'
-    return re.sub(pattern, lambda match: mapping[match[0]], template)
-
-
-def original_messages(catalog, payload, examples_path=EXAMPLES):
-    document = catalog.prompt_document()
-    if payload.get('timing_contract') == 'fixed_deadline':
-        document = dict(document, actions=[dict(item,
-            parameters={k:v for k,v in item['parameters'].items() if k != 'duration_s'},
-            required=[k for k in item['required'] if k != 'duration_s'],
-            **catalog.execution_timing(item['id']))
-            for item in document['actions']])
-    system = original_prompt_template().replace(
-        '{{REGISTRY}}', json.dumps(document, ensure_ascii=False))
-    result = [dict(role='system', content=system)]
-    for example in strict_json(Path(examples_path).read_text(encoding='utf-8')):
-        if payload.get('timing_contract') == 'fixed_deadline':
-            # Historical examples use arrival+duration, not fixed end windows.
-            continue
-        # Disabled or removed actions must not survive via historical examples.
-        if any(a['action'] not in catalog.actions for a in example['actions']):
-            continue
-        value = make_input('example', example['text'], example['targets'], complete=True,
-                           interaction_context=example.get('interaction_context'))
-        for row in example['actions']:
-            catalog.validate(row, value['eligible_anchor_ids'], value['targets'], value['interaction_context'])
-        result.extend([dict(role='user', content=json.dumps(value, ensure_ascii=False)),
-                       dict(role='assistant', content=json.dumps({'actions': example['actions']}, ensure_ascii=False))])
-    result.append(dict(role='user', content=json.dumps(payload, ensure_ascii=False)))
-    return result
-
-
 def minimal_document(catalog):
     """Expose only identity, physical description and the actual duration floor."""
     path = DIRECTORY / 'prompt_descriptions.json'
@@ -336,8 +301,8 @@ def minimal_document(catalog):
 
 def messages(catalog, payload, examples_path=EXAMPLES, *, prompt_variant=None):
     variant = prompt_variant or os.environ.get('GUIDEBOT_GESTURE_PROMPT', 'minimal')
-    if variant not in {'minimal', 'original'}:
-        raise ValueError('GUIDEBOT_GESTURE_PROMPT must be minimal or original')
+    if variant != 'minimal':
+        raise ValueError('Only the minimal prompt variant is supported; original has been removed')
     if payload.get('timing_contract') == 'semantic_keyframes':
         from .timing import phases
         document = minimal_document(catalog)
@@ -348,12 +313,4 @@ def messages(catalog, payload, examples_path=EXAMPLES, *, prompt_variant=None):
             '{{REGISTRY}}', json.dumps(document, ensure_ascii=False, indent=2))
         return [dict(role='system', content=system),
                 dict(role='user', content=json.dumps(payload, ensure_ascii=False))]
-    if variant == 'original' or payload.get('timing_contract') != 'fixed_deadline':
-        # Legacy anchor-only callers keep their original parameter contract.
-        return original_messages(catalog, payload, examples_path)
-    document = minimal_document(catalog)
-    system = (DIRECTORY/'prompt.md').read_text(encoding='utf-8').replace(
-        '{{REGISTRY}}', json.dumps(document, ensure_ascii=False, indent=2))
-    # No historical semantic few-shots in the experimental description-only prompt.
-    return [dict(role='system', content=system),
-            dict(role='user', content=json.dumps(payload, ensure_ascii=False))]
+    raise ValueError('Only semantic_keyframes planning is supported; fixed_deadline planning has been removed')

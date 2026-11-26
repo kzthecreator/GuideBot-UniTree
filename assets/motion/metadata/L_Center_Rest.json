@@ -1,0 +1,87 @@
+{
+  "schema_version": 3,
+  "file_format_version": 1,
+  "name": "L_Center_Rest",
+  "category": "basic",
+  "type": "pose",
+  "label": "L中线停驻",
+  "description": "左肘屈曲约90°、左前臂停于腹部前方中轴线上，右臂自然下垂。",
+  "robot_model": "G1-7DOF",
+  "source": "teach_with_name",
+  "version": 1,
+  "status": "draft",
+  "movement_context": "stationary",
+  "scenes": [
+    "basic"
+  ],
+  "notes": "",
+  "sha256": "c041cbc7ab789bd9806a4faebff0ac691686ebdfb293c5b8436d82c93a75c387",
+  "verified_by": "",
+  "verified_at": "",
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0
+  ],
+  "nominal_duration_ms": 0,
+  "entry_pose": [
+    -0.318337,
+    0.020984,
+    -0.454658,
+    0.932553,
+    -0.009156,
+    0.0,
+    0.0,
+    0.089942,
+    -0.223985,
+    0.105737,
+    1.220953,
+    0.005609,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    -0.318337,
+    0.020984,
+    -0.454658,
+    0.932553,
+    -0.009156,
+    0.0,
+    0.0,
+    0.089942,
+    -0.223985,
+    0.105737,
+    1.220953,
+    0.005609,
+    0.0,
+    0.0
+  ],
+  "loopable": false,
+  "interruptible": true,
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "safety": {
+    "max_velocity_rad_s": 0.4,
+    "max_acceleration_rad_s2": 0.8,
+    "joint_limits_profile": "config/arm_joint_limits.json"
+  },
+  "gesture_group": "prosody",
+  "gesture_subcategory": "起止/姿态管理",
+  "recording_task_id": "15"
+}

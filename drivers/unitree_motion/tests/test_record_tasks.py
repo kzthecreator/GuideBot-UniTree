@@ -28,8 +28,8 @@ class TaskRecordingTests(unittest.TestCase):
         destination.write_text('2\n14\n' + ('0.3 ' + ' '.join(['0']*14) + '\n')*2)
 
     def test_recordable_presets_register_with_original_chinese_and_subclass(self):
-        self.assertEqual(list(self.tasks), [f'{i:02}' for i in range(1,18) if i != 16])
-        self.assertEqual(sum(x['group']=='semantic' for x in self.tasks.values()), 8)
+        self.assertEqual(list(self.tasks), [f'{i:02}' for i in range(1,23) if i != 16])
+        self.assertEqual(sum(x['group']=='semantic' for x in self.tasks.values()), 13)
         self.assertEqual(sum(x['group']=='prosody' for x in self.tasks.values()), 8)
         source = self.root/'capture.dat'
         self.capture_file(source)
@@ -44,7 +44,7 @@ class TaskRecordingTests(unittest.TestCase):
                 self.assertEqual(meta[field], expected)
             self.assertEqual(queue.task_status(self.root, task), ('已录制待验收', True))
         catalog = Catalog(path=self.root/'actions.json', motion_root=self.root)
-        self.assertEqual(len(catalog.definitions), 15)
+        self.assertEqual(len(catalog.definitions), 20)
         self.assertEqual(catalog.actions, {})
         prosody = json.loads((self.root/'prosody_catalog.json').read_text())['actions']
         self.assertEqual(len(prosody),7)

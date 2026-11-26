@@ -1,3 +1,23 @@
+# 2026-11-26 移除固定窗口LLM Prompt
+
+按用户确认删除GuideBot/gesture/prompt.md及catalog对应构建分支，fixed_deadline与无契约LLM请求明确拒绝。保留执行端deadline校验。导出仅stream/preplan，默认stream；prompt预览使用semantic_keyframes。旧run.py固定窗口真实规划明确停用（固定规划器离线历史验收保留），引导preplan_keyframes.py。历史minimal快照标记停用，不删除用户描述快照。48项相关测试通过；未调用云端或启动机器人。
+
+# 2026-11-26 移除原版Prompt支持
+
+按用户确认删除GuideBot/gesture/prompt_original.md与catalog_original_backup.py，移除original构建/导出/示例选项。当前minimal固定期限、stream关键帧与whole-text全文模板保留；无时间契约请求明确拒绝，旧锚点评测evaluate停用并提示当前规划工具，prompt预览显式使用fixed_deadline。更新相关文档和测试；以下原版恢复说明仅为历史记录。验证：48项相关测试通过，minimal/stream导出与prompt预览通过，diff检查通过。全量217项首次有7失败1错误；本地socket相关20项在沙箱外重跑全部通过，仍有4项集成测试断言旧120秒/final_repair参数，与当前12秒/起点游标配置不符，本次未改该配置或相关断言。未调用云端、音频或机器人。
+
+# 2026-11-26 清理已确认的第一批Prompt历史备份
+
+按用户确认删除五项：artifacts/backups下prompt-stream-before-coordination-20261126-160244.md、gesture-description-keyframes-before-20261126/、stream-keyframes-before/，及artifacts/gesture-prompt下unified/、original/。三份实验文档同步标记清理。运行模板、动作描述、实验结果与演练日志保留；以下旧记录中涉及这些备份的描述仅代表当时状态。
+
+# 2026-11-26 覆盖录制描述继承与网页校对
+
+覆盖录制优先继承旧SHA匹配的Prompt描述，再用元数据/registry；新metadata.description_review记录pending和新旧帧数。网页新增描述编辑+核对勾选+保存API；保存通过资产锁、SHA/version防过期，事务更新metadata和prompt_descriptions绑定，回draft并清除试播确认。confirm拒绝pending，Catalog额外阻止pending动作进入可选库。tests覆盖继承、帧数变化、拒绝未校对、过期保存及前端编辑流程。未真实覆盖录制或启动真机；未推送本轮修改。
+
+# 2026-11-26 扩展按ID录制任务
+
+recording_tasks.json追加18~22五个双臂描摹动作，完整预设中文名、ID、姿态和语义描述。旧编号不变，15 L_Center_Rest仍待录制。--list实查新增五项均待录制；未创建动作占位资产、未验收或启用，不启动机器人。motion-library.md同步表格。
+
 # 2026-11-26 流式可规划范围/对齐积压/日志修复
 
 service规划锚点改为known future+未覆盖，不再已发送末尾16单元；immediate保留旧范围。时间戳宿主pending合并文本/音频，IPC queue=1，后台flush，取消优先；worker按4秒吸收突发音频，最新回复优先。实时12秒滚动窗口+起点游标，final_repair=False，离线完整对齐不变。真实lab626回放249锚点、0.82~1.98秒计算，58.32秒整段burst最终249时间戳无warning；证据artifacts/diagnostics/streaming-fixes-20261126。stream Prompt默认单关键帧，刷新导出；宿主日志改gesture-transport.jsonl，服务独占gesture.jsonl。3秒缓存未改，未启动真机。

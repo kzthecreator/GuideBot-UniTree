@@ -1,0 +1,88 @@
+{
+  "schema_version": 3,
+  "file_format_version": 1,
+  "name": "B_Point_Retract_Fold",
+  "category": "semantic",
+  "type": "motion",
+  "label": "B双臂前指收回折叠",
+  "description": "双肩pitch由前伸约45°收至约10°、双肘由伸直屈至约60°，双臂由前指位收回至胸前折叠位。描摹“收回/内敛”状态。",
+  "robot_model": "G1-7DOF",
+  "source": "teach_with_name",
+  "version": 1,
+  "status": "draft",
+  "movement_context": "stationary",
+  "scenes": [
+    "semantic"
+  ],
+  "notes": "",
+  "sha256": "f165c2ade789aaaeaac6e2c5e3b7a2ad5a31c77b18a4bf834dd539a5704da352",
+  "verified_by": "",
+  "verified_at": "",
+  "joint_count": 14,
+  "joint_names": [
+    "left_shoulder_pitch",
+    "left_shoulder_roll",
+    "left_shoulder_yaw",
+    "left_elbow",
+    "left_wrist_roll",
+    "left_wrist_pitch",
+    "left_wrist_yaw",
+    "right_shoulder_pitch",
+    "right_shoulder_roll",
+    "right_shoulder_yaw",
+    "right_elbow",
+    "right_wrist_roll",
+    "right_wrist_pitch",
+    "right_wrist_yaw"
+  ],
+  "keyframe_times_ms": [
+    0,
+    300
+  ],
+  "nominal_duration_ms": 300,
+  "entry_pose": [
+    -0.546157,
+    0.140479,
+    0.588689,
+    -0.284805,
+    -1.151157,
+    0.0,
+    0.0,
+    -0.418801,
+    -0.223158,
+    -0.504907,
+    -0.390278,
+    1.184149,
+    0.0,
+    0.0
+  ],
+  "exit_pose": [
+    -0.072708,
+    0.296921,
+    -0.251093,
+    -0.785542,
+    -0.735184,
+    0.0,
+    0.0,
+    -0.119734,
+    -0.496279,
+    0.261975,
+    -0.800726,
+    0.712966,
+    0.0,
+    0.0
+  ],
+  "loopable": false,
+  "interruptible": true,
+  "allowed_robot_modes": [
+    "standing"
+  ],
+  "safety": {
+    "max_velocity_rad_s": 0.4,
+    "max_acceleration_rad_s2": 0.8,
+    "joint_limits_profile": "config/arm_joint_limits.json"
+  },
+  "gesture_group": "semantic",
+  "gesture_subcategory": "描摹",
+  "recording_task_id": "22"
+}

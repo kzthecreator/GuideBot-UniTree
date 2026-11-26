@@ -1021,6 +1021,138 @@
       "gesture_subcategory": "描摹",
       "selection_mode": "description",
       "gesture_group": "semantic"
+    },
+    {
+      "id": "B_Forearm_Converge",
+      "motion_name": "B_Forearm_Converge",
+      "asset_type": "motion",
+      "kind": "motion",
+      "name": "B双前臂汇合",
+      "description": "双肩pitch前送约10°、双肩roll略内收，双肘屈曲约70°，双前臂由两侧向中线汇合并拢。描摹“汇合/连接/支撑”关系。",
+      "semantic_intents": [],
+      "example_phrases": [],
+      "interaction_functions": [],
+      "when_to_use": "待补充适用语义",
+      "avoid_when": "语义资料与真机验收完成前不启用",
+      "parameters": {
+        "duration_s": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 600
+        }
+      },
+      "required": [
+        "duration_s"
+      ],
+      "trigger_source": "llm_interaction_context",
+      "llm_selectable": false,
+      "context_requirements": [],
+      "hold_policy": "until_next_action_or_state_change",
+      "post_action_policy": "scheduler_decides_no_automatic_neutral",
+      "release_conditions": [
+        "action_switch_needed"
+      ],
+      "verified": false,
+      "enabled": false,
+      "recording_task_id": "18",
+      "gesture_subcategory": "描摹"
+    },
+    {
+      "id": "B_Forearm_Slant_Up",
+      "motion_name": "B_Forearm_Slant_Up",
+      "asset_type": "motion",
+      "kind": "motion",
+      "name": "B双前臂斜上扬",
+      "description": "双肩pitch前送约30°，双肘屈曲约45°，双前臂由体前斜向斜上方抬起，形成上扬臂线。描摹“上升/成绩/上扬”状态。",
+      "semantic_intents": [],
+      "example_phrases": [],
+      "interaction_functions": [],
+      "when_to_use": "待补充适用语义",
+      "avoid_when": "语义资料与真机验收完成前不启用",
+      "parameters": {
+        "duration_s": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 600
+        }
+      },
+      "required": [
+        "duration_s"
+      ],
+      "trigger_source": "llm_interaction_context",
+      "llm_selectable": false,
+      "context_requirements": [],
+      "hold_policy": "until_next_action_or_state_change",
+      "post_action_policy": "scheduler_decides_no_automatic_neutral",
+      "release_conditions": [
+        "action_switch_needed"
+      ],
+      "verified": false,
+      "enabled": false,
+      "recording_task_id": "21",
+      "gesture_subcategory": "描摹"
+    },
+    {
+      "id": "B_Point_Retract_Fold",
+      "motion_name": "B_Point_Retract_Fold",
+      "asset_type": "motion",
+      "kind": "motion",
+      "name": "B双臂前指收回折叠",
+      "description": "双肩pitch由前伸约45°收至约10°、双肘由伸直屈至约60°，双臂由前指位收回至胸前折叠位。描摹“收回/内敛”状态。",
+      "semantic_intents": [],
+      "example_phrases": [],
+      "interaction_functions": [],
+      "when_to_use": "待补充适用语义",
+      "avoid_when": "语义资料与真机验收完成前不启用",
+      "parameters": {
+        "duration_s": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 600
+        }
+      },
+      "required": [
+        "duration_s"
+      ],
+      "trigger_source": "llm_interaction_context",
+      "llm_selectable": false,
+      "context_requirements": [],
+      "hold_policy": "until_next_action_or_state_change",
+      "post_action_policy": "scheduler_decides_no_automatic_neutral",
+      "release_conditions": [
+        "action_switch_needed"
+      ],
+      "verified": false,
+      "enabled": false,
+      "recording_task_id": "22",
+      "gesture_subcategory": "描摹"
+    },
+    {
+      "id": "B_Upright_Converge",
+      "motion_name": "B_Upright_Converge",
+      "asset_type": "pose",
+      "kind": "pose",
+      "name": "B双前臂竖立靠拢",
+      "description": "双肩roll由外展位内收约10°、双肘保持约90°，双前臂由两侧竖立位向中线靠拢。描摹“代理/替代”的合拢关系。",
+      "semantic_intents": [],
+      "example_phrases": [],
+      "interaction_functions": [],
+      "when_to_use": "待补充适用语义",
+      "avoid_when": "语义资料与真机验收完成前不启用",
+      "parameters": {},
+      "required": [],
+      "trigger_source": "llm_interaction_context",
+      "llm_selectable": false,
+      "context_requirements": [],
+      "hold_policy": "until_next_action_or_state_change",
+      "post_action_policy": "scheduler_decides_no_automatic_neutral",
+      "release_conditions": [
+        "action_switch_needed"
+      ],
+      "verified": false,
+      "enabled": false,
+      "recording_task_id": "20",
+      "gesture_subcategory": "描摹"
     }
   ]
 }

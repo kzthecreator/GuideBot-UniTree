@@ -6,7 +6,7 @@
 
 ## LLM 新版精简 Prompt 与原版切换
 
-正式固定时间窗口规划默认使用 `GuideBot/gesture/prompt.md` 的新版精简规则。每个已启用动作仅向LLM提供三个字段：
+实时关键帧规划使用 `GuideBot/gesture/prompt_stream.md`，全文预规划使用 `GuideBot/gesture/prompt_preplan.md`；固定时间窗口LLM规划已移除。每个已启用动作仅向LLM提供三个字段：
 
 ```json
 {"id":"L_Short_Nudge","description":"左臂肩pitch前送约10°，左肘微屈约15°，短促送出。","minimum_duration_s":0.901}
@@ -14,7 +14,7 @@
 
 `minimum_duration_s` 是动作自身执行下限，单位秒，不固定实际时长；统一0.65秒执行协调余量目前已暂时取消，底层原生50ms截止复核仍保留。旧动作使用现有执行器的入口加核心下限，新版网页验收动作使用已确认的最短总时长。轨迹描述不附带使用场景、语义触发条件、分类、示例话术或交互函数。LLM按ID和物理描述自行判断表达。仍保留五字段JSON、有效文字编号、未来时间窗口、不重叠和每次最多3个动作等接口要求。
 
-原版模板已备份到 `GuideBot/gesture/prompt_original.md`，改动前构建代码备份为 `catalog_original_backup.py`。`prompt_descriptions.json` 保存原有动作去除用途限制后的物理描述，绑定轨迹SHA以防重录后沿用过期描述；新录动作使用登记描述。原有动作库和轨迹不为prompt试验改写。
+原版Prompt及构建代码备份已移除。`prompt_descriptions.json` 保存原有动作去除用途限制后的物理描述，绑定轨迹SHA以防重录后沿用过期描述；新录动作使用登记描述。原有动作库和轨迹不为prompt试验改写。
 
 默认使用新版；显式切换可从任意目录执行（须先关闭其他控制程序，按Enter后才启动会话）：
 
@@ -22,19 +22,13 @@
 GUIDEBOT_GESTURE_PROMPT=minimal python "$HOME/GuideBot-UniTree/main.py" --gesture-backend unitree
 ```
 
-恢复原版规则与完整动作信息：
-
-```bash
-GUIDEBOT_GESTURE_PROMPT=original python "$HOME/GuideBot-UniTree/main.py" --gesture-backend unitree
-```
-
-切换在重新启动会话后生效。历史仅文字锚点的非fixed_deadline调用保持原版输出契约；当前正式会话始终使用fixed_deadline，新版不附加旧语义few-shot示例。
+仅支持当前Prompt；旧版original选项和无时间契约的调用会明确报错。
 
 只导出查看、不连接API或机器人：
 
 ```bash
-python "$HOME/GuideBot-UniTree/tools/gesture/export_prompt.py" --variant minimal
-python "$HOME/GuideBot-UniTree/tools/gesture/export_prompt.py" --variant original
+python "$HOME/GuideBot-UniTree/tools/gesture/export_prompt.py" --variant preplan
+python "$HOME/GuideBot-UniTree/tools/gesture/export_prompt.py" --variant stream
 ```
 
 输出位于项目 `artifacts/gesture-prompt/<版本>/`：`system-prompt.md` 是当前实际拼装的系统Prompt，`actions.json` 是动作清单，`messages.example.json` 是使用示例播报文字构造的请求（不是现场对话记录）。生成文件为本机快照，新增或修改动作后重新导出。
@@ -96,6 +90,11 @@ python3 "$HOME/GuideBot-UniTree/tools/motion/record_tasks.py"
 | 14 | R单臂点节拍 | R_Single_Arm_Beat | 韵律／节拍/强调 |
 | 15 | L中线停驻 | L_Center_Rest | 韵律／起止/姿态管理 |
 | 17 | B归位静止（复用已有动作） | B_Neutral_Rest | 复用现有姿态，无需录制 |
+| 18 | B双前臂汇合 | B_Forearm_Converge | 语义／描摹 |
+| 19 | B双前臂竖立并列 | B_Upright_Pair | 语义／描摹 |
+| 20 | B双前臂竖立靠拢 | B_Upright_Converge | 语义／描摹 |
+| 21 | B双前臂斜上扬 | B_Forearm_Slant_Up | 语义／描摹 |
+| 22 | B双臂前指收回折叠 | B_Point_Retract_Fold | 语义／描摹 |
 
 只查看清单与进度、不连接机器人：
 
@@ -394,3 +393,11 @@ python3 ../../tools/motion/register_recording.py --root . --recording .recording
 刷新现有时间轴页面即可看到新动作，无需重启服务。在简化页完成真机试播并确认即可。语义动作登记于 `actions.json`，韵律动作登记于 `prosody_catalog.json`，确认时自动更新可用状态；LLM按名称、中文轨迹描述及分类选择，不要求另填交互用途或手动启用。
 
 保存使用文件锁串行化录制登记，每个文件先写临时文件再替换；多文件更新遇到普通写入异常会回滚，但不提供断电时的跨文件事务保证。保存期间避免手动修改同一批清单文件。
+
+### 覆盖录制后的Prompt描述校对
+
+覆盖录制默认保留旧Prompt描述（优先匹配旧SHA的`prompt_descriptions.json`条目，再回退动作元数据或登记表描述），不会用录制任务预设文字覆盖已有说明。新轨迹仍是草稿，标记描述待校对，记录旧SHA及新旧帧数。
+
+重启动作试播网页服务并刷新，选择动作，在“动作Prompt描述”文本框校对修改；勾选“已核对描述与当前录制一致”，点击“保存校对后的描述”。页面提示新旧帧数，重点核对左右手、帧序、运动方向和末姿态。保存时同时更新元数据和Prompt描述SHA绑定，并清除旧试播确认；然后按新配置真机试播、点击“确认可用”。未校对的覆盖录制动作不能确认或进入LLM可选库。
+
+已有已验收动作也可在网页修改描述；保存后回到草稿并要求重新试播验收。生成过的历史方案不会改写；应重新规划。

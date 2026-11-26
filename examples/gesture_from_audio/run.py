@@ -89,8 +89,7 @@ def candidate(catalog,row,doc,arrival,existing,mode):
         minimum=catalog.execution_timing(row['action'])
         return dict(row,status='accepted',dispatch_s=dispatch,arrival_s=arrival,sequence=sequence,
                     label=catalog.actions[row['action']]['name'],description=(
-                        next(a['description'] for a in minimal_document(catalog)['actions'] if a['id']==row['action'])
-                        if os.getenv('GUIDEBOT_GESTURE_PROMPT','minimal')=='minimal' else catalog.actions[row['action']]['description']),
+                        next(a['description'] for a in minimal_document(catalog)['actions'] if a['id']==row['action'])),
                     minimum_duration_s=minimum.get('minimum_total_ms',0)/1000 if 'minimum_total_ms' in minimum else minimum['minimum_remaining_s'],
                     anchor_text=''.join(r['text'] for r in anchors),
                     anchor_start_s=anchors[0]['start'],anchor_end_s=anchors[-1]['end'])
@@ -137,6 +136,8 @@ def build_payload(doc,text,count,complete,elapsed,history):
 
 
 def plan_run(config,audio,doc,validation,out,mode,catalog,planner_factory=None):
+    if planner_factory is None:
+        raise ValueError('Fixed-window LLM planning retired; use preplan_keyframes.py for whole-text planning')
     dump(out/'motion-snapshot.json', {name:dict(sha256=catalog.assets[name]['metadata']['sha256'],
         version=catalog.assets[name]['metadata']['version'],timing=catalog.execution_timing(name)) for name in catalog.actions})
     actions=[];attempts=[];history=[];elapsed=0.;index=0
@@ -150,9 +151,8 @@ def plan_run(config,audio,doc,validation,out,mode,catalog,planner_factory=None):
             if item['status']!='skipped':
                 item['status']='completed' if item['end_s']<=elapsed else ('running' if item['start_s']<=elapsed else 'scheduled')
         payload=build_payload(doc,text,count,complete,elapsed,history)
-        prompt=messages(catalog,payload)
-        # This addition is limited to the example, leaving live payload contracts intact.
-        prompt[0]['content']+=EXAMPLE_NOTE
+        # Historical fixed-planner replay has no LLM prompt.
+        prompt=[]
         dump(directory/'messages.json',prompt)
         wire=RecordedHTTP(directory) if planner_factory is None else None
         planner=planner_factory(directory) if planner_factory else Planner(catalog,session=wire,timeout=45)
@@ -249,7 +249,7 @@ def main():
     parser.add_argument('--scenario',type=Path,default=Path(__file__).with_name('scenario.json'))
     parser.add_argument('--audio',type=Path);parser.add_argument('--timestamps',type=Path)
     parser.add_argument('--mode',choices=('preplan','stream'),default='preplan')
-    parser.add_argument('--variant',choices=('minimal','original'))
+    parser.add_argument('--variant',choices=('minimal',))
     parser.add_argument('--output',type=Path)
     parser.add_argument('--port',type=int,default=8767)
     args=parser.parse_args()

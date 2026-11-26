@@ -278,6 +278,41 @@
       "priority": "P1",
       "type": "motion",
       "gesture_group": "prosody"
+    },
+    {
+      "name": "B_Forearm_Converge",
+      "category": "semantic",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "B_Forearm_Slant_Up",
+      "category": "semantic",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "B_Point_Retract_Fold",
+      "category": "semantic",
+      "priority": "P1",
+      "type": "motion",
+      "gesture_group": "semantic"
+    },
+    {
+      "name": "L_Center_Rest",
+      "category": "basic",
+      "priority": "P1",
+      "type": "pose",
+      "gesture_group": "prosody"
+    },
+    {
+      "name": "B_Upright_Converge",
+      "category": "basic",
+      "priority": "P1",
+      "type": "pose",
+      "gesture_group": "semantic"
     }
   ]
 }

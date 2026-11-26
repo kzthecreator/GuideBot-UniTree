@@ -15,7 +15,12 @@
 <section class="panel">
 <div class="row"><span class="badge" id="badge">载入中</span><button id="refresh">刷新动作列表</button></div>
 <label for="motion">动作</label><select id="motion"></select>
-<p class="description" id="description"></p>
+<label for="description">动作Prompt描述</label>
+<textarea id="description" rows="5" style="width:100%;font:inherit"></textarea>
+<p id="descriptionReview" class="note"></p>
+<label><input type="checkbox" id="reviewed"> 已核对描述与当前录制一致（左右手、帧数、方向、末姿态）</label>
+<button id="saveDescription">保存校对后的描述</button>
+<p class="note">保存描述后需重新试播并确认可用。</p>
 <label for="duration">本次试播总时长（秒）</label><input id="duration" type="number" min="0.001" max="600" step="0.1" value="3">
 <label for="minimum">最短总时长（秒）</label><input id="minimum" type="number" min="0.001" max="600" step="0.1" value="3">
 <p class="note">实际试播时长取“本次总时长”和“最短总时长”中的较大值。包含入口、核心与末帧保持，不含接管、返回和释放。确认后，运行可随语音窗口伸缩，但不会短于下限。</p>
@@ -32,14 +37,16 @@ let detail=null,running=false,eligible=false,busy=false,refreshing=false;
 async function api(path,payload){const response=await fetch(path,payload===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await response.json();if(!response.ok)throw Error(data.error||'请求失败');return data;}
 function message(text,error=false){$('message').textContent=text;$('message').className=error?'error':'';}
 function payload(){if(!detail)throw Error('请选择已录制动作');const total=Math.round(Number($('duration').value)*1000);if(!Number.isFinite(total)||total<1||total>600000)throw Error('请输入有效试播时长');return {name:detail.name,sha256:detail.sha256,version:detail.version,total_ms:total,minimum_total_ms:Math.round(Number($('minimum').value)*1000),offline:$('offline').checked};}
-function buttons(){const locked=running||busy;$('motion').disabled=locked;$('duration').disabled=locked;$('minimum').disabled=locked;$('offline').disabled=locked;$('refresh').disabled=locked;$('preview').disabled=locked||!detail;$('cancel').disabled=!running;$('confirm').disabled=locked||!detail||!eligible||$('offline').checked;$('shutdown').disabled=locked;$('preview').textContent=$('offline').checked?'离线演练':'真机试播';}
-async function select(){detail=null;eligible=false;buttons();const name=$('motion').value;if(!name){$('badge').textContent='暂无已录制动作';return;}try{detail=await api('/api/motion?name='+encodeURIComponent(name));$('badge').textContent=(detail.gesture_group==='prosody'?'韵律':'语义')+' · '+(detail.status==='approved'?'已验收':'待验收');$('description').textContent=detail.description||detail.label||detail.name;$('duration').value=(detail.confirmed_total_ms||3000)/1000;$('minimum').value=detail.timing_profile.minimum_total_ms/1000;message(detail.status==='approved'?'此动作已验收。重新试播确认可更新执行时长。':'选择本次试播时长，完成真机试播后确认可用。');}catch(e){message(e.message,true);}buttons();}
+function buttons(){const locked=running||busy;$('description').disabled=locked;$('reviewed').disabled=locked;$('saveDescription').disabled=locked||!detail;$('motion').disabled=locked;$('duration').disabled=locked;$('minimum').disabled=locked;$('offline').disabled=locked;$('refresh').disabled=locked;$('preview').disabled=locked||!detail;$('cancel').disabled=!running;$('confirm').disabled=locked||!detail||!eligible||$('offline').checked||!!detail?.description_review?.pending;$('shutdown').disabled=locked;$('preview').textContent=$('offline').checked?'离线演练':'真机试播';}
+async function select(){detail=null;eligible=false;buttons();const name=$('motion').value;if(!name){$('badge').textContent='暂无已录制动作';return;}try{detail=await api('/api/motion?name='+encodeURIComponent(name));$('badge').textContent=(detail.gesture_group==='prosody'?'韵律':'语义')+' · '+(detail.status==='approved'?'已验收':'待验收');$('description').value=detail.description||detail.label||detail.name;$('reviewed').checked=false;const review=detail.description_review||{};$('descriptionReview').textContent=review.pending?'原描述已保留，待校对；旧帧数 '+review.previous_frames+'，新帧数 '+review.new_frames:'当前帧数：'+detail.frames;$('duration').value=(detail.confirmed_total_ms||3000)/1000;$('minimum').value=detail.timing_profile.minimum_total_ms/1000;message(detail.status==='approved'?'此动作已验收。重新试播确认可更新执行时长。':'选择本次试播时长，完成真机试播后确认可用。');}catch(e){message(e.message,true);}buttons();}
 async function refresh(){if(refreshing)return;refreshing=true;try{const old=$('motion').value;const {items}=await api('/api/motions');$('motion').replaceChildren();items.forEach(item=>{const o=document.createElement('option');o.value=item.name;o.textContent=item.name+' · '+item.category+(!item.recorded?'（未录制）':!item.available?'（资产异常）':'');o.disabled=!item.available;$('motion').append(o);});const chosen=items.find(x=>x.name===old&&x.available)||items.find(x=>x.available);$('motion').value=chosen?chosen.name:'';await select();}catch(e){message(e.message,true);}finally{refreshing=false;}}
 $('motion').onchange=select;$('refresh').onclick=refresh;
+$('description').oninput=()=>{eligible=false;$('reviewed').checked=false;buttons();};
 $('duration').oninput=$('minimum').oninput=()=>{eligible=false;buttons();};$('offline').onchange=()=>{eligible=false;buttons();};
 $('preview').onclick=async()=>{busy=true;eligible=false;buttons();try{await api('/api/simple-preview',payload());running=true;message('正在启动试播…');}catch(e){message(e.message,true);}finally{busy=false;buttons();}};
 $('cancel').onclick=async()=>{eligible=false;try{await api('/api/cancel',{});message('正在取消并释放控制…');}catch(e){message(e.message,true);}buttons();};
 $('confirm').onclick=async()=>{busy=true;buttons();try{await api('/api/confirm',payload());eligible=false;await select();message('已确认可用，自动加入 LLM 动作列表。下次启动导览会话即可使用。');}catch(e){message(e.message,true);}finally{busy=false;buttons();}};
+$('saveDescription').onclick=async()=>{busy=true;buttons();try{await api('/api/description',{...payload(),description:$('description').value,description_reviewed:$('reviewed').checked});await select();message('描述已保存，请重新试播并确认可用。');}catch(e){message(e.message,true);}finally{busy=false;buttons();}};
 $('shutdown').onclick=async()=>{try{await api('/api/shutdown',{});message('网页服务已关闭。');detail=null;buttons();}catch(e){message(e.message,true);}};
 setInterval(async()=>{if(busy)return;try{const s=await api('/api/status');const was=running;running=s.running;if(running||was){message(s.message+(s.planned_seconds!=null?' · 规划 '+s.planned_seconds+' 秒':''),s.phase==='failed');eligible=s.eligible;}buttons();}catch(e){if(running)message('状态连接中断，请检查终端与机器人控制状态。',true);}},700);
 refresh();

@@ -137,6 +137,46 @@
       "description": "直接复用动作库已有 B_Neutral_Rest 姿态，以其已录制关节数据为准，无需重新录制。",
       "reuse_existing": true,
       "family": "posture"
+    },
+    {
+      "id": "18",
+      "name": "B_Forearm_Converge",
+      "label": "B双前臂汇合",
+      "group": "semantic",
+      "subcategory": "描摹",
+      "description": "双肩pitch前送约10°、双肩roll略内收，双肘屈曲约70°，双前臂由两侧向中线汇合并拢。描摹“汇合/连接/支撑”关系。"
+    },
+    {
+      "id": "19",
+      "name": "B_Upright_Pair",
+      "label": "B双前臂竖立并列",
+      "group": "semantic",
+      "subcategory": "描摹",
+      "description": "双肩roll外展约15°、双肘屈曲约90°，双前臂在身体两侧竖立，形成左右并列竖线。描摹“并列主体/二元关系”。"
+    },
+    {
+      "id": "20",
+      "name": "B_Upright_Converge",
+      "label": "B双前臂竖立靠拢",
+      "group": "semantic",
+      "subcategory": "描摹",
+      "description": "双肩roll由外展位内收约10°、双肘保持约90°，双前臂由两侧竖立位向中线靠拢。描摹“代理/替代”的合拢关系。"
+    },
+    {
+      "id": "21",
+      "name": "B_Forearm_Slant_Up",
+      "label": "B双前臂斜上扬",
+      "group": "semantic",
+      "subcategory": "描摹",
+      "description": "双肩pitch前送约30°，双肘屈曲约45°，双前臂由体前斜向斜上方抬起，形成上扬臂线。描摹“上升/成绩/上扬”状态。"
+    },
+    {
+      "id": "22",
+      "name": "B_Point_Retract_Fold",
+      "label": "B双臂前指收回折叠",
+      "group": "semantic",
+      "subcategory": "描摹",
+      "description": "双肩pitch由前伸约45°收至约10°、双肘由伸直屈至约60°，双臂由前指位收回至胸前折叠位。描摹“收回/内敛”状态。"
     }
   ]
 }

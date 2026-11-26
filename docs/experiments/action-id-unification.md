@@ -48,6 +48,6 @@
 
 本轮修改前备份：`artifacts/backups/action-id-unification-before.tar.gz`。机器映射及验证摘要：`assets/motion/action-id-migration.json`。
 
-新的Prompt导出位于 `artifacts/gesture-prompt/unified/`，历史导出保留。正在运行的网页或导览进程需退出后重新启动以加载新ID；不自动停止控制程序，不自动启动机器人。
+当时的统一ID导出快照已于2026-11-26按用户确认清理；当前导出位于 `artifacts/gesture-prompt/stream/` 和 `artifacts/gesture-prompt/preplan/`（通过导出工具生成）。正在运行的网页或导览进程需退出后重新启动以加载新ID；不自动停止控制程序，不自动启动机器人。
 
 验证：207项主测试、67项驱动工具测试、6项原生CTest通过；两个演练入口只读通过；本机ROS到原生离线播放器端到端通过。未启动机器人、声音或API。

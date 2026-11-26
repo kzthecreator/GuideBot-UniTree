@@ -12,71 +12,7 @@ from GuideBot.gesture.service import load_targets
 
 
 def evaluate(args, catalog):
-    planner = Planner(catalog, model=args.model)
-    if not planner.api_key:
-        raise RuntimeError('DEEPSEEK_API_KEY is not set; source your environment file first')
-    cases = strict_json(args.cases.read_text(encoding='utf-8'))
-    examples = strict_json((Path(__file__).resolve().parents[2] / 'assets/motion/conversation-few-shots.json').read_text(encoding='utf-8'))
-    shown = {a['action'] for e in examples if all(a['action'] in catalog.actions for a in e['actions'])
-             for a in e['actions']}
-    targets = load_targets(args.targets)
-    for case in cases:
-        if case.get('group') not in {'seen', 'unseen', 'negative'}:
-            raise ValueError('Evaluation case needs seen, unseen or negative group')
-        if (case['group'] == 'negative') != (not case['expected']):
-            raise ValueError('Evaluation group and expected actions disagree')
-        if any(action not in catalog.actions for action in case['expected']):
-            raise ValueError('Evaluation references unavailable physical action')
-    args.output.mkdir(parents=True, exist_ok=True, mode=0o700)
-    results = []
-    for repeat in range(args.repeats):
-        for case in cases:
-            if args.case and case['id'] not in args.case:
-                continue
-            plans = []
-            payload = make_input(case['id'], case['text'], case.get('targets', targets), complete=True,
-                                 interaction_context=case.get('interaction_context'))
-            try:
-                stats = planner.plan(payload, lambda p: plans.append(p.as_dict()), threading.Event())
-                names = [p['action'] for p in plans]
-                exact = sorted(names) == sorted(case['expected']) and not stats['invalid_actions']
-                parameters_ok = all(all(p.get(k) == v for k, v in case.get('parameters', {}).items())
-                                    and ('target_id' not in case or p.get('target_id') == case['target_id'])
-                                    for p in plans)
-                row = dict(case_id=case['id'], repeat=repeat, expected=case['expected'],
-                           interaction=case.get('interaction'),
-                           plans=plans, detection_pass=exact, parameters_pass=exact and parameters_ok,
-                           few_shot_group=case['group'], **stats)
-            except Exception as error:
-                row = dict(case_id=case['id'], repeat=repeat, expected=case['expected'],
-                           interaction=case.get('interaction'), plans=plans,
-                           detection_pass=False, parameters_pass=False, error=str(error),
-                           few_shot_group=case['group'])
-            results.append(row)
-            (args.output / 'results.json').write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding='utf-8')
-            print(case['id'], 'PASS' if row['parameters_pass'] else 'FAIL',
-                  [p['action'] for p in plans], flush=True)
-    summary = dict(cases=len(results), model=planner.model, shown_actions=sorted(shown),
-                   registry_sha256=hashlib.sha256(json.dumps(catalog.prompt_document(), sort_keys=True,
-                                                             ensure_ascii=False).encode()).hexdigest(),
-                   prompt_sha256=hashlib.sha256((DIRECTORY/'prompt.md').read_bytes()).hexdigest(),
-                   examples_sha256=hashlib.sha256((Path(__file__).resolve().parents[2]/'assets/motion/conversation-few-shots.json').read_bytes()).hexdigest(),
-                   registered_actions=sorted(catalog.actions), detection_pass=sum(r['detection_pass'] for r in results),
-                   parameters_pass=sum(r['parameters_pass'] for r in results),
-                   network_or_format_errors=sum('error' in r for r in results))
-    for group in ('seen', 'unseen', 'negative'):
-        rows = [r for r in results if r.get('few_shot_group') == group]
-        summary[group] = dict(cases=len(rows), passed=sum(r['parameters_pass'] for r in rows))
-    for function in sorted({case.get('interaction') for case in cases if case.get('interaction')}):
-        rows = [row for row in results if row.get('interaction') == function]
-        summary.setdefault('interaction_functions', {})[function] = dict(
-            cases=len(rows), detected=sum(row['detection_pass'] for row in rows),
-            passed=sum(row['parameters_pass'] for row in rows))
-    for metric in ('first_action_seconds', 'total_seconds'):
-        values = sorted(r[metric] for r in results if r.get(metric) is not None)
-        summary[metric] = dict(median=statistics.median(values), maximum=max(values)) if values else {}
-    (args.output / 'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
-    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    raise ValueError('Legacy anchor-only evaluation has been retired; use examples/gesture_from_audio planning tools')
 
 
 def main():
@@ -115,12 +51,12 @@ def main():
     args = parser.parse_args()
     catalog = Catalog(args.registry)
     if args.command == 'prompt':
-        print(json.dumps(messages(catalog, make_input('preview', args.text, load_targets(args.targets), complete=True)),
+        print(json.dumps(messages(catalog, dict(make_input('preview', args.text, load_targets(args.targets), complete=True), timing_contract='semantic_keyframes', playback_elapsed_s=0., playback_started=False, suggested_planning_lead_s=2.)),
                          ensure_ascii=False, indent=2))
     elif args.command == 'evaluate':
         if not 1 <= args.repeats <= 10:
             parser.error('--repeats must be 1..10')
-        evaluate(args, catalog)
+        parser.error('Legacy anchor-only evaluation has been retired; use examples/gesture_from_audio planning tools')
     else:
         if not 0 <= args.tail <= 1:
             parser.error('--tail must be in [0, 1]')

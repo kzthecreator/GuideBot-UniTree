@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from GuideBot.gesture.catalog import Catalog,DIRECTORY,make_input,messages,minimal_document,original_messages
+from GuideBot.gesture.catalog import Catalog,DIRECTORY,make_input,messages,minimal_document
 from GuideBot.gesture.planner import Planner
 
 
@@ -11,7 +11,7 @@ class MinimalPromptTests(unittest.TestCase):
     def setUp(self):
         self.catalog=Catalog()
         self.payload=dict(make_input('r','大家好，介绍一下这台机器人。',complete=True),
-                          timing_contract='fixed_deadline',playback_elapsed_s=0.,
+                          timing_contract='semantic_keyframes',playback_elapsed_s=0.,
                           playback_started=False,suggested_planning_lead_s=2.)
 
     def test_only_three_action_fields_and_active_ids(self):
@@ -36,35 +36,33 @@ class MinimalPromptTests(unittest.TestCase):
         self.assertNotIn('interaction_functions',prompt[0]['content'])
         self.assertNotIn('when_to_use',prompt[0]['content'])
         self.assertNotIn('普通事实陈述',prompt[0]['content'])
-        self.assertIn('start_unit',prompt[0]['content'])
+        self.assertIn('keyframes',prompt[0]['content'])
         self.assertNotIn('额外预留',prompt[0]['content'])
         self.assertNotIn('0.65 秒',prompt[0]['content'])
         self.assertTrue(all(self.catalog.execution_timing(name)['reserved_overhead_s']==0 for name in self.catalog.actions))
         self.assertEqual(json.loads(prompt[-1]['content']),self.payload)
 
-    def test_original_can_be_restored_exactly(self):
-        original=original_messages(self.catalog,self.payload)
-        self.assertEqual(messages(self.catalog,self.payload,prompt_variant='original'),original)
+    def test_removed_original_rejected(self):
+        with self.assertRaises(ValueError):
+            messages(self.catalog,self.payload,prompt_variant='original')
         with patch.dict('os.environ',{'GUIDEBOT_GESTURE_PROMPT':'original'}):
-            self.assertEqual(messages(self.catalog,self.payload),original)
-        self.assertIn('interaction_functions',original[0]['content'])
-        self.assertTrue((DIRECTORY/'catalog_original_backup.py').is_file())
+            with self.assertRaises(ValueError):messages(self.catalog,self.payload)
 
     def test_stale_description_not_applied_to_rerecorded_asset(self):
         self.catalog.assets['B_Neutral_Rest']['metadata']['sha256']='different recording'
         row=next(r for r in minimal_document(self.catalog)['actions'] if r['id']=='B_Neutral_Rest')
         self.assertEqual(row['description'],self.catalog.actions['B_Neutral_Rest']['description'])
 
-    def test_bad_variant_rejected_before_network_and_legacy_contract_preserved(self):
+    def test_bad_variant_and_legacy_contract_rejected(self):
         with self.assertRaises(ValueError):messages(self.catalog,self.payload,prompt_variant='unknown')
         legacy=make_input('r','欢迎来到展厅。')
-        self.assertEqual(messages(self.catalog,legacy,prompt_variant='minimal'),
-                         original_messages(self.catalog,legacy))
+        with self.assertRaises(ValueError):messages(self.catalog,dict(legacy,timing_contract='fixed_deadline'))
+        with self.assertRaises(ValueError):messages(self.catalog,legacy,prompt_variant='minimal')
 
     def test_planner_sends_minimal_prompt_and_validates_stream_offline(self):
         from unittest.mock import Mock
         name='L_Short_Nudge' if 'L_Short_Nudge' in self.catalog.actions else 'B_Open_Hold'
-        row=dict(action=name,start_unit=0,arrival_unit=1,start_s=2.,end_s=6.)
+        row=dict(action=name,keyframes=[dict(frame=self.catalog.assets[name]['frames']-1,unit=1)],hold_s=0.)
         response=Mock(status_code=200)
         response.__enter__=Mock(return_value=response)
         response.__exit__=Mock(return_value=False)

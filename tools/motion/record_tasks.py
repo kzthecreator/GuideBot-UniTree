@@ -127,6 +127,7 @@ def session(root, tasks, binary):
             continue
         source.unlink()
         print('[SAVED]', task['label'], '->', path, '（草稿，未启用）')
+        if exists:print('已保留原Prompt描述，请在网页版校对左右手、帧数、方向与末姿态，再保存描述并试播验收。')
 
 
 def main():

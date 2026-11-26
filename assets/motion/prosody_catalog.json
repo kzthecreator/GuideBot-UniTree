@@ -120,6 +120,15 @@
       "verified": true,
       "llm_selectable": true,
       "selection_mode": "description"
+    },
+    {
+      "id": "L_Center_Rest",
+      "family": "posture",
+      "description": "左肘屈曲约90°、左前臂停于腹部前方中轴线上，右臂自然下垂。",
+      "enabled": false,
+      "recording_task_id": "15",
+      "gesture_subcategory": "起止/姿态管理",
+      "label": "L中线停驻"
     }
   ]
 }

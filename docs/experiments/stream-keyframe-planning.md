@@ -2,7 +2,7 @@
 
 本轮将真实 GestureService 默认规划合同切为 semantic_keyframes。成功的 manual-neutral-closing 整段方案保留，未启动任何真机或音频。
 
-DeepSeek 只选择 action、keyframes（frame、unit）、hold_s；关键帧下标来自真实录制，默认末帧对准关键词，多个帧/词可以延长核心。每批最多三个，不限制整段复用。动作库仍只有 ID、物理描述、最短时长；独立 execution_timing 提供帧数与执行时间下限，不增加语义使用限制。旧 prompt 与原始 prompt 继续保留供历史合同复现，但实际流式入口不再选择旧窗口合同，即使设置 original 也不能绕过新时间规则。
+DeepSeek 只选择 action、keyframes（frame、unit）、hold_s；关键帧下标来自真实录制，默认末帧对准关键词，多个帧/词可以延长核心。每批最多三个，不限制整段复用。动作库仍只有 ID、物理描述、最短时长；独立 execution_timing 提供帧数与执行时间下限，不增加语义使用限制。原始Prompt及其构建备份现已移除，original选项和未指定时间契约的旧调用明确报错；流式入口使用关键帧合同。
 
 统一时间来自 GuideBot/gesture/timing.py：入口1秒；核心取验收 minimum_total_ms 的核心占比，未配置profile才取录制标称核心；只允许延长。保持仅补足验收总时长下限或用户指定的语义停留。两个以上关键词按验收frame_weights（否则录制时间比例）拟合统一核心缩放，无法一致对齐或短于核心下限时不下发。没有关节距离、速度或加速度估时。
 
@@ -28,7 +28,7 @@ python "$HOME/GuideBot-UniTree/examples/gesture_from_audio/stream_keyframes.py" 
 
 模拟器默认6秒时间戳提前量、3秒开场缓存。它假定未来时间戳可获得，并非真实在线对齐器的性能证据；--lookahead可改变假设。真实HTTP等待计入模拟播放时钟。请求prompt、统计与模拟事件落盘，但不保存API Key。该结果不是rehearse.py可直接加载的真机整段快照。真正语音流、DeepSeek网络、在线对齐和机器人组合效果仍待手动现场验收。
 
-本轮修改前的流式源文件备份在 artifacts/backups/stream-keyframes-before/；历史prompt备份保留。成功手工演练入口和结果目录不变。
+本轮修改前的流式源文件备份已于2026-11-26按用户确认清理。成功手工演练入口和结果目录不变。
 
 ## 本轮验证结果
 

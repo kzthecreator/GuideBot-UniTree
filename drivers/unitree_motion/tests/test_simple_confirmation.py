@@ -79,7 +79,7 @@ class ConfirmationTests(unittest.TestCase):
             with self.assertRaises(MotionTimingRejected):
                 executor.sequence(dict(event,end_monotonic=101.99))
             payload=make_input('r','这里介绍机器人',complete=True)
-            payload['timing_contract']='fixed_deadline'
+            payload['timing_contract']='semantic_keyframes'
             prompt=messages(catalog,payload)
             self.assertIn(name,prompt[0]['content'])
             if name=='Beat':self.assertEqual(catalog.actions[name]['gesture_group'],'prosody')

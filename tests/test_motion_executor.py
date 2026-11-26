@@ -56,8 +56,8 @@ class MotionExecutorTests(unittest.TestCase):
             for function in item['interaction_functions']:
                 self.assertIn(function['function'], evaluated_functions)
         self.assertTrue(any(case['group'] == 'negative' for case in cases))
-        system = messages(self.catalog, make_input('r', '欢迎大家'))[0]['content']
-        self.assertIn('semantic_intents', system)
+        system = messages(self.catalog, dict(make_input('r', '欢迎大家'),timing_contract='semantic_keyframes'))[0]['content']
+        self.assertNotIn('semantic_intents', system)
         self.assertIn('"id": "R_Center_Present"', system)
         self.assertIn('"id": "B_Neutral_Rest"', system)
         definitions = {item['id']: item for item in self.catalog.document['actions']}
@@ -235,7 +235,7 @@ class MotionExecutorTests(unittest.TestCase):
         context = {'stage': 'qa_invitation', 'history': ['本段讲解已结束'], 'facts': []}
         payload = make_input('r', '大家还有什么问题吗？', interaction_context=context)
         self.assertEqual(payload['interaction_context'], context)
-        system_and_user = messages(self.catalog, payload)
+        system_and_user = messages(self.catalog, dict(payload,timing_contract="semantic_keyframes"))
         self.assertIn('"stage": "qa_invitation"', system_and_user[-1]['content'])
 
     def test_latest_semantic_descriptions_and_release_contract(self):

@@ -165,4 +165,4 @@ description中的帧号从0开始；入口切换到帧0，核心再依次经过�
 
 当前文件会进入后续规划请求，旧的成功演练及历史请求不重新规划。尚未调用DeepSeek或启动真机；描述与动作实际观感需你审阅。
 
-修改前备份：artifacts/backups/gesture-description-keyframes-before-20261126/。
+修改前备份已于2026-11-26按用户确认清理。

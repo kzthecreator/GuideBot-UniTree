@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import unittest
 
-from GuideBot.gesture.catalog import Catalog, original_prompt_template
+from GuideBot.gesture.catalog import Catalog
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -40,10 +40,3 @@ class ActionIdMigrationTests(unittest.TestCase):
             path=ROOT/'artifacts/gesture-from-audio/g1-self-introduction'/result/'sequence.json'
             if path.is_file():
                 self.assertEqual(digest(json.loads(path.read_text())),expected)
-
-    def test_original_prompt_backup_is_unchanged_but_runtime_uses_new_ids(self):
-        original=(ROOT/'GuideBot/gesture/prompt_original.md').read_text()
-        self.assertIn('neutral',original)
-        runtime=original_prompt_template()
-        self.assertIn('B_Neutral_Rest',runtime)
-        self.assertNotRegex(runtime,r'(?<![A-Za-z0-9_])neutral(?![A-Za-z0-9_])')

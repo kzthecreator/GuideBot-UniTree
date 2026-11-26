@@ -13,6 +13,8 @@ def confirm(root, entries, name, sha256, version, profile, total, verified_by):
         if errors:
             raise ValueError('; '.join(errors))
         points, old = result
+        if old.get('description_review',{}).get('pending'):
+            raise ValueError('原Prompt描述待校对，请在网页版校对并保存描述后再试播验收')
         if old['sha256'] != sha256 or old['version'] != version:
             raise ValueError('动作已变化，请重新载入并试播')
         meta = dict(old, timing_profile=profile, version=version+1, status='approved',

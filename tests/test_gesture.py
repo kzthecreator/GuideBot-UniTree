@@ -38,8 +38,8 @@ class GestureTests(unittest.TestCase):
             path = Path(tmp)/'actions.json'
             path.write_text(json.dumps(document))
             catalog = Catalog(path)
-            prompt = messages(catalog, make_input('r', self.text))
-            self.assertIn('自定义欢迎描述', prompt[0]['content'])
+            prompt = messages(catalog, dict(make_input('r', self.text), timing_contract='semantic_keyframes'))
+            self.assertIn('minimum_duration_s', prompt[0]['content'])
             self.assertNotIn('"action": "B_Neutral_Rest"', ''.join(m['content'] for m in prompt))
             plan = catalog.validate(dict(action='B_Open_Hold', start_unit=0, arrival_unit=1), range(8), [],
                                     {'stage': 'welcome'})
@@ -98,7 +98,7 @@ class GestureTests(unittest.TestCase):
         released = [d for k, d in events if k == 'gesture.released']
         self.assertEqual(released[-1]['condition'], 'maximum_hold_time')
     def test_all_examples_follow_the_registry(self):
-        messages(self.catalog, make_input('r', self.text, self.targets))
+        messages(self.catalog, dict(make_input('r', self.text, self.targets), timing_contract='semantic_keyframes'))
         for bad in [dict(action='nod'), dict(target_id='invented'), dict(start_unit=True),
                     dict(arrival_unit=99), dict(start_unit=4), dict(duration_s=1), dict(direction='left')]:
             with self.subTest(bad=bad), self.assertRaises(ValueError):
@@ -267,7 +267,7 @@ class GestureTests(unittest.TestCase):
         response = Mock(status_code=200)
         response.__enter__ = Mock(return_value=response)
         response.__exit__ = Mock(return_value=False)
-        data = json.dumps({'actions':[self.row, dict(action='nod', start_unit=0, arrival_unit=1)]})
+        data = json.dumps({'actions':[dict(action=self.row['action'],keyframes=[dict(frame=self.catalog.assets[self.row['action']]['frames']-1,unit=1)],hold_s=0.), dict(action='nod', start_unit=0, arrival_unit=1)]})
         packets = [json.dumps({'choices':[{'delta':{'content':fragment},'finish_reason':None}]})
                    for fragment in [data[:30], data[30:]]]
         packets.append(json.dumps({'choices':[{'delta':{},'finish_reason':'stop'}]}))
@@ -277,13 +277,13 @@ class GestureTests(unittest.TestCase):
         planner = Planner(self.catalog, api_key='not-a-real-key', session=http)
         plans = []
         context = {'scene': {'confirmed': True, 'direction': 'right', 'target_id': 'sand_table'}}
-        stats = planner.plan(make_input('r',self.text,self.targets,interaction_context=context), plans.append)
+        stats = planner.plan(dict(make_input('r',self.text,self.targets,interaction_context=context), timing_contract='semantic_keyframes'), plans.append)
         self.assertEqual([p.action for p in plans], ['R_Side_Present'])
         self.assertEqual(stats['invalid_actions'], 1)
         response.status_code = 401
         response.text = 'private-server-response'
         with self.assertRaisesRegex(RuntimeError, '^DeepSeek HTTP 401$'):
-                planner.plan(make_input('r',self.text,interaction_context=context), plans.append)
+                planner.plan(dict(make_input('r',self.text,interaction_context=context), timing_contract='semantic_keyframes'), plans.append)
 
     @staticmethod
     def wait_for(predicate, timeout=2):

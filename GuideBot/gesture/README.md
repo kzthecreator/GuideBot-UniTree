@@ -1,5 +1,9 @@
 # 动作规划与执行
 
+## 当前Prompt入口（2026-11-26）
+
+仅保留 `prompt_stream.md`（实时关键帧）和 `prompt_preplan.md`（全文预规划）。固定时间窗口LLM入口及 `prompt.md` 已移除；执行端截止时间检查保留。以下固定期限与历史模板说明是历史记录。
+
 ## 当前规则（2026-11-25）
 
 唯一正式入口为仓库根目录 `main.py`，安装见 `docs/setup.md`。
@@ -95,7 +99,9 @@ python -m tools.gesture --registry /path/to/actions.json prompt
 
 文字单元复用 FunASR 的中文字符/英文词/数字串规则。LLM 引用程序分配的 unit_id；offset 和 response_id 由本地保存，不让模型猜时间。
 
-## 真实 DeepSeek 测评
+## 历史 DeepSeek 测评（入口已停用）
+
+2026-11-26移除原版Prompt后，以下旧锚点评测命令已停用；当前规划使用 `examples/gesture_from_audio` 工具。
 
 进程必须实际继承 `DEEPSEEK_API_KEY`。在其他终端执行 export 不会修改已经运行的进程；需要在启动命令的同一 shell 加载配置。程序不会搜索其他用户文件，也不读取、打印或保存 Key。
 
